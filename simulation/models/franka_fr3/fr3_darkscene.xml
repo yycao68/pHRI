@@ -1,0 +1,27 @@
+<mujoco model="fr3 dark scene">
+  <!-- FR3 with a DARK background so the (light-coloured) robot, the white EE
+       trail and the coloured markers are all clearly visible in rendered video. -->
+  <include file="fr3.xml"/>
+
+  <statistic center="0.2 0 0.4" extent="0.9"/>
+
+  <visual>
+    <!-- brighter headlight so the light robot pops against the dark backdrop -->
+    <headlight diffuse="0.85 0.85 0.85" ambient="0.5 0.5 0.5" specular="0.15 0.15 0.15"/>
+    <global offwidth="1280" offheight="960"/>
+  </visual>
+
+  <asset>
+    <texture type="skybox" builtin="gradient"
+             rgb1="0.05 0.06 0.09" rgb2="0.12 0.14 0.19" width="512" height="512"/>
+    <texture type="2d" name="grid" builtin="checker" mark="edge"
+             rgb1="0.14 0.15 0.18" rgb2="0.18 0.20 0.24" markrgb="0.30 0.33 0.38"
+             width="300" height="300"/>
+    <material name="grid" texture="grid" texrepeat="6 6" texuniform="true" reflectance="0.05"/>
+  </asset>
+
+  <worldbody>
+    <light pos="0.3 0.3 1.7" dir="-0.2 -0.2 -1" directional="true"/>
+    <geom name="floor" type="plane" size="0 0 0.05" material="grid"/>
+  </worldbody>
+</mujoco>

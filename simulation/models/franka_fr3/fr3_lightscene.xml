@@ -1,0 +1,26 @@
+<mujoco model="fr3 light scene">
+  <!-- FR3 with a light (non-black) background so the blue EE trail and green
+       marker are clearly visible in rendered figures. -->
+  <include file="fr3.xml"/>
+
+  <statistic center="0.2 0 0.4" extent="0.9"/>
+
+  <visual>
+    <headlight diffuse="0.7 0.7 0.7" ambient="0.45 0.45 0.45" specular="0.1 0.1 0.1"/>
+    <global offwidth="1280" offheight="960"/>
+  </visual>
+
+  <asset>
+    <texture type="skybox" builtin="gradient"
+             rgb1="0.55 0.65 0.78" rgb2="0.88 0.91 0.95" width="512" height="512"/>
+    <texture type="2d" name="grid" builtin="checker" mark="edge"
+             rgb1="0.72 0.76 0.82" rgb2="0.80 0.84 0.90" markrgb="0.55 0.55 0.6"
+             width="300" height="300"/>
+    <material name="grid" texture="grid" texrepeat="6 6" texuniform="true" reflectance="0.08"/>
+  </asset>
+
+  <worldbody>
+    <light pos="0.3 0.3 1.7" dir="-0.2 -0.2 -1" directional="true"/>
+    <geom name="floor" type="plane" size="0 0 0.05" material="grid"/>
+  </worldbody>
+</mujoco>
