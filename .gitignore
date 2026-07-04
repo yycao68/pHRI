@@ -1,0 +1,27 @@
+# Large binaries / heavy artifacts
+*.zip
+*.mp4
+cloud_verify/
+TASE_FINAL.pdf
+# stale markdown-rendered PDF; canonical source is the .md
+double_integrator_phri_ieee.pdf
+
+# MuJoCo mesh assets (large; models available from MuJoCo Menagerie)
+**/assets/
+
+# Python
+__pycache__/
+*.pyc
+
+# LaTeX build artifacts
+*.aux
+*.log
+*.fls
+*.fdb_latexmk
+*.out
+*.bbl
+*.blg
+*.synctex.gz
+
+# OS
+.DS_Store
