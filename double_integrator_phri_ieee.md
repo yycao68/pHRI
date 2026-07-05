@@ -38,7 +38,7 @@ This paper makes four contributions:
 
 On a 7-DOF Franka FR3 in MuJoCo simulation, the controller reduces steady-state error under a sustained 15 N force from 44.8 mm (classical impedance) to below 0.05 mm—a >800× reduction—while holding sub-millimeter tracking on four 3-D circles and remaining robust to measurement noise and 30% inertial mismatch. Although developed for pHRI, the interaction-dynamics backbone requires only $M$, $C\dot q+G$, and $J_v$, offering a path toward interaction models that transfer across configurations for manipulation and whole-body control; a full realization of that vision is left to future work.
 
-This connects the present work to the broader agenda of *model-based physical AI*. Recent embodied systems couple a perception–language stack to a robot through a learned world model $x_{k+1}=f(x_k,u_k)$ that is rolled out for prediction and planning; the hardest part of that model is contact, precisely because the underlying dynamics $M(q)\ddot q+C\dot q+G=\tau+J^\top\mathcal F_h$ are nonlinear and configuration-dependent, which makes purely learned contact models data-hungry. The interaction-dynamics backbone offers an *analytic* alternative for the physical layer: operational-space cancellation reduces the contact dynamics to a linear model whose transition matrix is fixed and configuration-independent and whose robot dependence is a single known input matrix. A model-based agent built on this backbone need not re-learn robot dynamics; the residual left to a learned component is only the genuinely uncertain part—human intent, contact force, and environment—which enters through the disturbance channel the estimator already tracks. We do not claim a physical-AI system here; rather, we position an interaction-dynamics representation with a fixed, configuration-independent transition matrix as an analytic dynamics foundation on which such systems can predict, plan, and reason about safety under contact.
+This also connects to the broader agenda of *model-based physical AI*, where embodied systems plan through a learned world model whose least data-efficient component is contact. By reducing the contact dynamics to an analytic linear model, the backbone lets a learned component capture only the genuinely uncertain part—human intent, contact force, and environment—rather than re-learning robot dynamics. We do not claim a physical-AI system here, and develop the point in the conclusion; the present contribution is the interaction-dynamics realization itself.
 
 ---
 
@@ -108,8 +108,6 @@ where $\bar{J}_v^\top = \Lambda J_v M^{-1} \in \mathbb{R}^{3\times n}$ is the ro
 $$-\Lambda^{-1}\Lambda J_v M^{-1}J_v^\top F_h = -\Lambda^{-1}F_h,$$
 
 Because $e = p_d - p$, any positive acceleration of $p$ induced by the human force appears with a negative sign in $\ddot{e}$, which is why a force that is positive in the joint dynamics enters (6) as a negative error acceleration.
-
-
 (ii) the *orientation coupling* $-J_v M^{-1}J_\omega^\top F_\text{orient}$ is the residual translational acceleration induced by the orientation PD torque. With the simple additive orientation channel in (4), this mobility cross-term is generally structural rather than a numerical artifact; it is bounded and correctly captured by $\hat{d}$;
 (iii) the *Jacobian derivative term* $-\dot{J}_v\dot{q}$ arises because $\ddot{p} = J_v\ddot{q} + \dot{J}_v\dot{q}$, contributing a centripetal-like acceleration that is small at typical operating speeds;
 (iv) the *model error* $\epsilon_m(t)$ captures residual gravity/Coriolis cancellation error from imperfect model knowledge.
@@ -504,10 +502,6 @@ The benchmarks above apply constant or step forces. Because the framework target
 ## VII. Discussion
 
 **Separation of concerns.** The two benchmarks reveal that prediction (high QP rate) and estimation (Kalman) address different problems at different time scales. This orthogonality is a structural property: the C4–C7 ablation in Table I confirms that rate dominates transient peak deflection (2.9→1.1 mm without Kalman, 2.5→0.8 mm with Kalman) while Kalman drives steady-state error to effectively zero (2.8 mm → ~0 for C4→C5 at 100 Hz). Neither alone achieves both; their combination (C7/G7) achieves best-in-class contact behavior.
-
-**Constant $A_d$ advantage.** The feedforward cancellation that makes $A_d$ configuration-independent is not merely a mathematical convenience: it is what allows $\Phi$ to be precomputed, the QP to have exactly 30 decision variables at all configurations and for all robot models, and the warm-started OSQP solve to converge in under 0.5 ms in our simulation runs — supporting 500 Hz QP operation, with on-hardware timing left to future work. This structural property applies to a broad class of rigid-body manipulators for which $M$, $C\dot q+g$, and $J_v$ are available.
-
-**Platform generality.** The controller requires only three quantities from the robot model at each step: the mass matrix $M(q)$, the bias force $C(q,\dot{q})\dot{q}+G(q)$, and the translational Jacobian $J_v(q)$. These are available from MuJoCo, Pinocchio, KDL, or any robot dynamics library, and via the hardware API of most collaborative arms (FR3, UR5/10, KUKA iiwa, ABB YuMi). The joint-limit parameters ($q_\text{min}$, $q_\text{max}$, $q_0$) are the only robot-specific configuration required.
 
 **Joint-limit design.** The dual barrier (null-space + workspace projection) is necessary because joints near the workspace boundary are task-constrained: the null-space projector removes only the component of the barrier gradient orthogonal to the task Jacobian. For joints whose motion is fully task-determined, only the workspace projection (13) is effective.
 

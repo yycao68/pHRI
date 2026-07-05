@@ -229,6 +229,25 @@ No new math/logic errors: Theorem 3 proof sound, MPVIC/Table VI numbers
 consistent, cross-refs otherwise resolve. LaTeX rebuild clean, 12 pages.
 Judgment calls left for the author: (#4) abstract length; (#7) task diversity.
 
+## De-duplication pass (length trim)
+
+Audited for repeated framing claims (the "constant $A_d$ / robot dependence in
+$B_d$ / precomputed $\Phi$ / 30-var QP" cluster was stated ~8–10 times).
+Applied the high-confidence, zero-information-loss cuts to both files:
+
+- **Deleted Discussion "Constant $A_d$ advantage"** — fully redundant with
+  Contribution 2 (structure) and §V line 352 (OSQP < 0.5 ms timing).
+- **Deleted Discussion "Platform generality"** — the "needs only $M,C+G,J_v$ /
+  any torque-controlled arm" claim is already §V line 339 and the conclusion.
+- **Compressed the intro Physical-AI paragraph** (~90→~55 words); the full
+  forward-looking vision stays in the conclusion.
+
+Net ~250 words removed. "configuration-independent" count 11→8 (remaining uses
+are each in a distinct role). Markdown Discussion keeps its three unique
+paragraphs (Separation of concerns, Joint-limit design, When-not-to-use); the
+compact LaTeX Discussion keeps Separation of concerns. LaTeX rebuild clean, 12
+pages. Not yet committed.
+
 ## Verification
 
 LaTeX rebuild after this pass: passed, 11 pages, no undefined refs/citations. The
