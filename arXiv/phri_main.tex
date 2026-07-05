@@ -28,6 +28,18 @@
 \newcommand{\Jvb}{\bar{J}_v}
 \newcommand{\Nbar}{\bar{N}}
 
+% Tighten spacing around floats and captions to save vertical space
+\setlength{\textfloatsep}{6pt plus 2pt minus 2pt}
+\setlength{\floatsep}{5pt plus 2pt minus 2pt}
+\setlength{\intextsep}{5pt plus 2pt minus 2pt}
+\setlength{\dbltextfloatsep}{7pt plus 2pt minus 2pt}
+\setlength{\abovecaptionskip}{3pt}
+\setlength{\belowcaptionskip}{0pt}
+\setlength{\abovedisplayskip}{4pt plus 1pt minus 1pt}
+\setlength{\belowdisplayskip}{4pt plus 1pt minus 1pt}
+\setlength{\abovedisplayshortskip}{2pt plus 1pt}
+\setlength{\belowdisplayshortskip}{2pt plus 1pt}
+
 \begin{document}
 
 % ----------------------------------------------------------
@@ -153,12 +165,7 @@ and normalizes the task through the operational-space inertia, leaving a
 residual task-error double integrator whose discrete state-transition matrix
 $A_d$ is \emph{constant}, with all robot configuration dependence isolated in
 the input matrix $B_d(\rho_k)$---the scheduling-dependent structure familiar
-from LPV predictive control~\cite{cao2005minmax}. Three consequences follow:
-interaction shaping, disturbance rejection, and constraints live in one convex
-program; the persistent contact force is predicted and cancelled rather than
-merely reacted to; and, because $A_d$ is configuration-independent, the
-free-response matrix is precomputed once, pointing toward interaction models
-that transfer across configurations.
+from LPV predictive control~\cite{cao2005minmax}.
 
 This paper makes four contributions:
 
@@ -1062,9 +1069,10 @@ FCI~\cite{franka2023fr3}.
 \begin{table}[!t]
 \caption{Computational Budget per Control Layer}
 \label{tab:compute}
-\renewcommand{\arraystretch}{1.2}
+\renewcommand{\arraystretch}{1.0}
 \centering
 \setlength{\tabcolsep}{4pt}
+\footnotesize
 \begin{tabular}{@{}llcc@{}}
 \toprule
 \textbf{Layer} & \textbf{Computation} & \textbf{Rate} & \textbf{Budget}\\
@@ -1115,7 +1123,8 @@ algorithm comparisons and figures.
 \begin{table}[!t]
 \caption{Benchmarked Controllers}
 \label{tab:controllers}
-\renewcommand{\arraystretch}{1.2}
+\renewcommand{\arraystretch}{1.0}
+\footnotesize
 \begin{tabular}{lll}
 \toprule
 \textbf{ID} & \textbf{Controller} & \textbf{Disturbance estimator}\\
@@ -1157,7 +1166,8 @@ cycle (3 cycles, 24\,s total).
 \begin{table}[!t]
 \caption{Benchmark I --- Circular Trajectory, 15\,N Step Force}
 \label{tab:bm1}
-\renewcommand{\arraystretch}{1.2}
+\renewcommand{\arraystretch}{1.0}
+\footnotesize
 \begin{tabular}{lcccc}
 \toprule
 \textbf{Controller} & \textbf{RMS} & \textbf{RMS} & \textbf{Peak} & \textbf{SS}\\
@@ -1178,7 +1188,7 @@ C7 -- MPC+K 500\,Hz & 12.8 & \textbf{0.2} & \textbf{0.8} & \textbf{$<$0.05}\\
 
 \begin{figure}[!t]
   \centering
-  \includegraphics[width=\columnwidth]{figures/mpc_comparison_results.png}
+  \includegraphics[width=0.8\columnwidth]{figures/mpc_comparison_results.png}
   \caption{Benchmark I --- Circular trajectory under 15\,N step pHRI.
            For visibility the plot shows D1/D2/D3/D7 (corresponding to
            C1/C2/C3/C7) plus the predictive variable-impedance MPVIC
@@ -1216,9 +1226,10 @@ C5 is evaluated on four 3-D circle planes (Table~\ref{tab:bm1b}).
 \begin{table}[!t]
 \caption{Free-Space Circle Tracking, $R=12$\,cm, $T=8$\,s}
 \label{tab:bm1b}
-\renewcommand{\arraystretch}{1.2}
+\renewcommand{\arraystretch}{1.0}
 \centering
 \setlength{\tabcolsep}{4pt}
+\footnotesize
 \begin{tabular}{@{}lccc@{}}
 \toprule
 \textbf{Plane} & \textbf{IMP RMSE [mm]} & \textbf{MPC RMSE [mm]} & \textbf{Improvement}\\
@@ -1240,7 +1251,8 @@ At each waypoint, a directionally varied 15\,N push fires for 2\,s
 \begin{table}[!t]
 \caption{Benchmark II --- Waypoint-Hold Under Directionally Varied Push}
 \label{tab:bm2}
-\renewcommand{\arraystretch}{1.2}
+\renewcommand{\arraystretch}{1.0}
+\footnotesize
 \begin{tabular}{lcccc}
 \toprule
 \textbf{Controller} & \textbf{WP} & \textbf{RMS free} & \textbf{RMS contact} & \textbf{Peak}\\
@@ -1260,7 +1272,7 @@ G7 -- MPC+K 500\,Hz   & 3/3 & 52.1 & \textbf{0.2} & \textbf{0.7}\\
 
 \begin{figure}[!t]
   \centering
-  \includegraphics[width=\columnwidth]{figures/guidance_controller_comparison.png}
+  \includegraphics[width=0.8\columnwidth]{figures/guidance_controller_comparison.png}
   \caption{Benchmark II --- reach-and-hold under directionally varied
            push. For visibility the plot shows D1/D2/D3/D7 (corresponding
            to G1/G2/G3/G7) plus the predictive variable-impedance MPVIC
@@ -1301,10 +1313,11 @@ reachable set.
 \begin{table}[!t]
 \caption{Boundary Test, $R=20$\,cm Circle}
 \label{tab:safety}
-\renewcommand{\arraystretch}{1.2}
+\renewcommand{\arraystretch}{1.0}
 \centering
 \footnotesize
 \setlength{\tabcolsep}{2.5pt}
+\footnotesize
 \begin{tabular}{@{}lccc@{}}
 \toprule
 \textbf{Controller} & \textbf{RMSE [mm]} & \textbf{Min margin} & \textbf{Result}\\
@@ -1318,7 +1331,7 @@ MPC (C5, 30\,Hz QP)  & 11.21 & 0.084 & \textsf{AVOIDED}\\
 
 \begin{figure}[!t]
   \centering
-  \includegraphics[width=\columnwidth]{figures/trajectory_boundary.png}
+  \includegraphics[width=0.8\columnwidth]{figures/trajectory_boundary.png}
   \caption{Boundary test ($R=20$\,cm).
            Classical impedance violates the 5\% joint margin;
            the dual-barrier MPC maintains a fractional joint margin
@@ -1339,8 +1352,9 @@ noise) or its feedforward inertia (a scaled $\Lambda$) are perturbed.
 \begin{table}[!t]
 \caption{Robustness of MPC+Kalman (100\,Hz QP)}
 \label{tab:robust}
-\renewcommand{\arraystretch}{1.2}
+\renewcommand{\arraystretch}{1.0}
 \centering
+\footnotesize
 \begin{tabular}{cccc}
 \toprule
 \multicolumn{4}{l}{\emph{(a) EE position noise --- 10\,N step, SS error
@@ -1390,9 +1404,10 @@ $N$-step self-consistency of the estimate.
 \begin{table}[!t]
 \caption{Time-Varying Force --- Horizon-Prediction Error and Tracking}
 \label{tab:tv}
-\renewcommand{\arraystretch}{1.2}
+\renewcommand{\arraystretch}{1.0}
 \centering
 \setlength{\tabcolsep}{4pt}
+\footnotesize
 \begin{tabular}{cccccc}
 \toprule
 $L_d$ & $\varepsilon_1$ & $\varepsilon_N$ & $\varepsilon_N{-}\varepsilon_1$
@@ -1422,72 +1437,36 @@ extension of Section~III-D would predict that component forward exactly, removin
 it from $L_d$.
 
 % ----------------------------------------------------------
-\section{Discussion}
+\section{Discussion and Conclusion}
 
-\textbf{Separation of concerns.}
-Prediction (high QP rate) addresses transient peak deflection;
-estimation (Kalman) drives steady-state error to zero.
-These are orthogonal: neither alone achieves both; their combination
-(C7/G7) achieves best-in-class contact behavior in both benchmarks.
+This paper argued that safe pHRI is best designed by predicting
+\emph{interaction dynamics} directly (Definition~\ref{def:id}):
+operational-space feedforward cancellation exposes a linear double-integrator
+backbone with configuration dependence confined to $B_d(\rho_k)$, turning
+compliance, tracking, disturbance rejection, and safety into properties of one
+30-variable convex QP rather than four separately designed modules. The two
+benchmarks show its mechanisms to be orthogonal---prediction (QP rate) sets the
+transient peak deflection, Kalman estimation drives steady-state error to
+zero---and neither alone matches their combination.
 
-% ----------------------------------------------------------
-\section{Conclusion}
+The framework is one realization, not a replacement for all pHRI modes: for
+intentional co-manipulation, admittance control remains appropriate. Within its
+scope it recovers classical impedance in the unconstrained limit
+(Theorem~\ref{thm:equiv}), is offset-free under constant force
+(Theorem~\ref{thm:zss}), and---because the transition matrix is
+configuration-independent---is exponentially stable across the whole workspace
+under a single Lyapunov certificate (Theorem~\ref{thm:workspace}). On a Franka
+FR3 in MuJoCo it gives a $>$800$\times$ steady-state-error reduction over
+classical impedance under a sustained 15\,N force, $77$--$97\times$ RMSE
+reduction on free-space circles, and robustness to noise and $\pm30\%$ inertial
+mismatch; the interface needs only $M$, $C\dot q+G$, and $J_v$, so it ports
+across arms. The next step is hardware validation with synchronized tracking,
+force, CBF-residual, and energy-tank logs.
 
-Classical robot control predicts robot dynamics and treats contact as a
-disturbance; this paper argued instead that safe pHRI should be designed by
-predicting \emph{interaction dynamics} directly: the closed-loop relation among
-commanded motion, human-applied force, actuator limits, joint limits, and
-passivity (Definition~\ref{def:id}). This shift makes compliance, tracking,
-disturbance rejection, and safety emergent properties of one optimization over
-the interaction error rather than four separately designed modules.
-The proposed framework makes those dynamics explicit by using
-operational-space feedforward cancellation to expose a linear
-double-integrator backbone for the translational task.
-The nonlinear robot is still represented through measured dynamics, but
-its configuration dependence is confined to the input matrix
-$B_d(\rho_k)$, while the transition matrix and free-response structure
-remain fixed.
-This separation lets standard linear constrained-control tools be used
-with explicit assumptions: the prediction matrix $\Phi$ is precomputed,
-the online realization is a 30-variable convex QP, offset-free tracking
-follows from an input-centered augmented disturbance model, sampled
-joint-limit safety is enforced by a one-step torque CBF when feasible,
-and task-channel passivity is enforced by an energy-tank scaling layer.
-
-The resulting controller should be viewed as one realization of the
-interaction-dynamics framework rather than as a replacement for all
-pHRI control modes.
-In the unconstrained and disturbance-free limit it recovers the
-conservative part of classical task-space impedance; under constant or
-asymptotically constant bounded human force, Kalman augmentation removes
-steady-state bias when the stated stability and feasibility conditions
-hold; and because the transition matrix is configuration-independent, a
-single Lyapunov certificate guarantees exponential stability of the
-interaction error across the whole singularity-free workspace, not only at
-a fixed configuration (Theorem~\ref{thm:workspace}).
-MuJoCo simulation on a Franka FR3 model demonstrates a $>$800$\times$
-steady-state-error reduction over classical impedance under a sustained
-15\,N force, 77--97$\times$ RMSE reduction on free-space circles,
-empirical joint-limit safety behavior at the workspace boundary, and
-robustness to measurement noise and $\pm30\%$ inertial mismatch.
-Because the interface requires only $M$, $C\dot q+G$, and $J_v$, the
-same framework can be ported to other torque-controlled serial arms by
-substituting the robot model and joint-limit parameters.
-The next validation step is real FR3 pHRI testing with synchronized
-tracking, force-estimation, CBF-residual, and energy-tank logs.
-
-Looking further out, the value of an interaction-dynamics model with a
-configuration-independent transition matrix
-is not confined to impedance regulation. As embodied
-systems increasingly plan through learned world models, the physical
-layer---contact---remains their least data-efficient component. By reducing that
-layer to a fixed linear model with a single known input matrix, the backbone
-supplies an analytic dynamics prior on which a learned model need only capture
-the residual uncertainty of intent, contact, and environment. We therefore see
-interaction dynamics less as a single controller than as a candidate foundation
-for model-based physical AI: an analytic, predictive, safety-constrained
-dynamics substrate between a high-level foundation model and the robot's
-torques.
+More broadly, because the backbone reduces contact to an analytic linear model,
+it can serve as a dynamics prior for model-based physical AI---letting a learned
+world model capture only the residual uncertainty of intent, contact, and
+environment rather than re-learning robot dynamics.
 
 % ----------------------------------------------------------
 \bibliographystyle{IEEEtran}

@@ -229,6 +229,31 @@ No new math/logic errors: Theorem 3 proof sound, MPVIC/Table VI numbers
 consistent, cross-refs otherwise resolve. LaTeX rebuild clean, 12 pages.
 Judgment calls left for the author: (#4) abstract length; (#7) task diversity.
 
+## Length reduction to 11 pages
+
+Brought the IEEE submission from 12 to **11 pages**. Page 12 had been only the
+conclusion tail + the 25-entry reference list spilling past page 11.
+
+Content changes (both files):
+- **Merged "Discussion" and "Conclusion" into one section "Discussion and
+  Conclusion,"** significantly shortened (the decisive lever). The markdown keeps
+  its unique points (separation of concerns, joint-limit design, when-not-to-use)
+  folded in concisely; the compact LaTeX is tighter still.
+- Cut the intro "three consequences follow" sentence (it previewed the
+  contribution list that immediately follows).
+
+LaTeX-only formatting savers (presentation, fully reversible — not applicable to
+the markdown):
+- Table row height `\arraystretch` 1.2 → 1.0 (8 tables); table bodies
+  `\footnotesize`.
+- Tightened float spacing (`\textfloatsep`, `\floatsep`, `\intextsep`, caption
+  skips) and display-equation spacing (`\abovedisplayskip` etc.) in the preamble.
+- Figures `width=\columnwidth` → `0.8\columnwidth`.
+
+Rebuild clean, 11 pages, no undefined refs. If the 0.8 figures or footnotesize
+tables read too small, reverting them likely pushes back toward 12 pages unless
+more prose is cut.
+
 ## De-duplication pass (length trim)
 
 Audited for repeated framing claims (the "constant $A_d$ / robot dependence in
