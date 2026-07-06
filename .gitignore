@@ -9,6 +9,11 @@ double_integrator_phri_ieee.pdf
 # MuJoCo mesh assets (large; models available from MuJoCo Menagerie)
 **/assets/
 
+# Off-topic / accidental (kept out of the paper repo)
+funding/
+simulation/simulation/
+simulation_results/
+
 # Python
 __pycache__/
 *.pyc

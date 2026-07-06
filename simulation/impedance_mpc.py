@@ -319,8 +319,22 @@ class ImpedanceMPCController:
     # ------------------------------------------------------------------
 
     def _B_d(self, Lam_inv: np.ndarray) -> np.ndarray:
-        """B_d(ρ) = [[0_{3×3}], [-Λ_pos^{-1} Δt]]  ∈ ℝ^{6×3}."""
-        return np.vstack([np.zeros((3, 3)), -Lam_inv * self.p.dt_mpc])
+        """Exact zero-order-hold (ZOH) input matrix for the nilpotent double
+        integrator:
+
+            B_d(ρ) = ∫₀^{Δt} e^{A_c s} B_c ds
+                   = [[-½ Δt² Λ_pos^{-1}],
+                      [-Δt   Λ_pos^{-1}]]  ∈ ℝ^{6×3}.
+
+        Because A_c is nilpotent (A_c² = 0), e^{A_c s} = I + A_c s is exact, so
+        A_d = e^{A_c Δt} is unchanged; only the input block carries the exact
+        ½Δt² top term (previously dropped by the Forward-Euler approximation).
+        Used consistently by Γ, the Kalman augmented model (9), and the
+        closed-loop / disturbance-propagation analysis, so no ZOH/Euler mixing
+        bias arises.
+        """
+        dt = self.p.dt_mpc
+        return np.vstack([-0.5 * dt * dt * Lam_inv, -Lam_inv * dt])
 
     def _build_Gamma(self, Lam_inv: np.ndarray) -> np.ndarray:
         """

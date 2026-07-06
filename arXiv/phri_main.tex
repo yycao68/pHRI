@@ -24,6 +24,7 @@
 \newcommand{\Lam}{\Lambda(q)}
 \newcommand{\Laminv}{\Lambda^{-1}(q)}
 \newcommand{\Fmpc}{F_{\text{mpc}}}
+\newcommand{\Fmpck}[1]{F_{\text{mpc},#1}}
 \newcommand{\dhat}{\hat{d}}
 \newcommand{\Jvb}{\bar{J}_v}
 \newcommand{\Nbar}{\bar{N}}
@@ -39,6 +40,16 @@
 \setlength{\belowdisplayskip}{4pt plus 1pt minus 1pt}
 \setlength{\abovedisplayshortskip}{2pt plus 1pt}
 \setlength{\belowdisplayshortskip}{2pt plus 1pt}
+
+% --- compress reference list to fit the page budget ---
+\let\OLDthebibliography\thebibliography
+\renewcommand\thebibliography[1]{%
+  \footnotesize
+  \OLDthebibliography{#1}%
+  \setlength{\itemsep}{-1.5pt}%
+  \setlength{\parsep}{0pt}%
+  \setlength{\topsep}{0pt}%
+}
 
 \begin{document}
 
@@ -171,8 +182,7 @@ This paper makes four contributions:
 
 \textbf{A predictive interaction-dynamics formulation.} We recast
 torque-controlled pHRI so that the modeled and optimized object is the
-interaction error at the contact port---the augmented error state
-$x_{k+1}=A_dx_k+B_d(\rho_k)u_k+E\hat d_k$ (Definition~\ref{def:id})---rather
+interaction error at the contact port rather
 than the robot configuration dynamics, unifying compliance, tracking,
 disturbance rejection, and safety in one convex program while preserving the
 measured robot dynamics through $M$, $C\dot q+G$, and $J_v$.
@@ -284,7 +294,7 @@ disturbance $d$:
         for all $i$ when the one-step safety filter is enforced.
 \end{enumerate}
 
-This objective is posed not on the robot configuration but on the interaction
+This objective is posed not on the robot configuration but on the interacti2n
 error at the contact port. We make that modeling shift precise.
 
 \begin{definition}[Interaction Dynamics]\label{def:id}
@@ -293,8 +303,7 @@ state is the interaction error at the contact port---the task-tracking error
 and its rate, augmented by the persistent interaction force---and whose
 evolution, under the actuator, joint-limit, and passivity constraints, is
 driven by the task control input. Formally, where classical robot control takes
-the configuration-space dynamics $M(q)\ddot q + C(q,\dot q)\dot q + G(q) = \tau
-+ J^\top(q)\mathcal{F}_h$ as the object to be predicted and regulated,
+the configuration-space dynamics \eqref{eq:eom} as the object to be predicted and regulated,
 interaction dynamics takes the augmented error system
 \[
   x_{k+1} = A\,x_k + B\,u_k + E\,d_k
@@ -357,6 +366,7 @@ computed-torque method~\cite{siciliano2009robotics}:
   \tau_{\text{ff}} = \underbrace{C(q,\dot{q})\dot{q}+G(q)}_{\texttt{qfrc\_bias}}
                    + J_v^\top\Lambda(q)\,\ddot{p}_d
 \end{equation}
+
 Writing the Layer-2 task channel as $\tau_{\text{mpc}}\equiv J_v^\top\Fmpc$,
 define the known non-MPC torque offset
 \[
@@ -370,7 +380,7 @@ this applied receding-horizon torque, while the hardware interface keeps
 clipping and rate limiting as final runtime guards.
 
 \begin{proposition}\label{prop:doubleint}
-After applying \eqref{eq:tff}, the residual error dynamics satisfy:
+After applying \eqref{eq:tff}, the residual error satisfy:
 \begin{equation}\label{eq:errordyn}
   \ddot{e} = -\Laminv\,\Fmpc + d(t)
 \end{equation}
@@ -417,12 +427,12 @@ $A_d$ remains constant.
 \subsection{Layer 2 --- Discrete LPV Model and QP}\label{sec:layer2}
 
 With error state $x_e=[e^\top,\dot{e}^\top]^\top\in\mathbb{R}^6$ and
-scheduling variable $\rho_k=q_k$, discretization gives:
+scheduling variable $\rho_k=q_k$, exact zero-order-hold (ZOH) discretization gives:
 \begin{equation}\label{eq:lpv}
-  x_e(k+1) = \underbrace{\begin{bmatrix}I_3&\Delta t I_3\\0&I_3\end{bmatrix}}_{A_d\;\text{(constant)}}
-              x_e(k)
-            + \underbrace{\begin{bmatrix}0\\-\Laminv\Delta t\end{bmatrix}}_{B_d(\rho_k)}
-              \Fmpc(k)
+  x_{e,k+1} = \underbrace{\begin{bmatrix}I_3&\Delta t I_3\\0&I_3\end{bmatrix}}_{A_d\;\text{(constant)}}
+              x_{e,k}
+            + \underbrace{\begin{bmatrix}-\tfrac{\Delta t^2}{2}\Laminv\\-\Laminv\Delta t\end{bmatrix}}_{B_d(\rho_k)}
+              \Fmpck{k}
 \end{equation}
 
 Equation~\eqref{eq:lpv}, together with the disturbance augmentation
@@ -430,8 +440,8 @@ Equation~\eqref{eq:lpv}, together with the disturbance augmentation
 Definition~\ref{def:id} in concrete form: the state $x_e$ is the interaction
 error at the contact port---not the robot configuration---the input $\Fmpc$ is
 the task force, and $\hat d$ is the estimated interaction disturbance.
-Identifying $A=A_d$ and $B=B_d(\rho_k)$ gives the linear system
-$x_{k+1}=Ax_k+Bu_k+Ed_k$ of Definition~\ref{def:id}; offset-free tracking,
+Identifying $A=A_d$ and $B=B_d(\rho_k)$ gives the linear system 
+of Definition~\ref{def:id}; offset-free tracking,
 actuator feasibility, and joint-limit safety are properties of this model, not
 of the configuration dynamics.
 
@@ -440,63 +450,41 @@ The continuous-time matrix $A_c=\begin{bmatrix}0&I_3\\0&0\end{bmatrix}$
 is nilpotent ($A_c^2=0$), so $e^{A_c\Delta t}=I+A_c\Delta t$ exactly
 and $A_d$ is configuration-independent.
 
-\textbf{Discretization note on $B_d$.}
-The input matrix in \eqref{eq:lpv} uses Forward-Euler approximation.
-The exact ZOH integral gives
-$B_d^{\text{ZOH}}=[-\tfrac{\Delta t^2}{2}\Laminv;\;-\Delta t\Laminv]^\top$;
-the neglected top-block is $O(\Delta t^2)\approx2.5\times10^{-4}$\,m/N
-at 100\,Hz, appearing as a known constant component of $\dhat$ (which
-does not bias the offset-free guarantee). Substituting the exact ZOH
-block removes the artifact without breaking the constant-$A_d$ structure
---- only $B_d(\rho_k)$ rescales.
-Both $\Gamma$ and the Kalman augmented state \eqref{eq:augstate} must
-use the same $B_d$ formula to avoid bias in $\dhat$; our
-implementation uses the Forward-Euler $B_d$ consistently in both.
+\textbf{Discretization note.}
+Since $A_c$ is nilpotent, both $A_d=I+A_c\Delta t$ and the exact ZOH input
+integral
+$B_d(\rho_k)=\int_0^{\Delta t}e^{A_c s}B_c\,ds
+ =[-\tfrac{\Delta t^2}{2}\Laminv;\;-\Delta t\Laminv]^\top$
+are closed-form (no Forward-Euler $O(\Delta t^2)$ artifact); the same
+$B_d(\rho_k)$ is used in $\Gamma$ and the Kalman model~\eqref{eq:augstate}.
 
 \begin{remark}[Controllability and Detectability]\label{rem:feasibility}
-The LPV system \eqref{eq:lpv} is uniformly controllable across the
-singularity-free workspace.
-Since $\Lambda(q)=(J_vM^{-1}J_v^\top)^{-1}$ is SPD for all $q$ away
-from kinematic singularities, $B_d(\rho_k)$ has full column rank~3.
-The controllability matrix $\mathcal{C}=[B_d\mid A_dB_d]$ has rank~6,
-since:
-\begin{equation*}
-  A_dB_d = \begin{bmatrix}I&\Delta t I\\0&I\end{bmatrix}
-            \begin{bmatrix}0\\-\Laminv\Delta t\end{bmatrix}
-          = \begin{bmatrix}-\Laminv\Delta t^2\\-\Laminv\Delta t\end{bmatrix}
-\end{equation*}
-and $\Laminv$ is full rank.
-If the stage penalty satisfies $Q\succeq0$ and $(Q^{1/2},A_d)$ is
-detectable, then the discrete-time LQR/DARE solution exists at every
-fixed configuration and the corresponding gain
-$K_\infty=(R+B_d^\top P_\infty B_d)^{-1}B_d^\top P_\infty A_d$ is
-well-defined. For the augmented estimator, observability of
-$[e;\dot e]$ together with full column rank of $B_d$ makes the constant
-disturbance state detectable: if a mode with eigenvalue $\lambda$ is
-unobservable from $C=[I_6\;0]$, then its $x_e$ component is zero; the
-augmented dynamics then require $B_d d=0$, hence $d=0$.
+Since $\Lambda(q)$ in \eqref{eq:Lambda} is SPD away from kinematic singularities, $B_d(\rho_k)$ in
+\eqref{eq:lpv} has full column rank~3, and with $A_d$ mixing velocity into position the
+controllability matrix $[B_d\mid A_dB_d]$ has rank~6: the pair is uniformly
+controllable across the singularity-free workspace. Hence for $Q\succeq0$ with
+$(Q^{1/2},A_d)$ detectable, the DARE solution and gain
+$K_\infty=(R+B_d^\top P_\infty B_d)^{-1}B_d^\top P_\infty A_d$ exist at every
+configuration. Full column rank of $B_d$ likewise makes the augmented
+disturbance state detectable (an unobservable mode has $x_e=0$, forcing
+$B_d d=0$, i.e.\ $d=0$).
 \end{remark}
 
 \textit{Implementation note (regularization).}
-In code the operational-space inverse is formed as
-$\Lambda^{-1}(q)=J_vM^{-1}J_v^\top+\sigma I$ with $\sigma=10^{-6}$ for
-numerical conditioning. This Tikhonov term is negligible in the
-well-conditioned workspace interior but mildly damps the estimated disturbance
-(and the realized stiffness) along directions that become ill-conditioned as a
-kinematic singularity is approached; operation is restricted to the
-singularity-free workspace, where its effect stays below the measurement-noise
-floor.
+In code $\Lambda^{-1}(q)=J_vM^{-1}J_v^\top+\sigma I$ with $\sigma=10^{-6}$; this
+Tikhonov term is negligible in the workspace interior and only mildly damps the
+estimate near singularities, outside the operating region.
 
 The receding-horizon QP with $N=10$ steps, $3N=30$ decision variables
-$U=[\Fmpc(0);\ldots;\Fmpc(N-1)]$, is:
+$U=[\Fmpck{0};\ldots;\Fmpck{N-1}]$, is:
 \begin{subequations}\label{eq:QP}
 \begin{align}
   \min_U\;& \tfrac{1}{2}U^\top HU+h^\top U \label{eq:QP_cost}\\
   \text{s.t.}\;&
   -\tau_{\max}\leq
-  \tau_{\text{base}}(0)+J_v^\top(q_0)\Fmpc(0)
+  \tau_{\text{base}}(0)+J_v^\top(q_0)\Fmpck{0}
   \leq\tau_{\max}, \label{eq:QP_torque}\\
-  & -F_{\max}\leq\Fmpc(k)\leq F_{\max},
+  & -F_{\max}\leq\Fmpck{k}\leq F_{\max},
   \quad k=0,\ldots,N-1. \label{eq:QP_force}
 \end{align}
 \end{subequations}
@@ -511,10 +499,10 @@ The free response $x_{\text{free}}=\Phi x_e+D_{\text{bar}}\dhat$,
 where $D_{\text{bar}}\in\mathbb{R}^{6N\times3}$ has $j$-th block
 $\sum_{l=0}^{j-1}A_d^l B_d(\rho_k)$; equivalently,
 $D_{\text{bar}}=\Gamma(\mathbf 1_N\otimes I_3)$.
-Only $\Fmpc(0)$ is applied (receding-horizon principle).
+Only $\Fmpck{0}$ is applied (receding-horizon principle).
 \emph{Constraint interpretation (feasible final control).} The final
 applied command is the joint torque
-$\tau=\tau_{\text{base}}+J_v^\top\Fmpc(0)$, where
+$\tau=\tau_{\text{base}}+J_v^\top\Fmpck{0}$, where
 $\tau_{\text{base}}$ contains feedforward, orientation, and null-space terms,
 which the hardware saturates at the per-joint actuator limit $\tau_{\max}$
 (on the FR3, $\tau_{\max}=[87,87,87,87,12,12,12]$\,Nm). Constraining only the
@@ -527,7 +515,7 @@ be absorbed by a downstream torque clip, i.e.\ \emph{saturation}, discarding
 the optimized command. We therefore constrain the first applied
 receding-horizon torque directly, as in~\eqref{eq:QP_torque}. Since
 $\tau_{\text{base}}(0)$ and $J_v(q_0)$ are known at solve time, the constraint
-is affine in $\Fmpc(0)$ --- a convex per-joint polytope solved by OSQP at the
+is affine in $\Fmpck{0}$ --- a convex per-joint polytope solved by OSQP at the
 same cost class as a box. As only the first move is applied, the nominal
 applied torque satisfies $|\tau_i|\leq\tau_{\max,i}$ whenever the QP is
 feasible. Runtime clipping and rate limiting remain as final safety guards;
@@ -594,6 +582,20 @@ Thus the unconstrained MPC realizes a configuration-dependent linear
 impedance whenever the gain blocks have the passive stiffness/damping
 sign structure; constraints and disturbance augmentation are the
 mechanisms that extend this linear impedance behavior.
+
+\begin{remark}[Optimality vs.\ passivity: motivation for the energy tank]
+Because the predictive gain is the LQR/Riccati image of $(Q,R)$ rather than a
+passive design, the skew part of $K_e$ (Theorem~\ref{thm:equiv}) is a
+non-passive circulatory force. For the robot alone this is benign (the DARE
+closed loop is asymptotically stable), but coupled to a human---itself a
+dynamical system---a non-passive controller need not preserve stability of the
+\emph{coupled} loop. This motivates the energy-tank layer of
+\S\ref{sec:passivity}: rather than restricting $(Q,R)$ to passive gains and
+sacrificing performance, we keep the optimal law and restore a sampled
+task-channel passivity certificate at runtime (Proposition~\ref{prop:tank}),
+guaranteeing coupled stability against any passive environment.
+\end{remark}
+
 \begin{remark}[Prescribed vs.\ realized gains]
 The cost weights $Q=\mathrm{blkdiag}(K_d,D_d)$, $R$ are design
 \emph{penalties}; the realized impedance
@@ -614,7 +616,7 @@ impedance.
 \begin{corollary}[Existence of a Gain-Scheduled Infinite-Horizon
 Implementation]\label{cor:1khz}
 The infinite-horizon MPC admits a pure state-feedback realization
-$\Fmpc(k)=-K_\infty(\rho_k)x_e(k)$. By Remark~\ref{rem:feasibility} the
+$\Fmpck{k}=-K_\infty(\rho_k)x_{e,k}$. By Remark~\ref{rem:feasibility} the
 stabilizing DARE solution $P_\infty(\rho)$ exists for each fixed $\rho$
 under the stated detectability assumptions, and $K_\infty(\rho_k)$ depends
 on $\rho_k$ only through $\Laminv$ --- a symmetric $3\times3$ SPD matrix,
@@ -649,14 +651,14 @@ $\Lambda(q)$ changes---it is constant for a constant human force, matching the
 constant-disturbance hypothesis of Theorem~\ref{thm:zss}. It is the quantity
 the implementation stores as $\dhat$ and cancels via $\Fmpc=-\dhat$ at steady
 state. Augment the state with this integrating disturbance, modelled as a
-random walk $d(k{+}1)=d(k)+w(k)$:
+random walk $d_{k+1}=d_k+w_k$:
 \begin{equation}\label{eq:augstate}
 \begin{aligned}
-  \begin{bmatrix}x_e(k+1)\\d(k+1)\end{bmatrix}
+  \begin{bmatrix}x_{e,k+1}\\d_{k+1}\end{bmatrix}
   &= \underbrace{\begin{bmatrix}A_d&B_d(\rho_k)\\0&I_3\end{bmatrix}}_{A_{\text{aug}}}
-    \begin{bmatrix}x_e(k)\\d(k)\end{bmatrix}\\[2pt]
-  &\quad + \begin{bmatrix}B_d(\rho_k)\\0\end{bmatrix}\Fmpc(k)
-  + \begin{bmatrix}0\\w(k)\end{bmatrix},
+    \begin{bmatrix}x_{e,k}\\d_k\end{bmatrix}\\[2pt]
+  &\quad + \begin{bmatrix}B_d(\rho_k)\\0\end{bmatrix}\Fmpck{k}
+  + \begin{bmatrix}0\\w_k\end{bmatrix},
 \end{aligned}
 \end{equation}
 with $w\sim\mathcal{N}(0,Q_w)$.
@@ -682,13 +684,13 @@ constant used here behaves well across the 100--500\,Hz range tested.
 
 \begin{theorem}[Offset-Free Steady-State Tracking]\label{thm:zss}
 Consider the augmented model \eqref{eq:augstate} at a fixed
-configuration, with constant disturbance $d(k)=d_\infty$. Assume:
+configuration, with constant disturbance $d_k=d_\infty$. Assume:
 (i) the augmented estimator is detectable and its estimation error is
-asymptotically stable, so $\hat d(k)\to d_\infty$; (ii) the receding
+asymptotically stable, so $\hat d_{k}\to d_\infty$; (ii) the receding
 horizon controller stabilizes the nominal augmented closed loop; and
 (iii) the input constraint is inactive at the steady state. Then the
 steady-state tracking error is zero:
-$\lim_{k\to\infty}e(k)=0$. If $d(k)\to d_\infty$ asymptotically, the
+$\lim_{k\to\infty}e(k)=0$. If $d_k\to d_\infty$ asymptotically, the
 same conclusion holds provided the estimator remains asymptotically
 tracking.
 \end{theorem}
@@ -714,7 +716,7 @@ applied first input is therefore $\Fmpc=v_0-\hat d$, and the plant evolves as
 where $K_0$ is the first block row of $K$. By assumption (ii), the nominal
 closed loop is asymptotically stable. By assumption (i), the additive input
 $B_d(d_\infty-\hat d)$ vanishes, so the stable linear system converges to the
-same equilibrium. Hence $x_e(k)\to0$ and therefore $e(k)\to0$.
+same equilibrium. Hence $x_{e,k}\to0$ and therefore $e_k\to0$.
 
 The theorem does not claim zero error for arbitrary non-convergent
 time-varying forces or for steady states that require sustained actuator
@@ -735,12 +737,12 @@ trajectory visits.
 
 \begin{theorem}[Workspace Stability of the Interaction Dynamics]\label{thm:workspace}
 Consider the LPV interaction dynamics
-$x_e(k+1)=A_d x_e(k)+B_d(\rho_k)\Fmpc(k)$ with constant $A_d$ and
-$B_d(\rho)=[0;\,-\Laminv(\rho)\Delta t]$, and suppose $\Laminv(q)$ lies in a
+$x_{e,k+1}=A_d x_{e,k}+B_d(\rho_k)\Fmpck{k}$ with constant $A_d$ and
+$B_d(\rho)$ as in \eqref{eq:lpv}, and suppose $\Laminv(q)$ lies in a
 compact polytope over the singularity-free workspace,
 $\Laminv(q)\in\mathcal P=\operatorname{conv}\{L_1,\dots,L_V\}$ (e.g.\ the
 entry-wise box with $0\prec\lambda_{\min}I\preceq\Laminv\preceq\lambda_{\max}I$),
-with vertex input matrices $B_v=[0;\,-L_v\Delta t]$. If there exist
+with vertex input matrices $B_v=[-\tfrac{\Delta t^2}{2}L_v;\,-L_v\Delta t]$. If there exist
 $Q=Q^\top\succ0$ and $Y\in\mathbb R^{3\times6}$ such that for every vertex
 $v=1,\dots,V$
 \begin{equation}\label{eq:lmi}
@@ -748,7 +750,7 @@ $v=1,\dots,V$
 \end{equation}
 then the fixed feedback $\Fmpc=Kx_e$, $K=YQ^{-1}$, makes $V(x)=x^\top Px$,
 $P=Q^{-1}$, a \emph{common} quadratic Lyapunov function
-($V(x_e(k{+}1))\le\gamma V(x_e(k))$, $\gamma<1$) for \emph{every} admissible
+($V(x_{e,k+1})\le\gamma V(x_{e,k})$, $\gamma<1$) for \emph{every} admissible
 configuration trajectory $\{\rho_k\}$; the interaction error is thus
 exponentially stable uniformly over the workspace, not only at a frozen
 configuration.
@@ -779,16 +781,31 @@ with the input constraint inactive; the conditional joint-limit and passivity
 filters (Theorem~\ref{thm:invariance}, Proposition~\ref{prop:tank}) are
 enforced separately.
 
+\begin{remark}[Rate-independence and the frozen horizon]
+The certificate uses a \emph{single, parameter-independent} $P=Q^{-1}$ shared by
+all vertices, so it is robust to \emph{arbitrary} (even arbitrarily fast)
+variation of $\rho_k\in\mathcal P$: the Lyapunov decrease holds at every vertex
+and hence, by convexity of \eqref{eq:lmi} in $\Laminv$, for any $\rho_k\in\mathcal P$.
+This covers the online quasi-LPV build, where $\Gamma$ is frozen at the current
+$B_d(q_k)$ over the horizon: the frozen-vs-future gap is a bounded variation
+inside $\mathcal P$ and cannot break the decrease of $V=x^\top P x$. The frozen
+horizon shapes only the \emph{predicted} trajectory, while the receding-horizon
+re-solve keeps the \emph{applied} move matched to the current $\rho_k$; the
+certificate carries no bounded-rate proviso.
+\end{remark}
+
 \begin{remark}[Numerical certificate]
-For the FR3, sampling $\Laminv(q)$ along both benchmarks (4600 samples) gives
-$\operatorname{eig}\Laminv\in[0.059,0.360]\,\text{kg}^{-1}$ (task inertia
-$2.8$--$16.9$\,kg). Solving~\eqref{eq:lmi} over the resulting 64-vertex box
-($\Delta t=10$\,ms) is feasible, returning a common $P$ with
-$\operatorname{cond}P\approx3.7$, closed-loop spectral radius $\le0.996$ at every
-vertex, and $\max\operatorname{eig}(A_\text{cl}^\top P A_\text{cl}-P)=-1.5\times10^{-3}$.
+For the FR3, sampling $\Laminv(q)$ along the circular benchmark (4700 samples)
+gives $\operatorname{eig}\Laminv\in[0.059,0.354]\,\text{kg}^{-1}$ (task inertia
+$2.8$--$16.9$\,kg). Over the resulting 64-vertex box ($\Delta t=10$\,ms), the
+minimum-condition-number common-$P$ certificate at guaranteed rate
+$\rho\le0.996$ is feasible, returning a well-conditioned $P$ with
+$\operatorname{cond}P\approx2.2$, closed-loop spectral radius $\le0.996$ at
+every vertex, and
+$\max\operatorname{eig}(A_\text{cl}^\top P A_\text{cl}-P)\approx-5\times10^{-3}$.
 The guaranteed common-$P$ rate is conservative---the realized MPC converges much
 faster---but it establishes the workspace-stability claim rigorously rather than
-empirically.
+empirically, and is reproducible from the released script.
 \end{remark}
 
 \subsection{Disturbance Prediction Validity over the Horizon}
@@ -797,31 +814,31 @@ A natural question for any offset-free MPC is how good the disturbance
 prediction is \emph{over the prediction horizon}, not merely at the current
 step. The QP propagates the augmented model
 \eqref{eq:lpv},~\eqref{eq:augstate} under the random-walk prediction
-$\dhat(k+i\mid k)=\dhat(k\mid k)$ --- a flat extrapolation that is exact only
+$\dhat_{k+i\mid k}=\dhat_{k\mid k}$ --- a flat extrapolation that is exact only
 for a strictly constant disturbance. For a time-varying human force the
 prediction degrades with horizon depth $i$. We address this in three parts.
 
 \textbf{Bound.} Assume the human force is Lipschitz in time,
-$\|\dot{d}(t)\|_2\le L_d$, and let $\|d(k)-\dhat(k\mid k)\|_2\le e_K$ be the
+$\|\dot{d}(t)\|_2\le L_d$, and let $\|d_k-\dhat_{k\mid k}\|_2\le e_K$ be the
 steady-state Kalman estimation error. Since the random-walk prediction is the
 identity, the $i$-step prediction error obeys
 \begin{equation}\label{eq:predbound}
-  \|d(k+i)-\dhat(k+i\mid k)\|_2 \;\le\; e_K + L_d\,i\,\Delta t,
+  \|d_{k+i}-\dhat_{k+i\mid k}\|_2 \;\le\; e_K + L_d\,i\,\Delta t,
   \qquad i=0,\dots,N-1,
 \end{equation}
 where $L_d$ (units N/s) is the time-Lipschitz constant bounding the
 disturbance rate ($L_d\to0$ for a sustained push, $L_d\approx5$\,N/s for a
 brisk guidance force) and $e_K$ is the steady-state Kalman error; the bound
-follows by the triangle inequality on $d(k+i)=d(k)+\int\dot{d}\,d\tau$. The
+follows by the triangle inequality on $d_{k+i}=d_k+\int\dot{d}\,d\tau$. The
 first term is the \emph{current} estimation error (bounded by filter design,
 shrinking as the filter converges); the second is the \emph{extrapolation}
 error, linear in horizon depth and unavoidable for any constant-disturbance
 internal model.
 
 \textbf{Why it is not load-bearing.} Three properties keep
-\eqref{eq:predbound} benign. (i)~\emph{Receding horizon:} only $\Fmpc(0)$ is
+\eqref{eq:predbound} benign. (i)~\emph{Receding horizon:} only $\Fmpck{0}$ is
 applied and the QP is re-solved every $\Delta t$ with a fresh
-$\dhat(k\mid k)$, so the loose late-horizon predictions never reach the plant
+$\dhat_{k\mid k}$, so the loose late-horizon predictions never reach the plant
 --- they only shape the near-term optimum. (ii)~\emph{Short horizon:} at
 $N=10$, $\Delta t=10$\,ms (100\,ms; 20\,ms at 500\,Hz) the extrapolation term
 is small in absolute units --- for a sustained push (the case of
@@ -839,8 +856,8 @@ the precomputed $\Phi$) untouched, and removes that component from $L_d$ in
 \eqref{eq:predbound}.
 
 \textbf{Metric.} The natural diagnostic is the \emph{$N$-step
-disturbance-prediction RMS}, $\varepsilon_N=\mathrm{RMS}_k\,\|d(k)-\dhat(k\mid
-k-N)\|$ --- the error of the estimate propagated $N$ steps before the
+disturbance-prediction RMS}, $\varepsilon_N=\mathrm{RMS}_k\,\|d_k-\dhat_{k\mid
+k-N}\|$ --- the error of the estimate propagated $N$ steps before the
 measurement --- monitored alongside the one-step value $\varepsilon_1$. For
 the step-force benchmark (Section~\ref{sec:experiments}) the disturbance is
 piecewise constant, so $\varepsilon_N\approx\varepsilon_1$ except across the
@@ -993,7 +1010,21 @@ the CBF residuals and the slack $s$. The certificate is sampled-data:
 possible intersample motion is covered only to the extent that the margin
 $\epsilon$ and any robust tightening dominate the within-sample excursion.
 
-\subsection{Energy-Tank Passivity Layer for Co-Manipulation}
+\begin{remark}[Robust tightening bound and ISSf]
+Let $\delta\tau_k$ collect the unmodeled generalized force in the one-step
+predictor (human-torque estimation error $J^\top(F_h-\hat F_h)$, finite-jerk
+torque change, and inertial-model error), with $\|\delta\tau_k\|\le B_\tau$. The
+induced one-step position error $\tfrac12\Delta t^2 M^{-1}\delta\tau_k$ is bounded
+by $\Delta q_{\rm safe}=\tfrac12\Delta t^2\|M^{-1}\|_2 B_\tau$; tightening the
+one-step constraints by $\Delta q_{\rm safe}$ makes
+Theorem~\ref{thm:invariance} \emph{input-to-state safe}---the sampled positions
+stay in $\mathcal C_\epsilon$ for any disturbance within $B_\tau$ provided
+$\epsilon\ge\Delta q_{\rm safe}$. At $\Delta t=1$\,ms with
+$\|M^{-1}\|_2\lesssim10$\,kg$^{-1}$ this is $\approx5\times10^{-6}B_\tau$ rad
+($B_\tau$ in N$\cdot$m), well within the experimental $\epsilon$ margin.
+\end{remark}
+
+\subsection{Energy-Tank Passivity Layer for Co-Manipulation}\label{sec:passivity}
 
 The offset-free predictive controller is designed for precision disturbance
 rejection; intentional co-manipulation additionally needs a passivity
@@ -1396,9 +1427,9 @@ configuration-driven terms of~\eqref{eq:dist}, the robot holds a \emph{static}
 target while a sinusoidal push $F_z=-A\sin(2\pi f t)$ of fixed amplitude
 $A=12$\,N and increasing frequency $f$ sweeps the disturbance rate
 $L_d=A\,2\pi f/\sqrt2$. The controller is the same DI-MPC + Kalman (C5, 100\,Hz QP).
-Because the true disturbance $d(k)$ is not directly measurable, we use the
-filtered estimate $\dhat(k\mid k)$ as its proxy and the flat prediction
-$\dhat(k\mid k{-}N)=\dhat(k{-}N\mid k{-}N)$, so $\varepsilon_N$ measures the
+Because the true disturbance $d_k$ is not directly measurable, we use the
+filtered estimate $\dhat_{k\mid k}$ as its proxy and the flat prediction
+$\dhat_{k\mid k{-}N}=\dhat_{k{-}N\mid k{-}N}$, so $\varepsilon_N$ measures the
 $N$-step self-consistency of the estimate.
 
 \begin{table}[!t]

@@ -157,8 +157,11 @@ class FR3MuJoCoEnv:
         (FrankaDynamics, RobotState) matching the fr3_impedance.py API.
         """
         # --- Full joint-space inertia matrix M (nv × nv) ---
-        # MuJoCo 3.x API: mj_fullM(model, dst_matrix, data.qM)
-        mujoco.mj_fullM(self.model, self._M, self.data.qM)
+        # MuJoCo <3.10: mj_fullM(model, dst, data.qM);  >=3.10: (model, data, dst)
+        try:
+            mujoco.mj_fullM(self.model, self._M, self.data.qM)
+        except TypeError:
+            mujoco.mj_fullM(self.model, self.data, self._M)
         M = self._M.copy()
 
         # --- Bias forces  C(q,dq)*dq + g(q)  ---
