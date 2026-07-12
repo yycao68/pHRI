@@ -1,0 +1,7 @@
+numpy
+pyyaml
+# for real hardware (--backend dynamixel):
+dynamixel-sdk
+# for rigorous physics validation (--backend mjc, tools/verify_against_mujoco.py):
+mujoco
+robot_descriptions

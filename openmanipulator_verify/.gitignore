@@ -1,0 +1,4 @@
+results/hardware/*.csv
+results/hardware/*.json
+__pycache__/
+*.pyc
