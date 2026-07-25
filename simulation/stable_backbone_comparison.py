@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
 """Impedance-backbone architecture: standard benchmark + saturation stress test.
 
-Companion code for stable_backbone_mpc.md. Compares three controllers on the
-shared FR3 circular-trajectory + step-force scenario of phri.py:
+Companion code for stable_backbone_mpc.md AND for double_integrator_phri_ieee.md
+Sec. VI-I / arXiv/phri_main.tex's "Correction-Authority Robustness" ablation
+(Table VIII). Controller IDs below match the PAPER's numbering (Table
+"Benchmarked Controllers", Sec. VI-A) -- NOT the internal "C5/C6" shorthand
+used in earlier drafts of stable_backbone_mpc.md, which predates this being
+folded into the manuscript and would collide with the paper's own C6
+("DI-MPC, 500 Hz, no Kalman"). Compares three controllers on the shared FR3
+circular-trajectory + step-force scenario of phri.py:
 
     C1  Impedance                      classical baseline (D1 in the paper)
-    C5  DI-MPC + Kalman 500 Hz         current proposed controller (D7)
-    C6  DI-MPC + Kalman + Backbone 500 Hz   NEW: fixed restoring/damped
+    C7  DI-MPC + Kalman 500 Hz         current proposed controller (D7)
+    C8  DI-MPC + Kalman + Backbone 500 Hz   fixed restoring/damped
                                         impedance backbone commanded
                                         independently of the QP, which only
                                         shapes a
@@ -17,21 +23,22 @@ shared FR3 circular-trajectory + step-force scenario of phri.py:
                                         (horizon_torque_constraint=True)
 
 Experiment 1 (normal_benchmark): the standard 1-cycle push benchmark, no
-saturation stress -- checks C6 loses little/nothing relative to C5 when the
+saturation stress -- checks C8 loses little/nothing relative to C7 when the
 QP is never actually saturated.
 
 Experiment 2 (fmax_stress_sweep): sweeps the MPC corrective-force bound
 F_max down to (and including) 0 N via phri.F_MAX_OVERRIDE, emulating
 increasingly severe loss of additive corrective-force authority. This is
-the key comparison: C5's entire corrective torque comes from the box-
+the key comparison: C7's entire corrective torque comes from the box-
 constrained F_mpc, so F_max -> 0 leaves ONLY tau_ff applied (no restoring
-stiffness at all); C6's corrective torque is backbone (QP-independent) +
+stiffness at all); C8's corrective torque is backbone (QP-independent) +
 bounded additional term, so F_max -> 0 degrades gracefully to the restoring
 backbone alone. This is an authority-loss test, not a
 runtime injection of solver timeout/crash behavior.
 
-Run:  python3 stable_backbone_comparison.py
-Writes stable_backbone_comparison.json and stable_backbone_comparison.png.
+Run:  python3 stable_backbone_comparison.py --n-cycles 3
+Writes stable_backbone_comparison_3cycle.json/.png (the 3-cycle run is what
+matches the paper's Benchmark I / Table VIII protocol).
 """
 import json
 from pathlib import Path
@@ -64,8 +71,8 @@ def normal_benchmark(env, n_cycles=1):
     """Standard push benchmark, F_max at its normal 150 N default.
 
     n_cycles=3 reproduces the paper's exact Benchmark I protocol (Table I:
-    3 push events over 24 s, metrics averaged over all three) so C6's
-    numbers are directly comparable to the published C1/C5 rows, not just
+    3 push events over 24 s, metrics averaged over all three) so C8's
+    numbers are directly comparable to the published C1/C7 rows, not just
     to the 1-cycle snapshot used in the original single-seed pass."""
     print(f"== normal benchmark (F_max=150 N, no induced saturation, "
           f"{n_cycles} cycle(s)) ==")
@@ -114,9 +121,9 @@ def main(n_cycles=1, suffix=""):
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(9, 3.6))
     ax1.plot(f_max_values, stress_res[PROPOSED]["rms_contact"], "o-",
-             color="#E91E63", label="DI-MPC + Kalman (D7, no backbone)")
+             color="#E91E63", label="C7 / D7 (no backbone)")
     ax1.plot(f_max_values, stress_res[BACKBONE]["rms_contact"], "s-",
-             color="#2ca02c", label="+ Impedance backbone (C6)")
+             color="#2ca02c", label="C8 (+ backbone)")
     ax1.set_xlabel("F_max (N)  [150 = normal, 0 = zero additive authority]")
     ax1.set_ylabel("Contact-window RMS error (mm)")
     ax1.set_title("(a) Tracking error vs. corrective-force bound")
@@ -124,9 +131,9 @@ def main(n_cycles=1, suffix=""):
     ax1.invert_xaxis()
 
     ax2.plot(f_max_values, stress_res[PROPOSED]["peak"], "o-",
-             color="#E91E63", label="DI-MPC + Kalman (D7, no backbone)")
+             color="#E91E63", label="C7 / D7 (no backbone)")
     ax2.plot(f_max_values, stress_res[BACKBONE]["peak"], "s-",
-             color="#2ca02c", label="+ Impedance backbone (C6)")
+             color="#2ca02c", label="C8 (+ backbone)")
     ax2.set_xlabel("F_max (N)  [150 = normal, 0 = zero additive authority]")
     ax2.set_ylabel("Peak deflection during contact (mm)")
     ax2.set_title("(b) Peak deflection vs. corrective-force bound")
