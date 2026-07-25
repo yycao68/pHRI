@@ -103,6 +103,17 @@ class FR3MuJoCoEnv:
         self._M      = np.zeros((self.nv, self.nv))    # output of mj_fullM
         self._J_prev = np.zeros((6, self.nv))
 
+        # Shadow MjData for hypothetical-state dynamics queries (used by the
+        # reference-scheduled horizon torque constraint, ImpedanceMPCParams.
+        # horizon_torque_schedule). Created lazily so environments that never
+        # use it pay nothing extra; kept separate from self.data so querying
+        # dynamics at a predicted future (q, dq) never touches the live
+        # episode state.
+        self._shadow_data = None
+        self._shadow_M    = np.zeros((self.nv, self.nv))
+        self._shadow_jacp = np.zeros((3, self.nv))
+        self._shadow_jacr = np.zeros((3, self.nv))
+
         self.reset()
 
     # ------------------------------------------------------------------
@@ -204,6 +215,84 @@ class FR3MuJoCoEnv:
             f_ext=f_ext,
         )
         return dyn, state
+
+    # ------------------------------------------------------------------
+    # Shadow dynamics query (hypothetical-state, does not touch live state)
+    # ------------------------------------------------------------------
+
+    def shadow_dynamics(
+        self, q: np.ndarray, dq: np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """
+        Kinematics/dynamics quantities at a HYPOTHETICAL (q, dq), without
+        perturbing the live episode's self.data. Used by the
+        reference-scheduled horizon torque constraint (impedance_mpc.py,
+        horizon_torque_schedule) to evaluate J_v, τ_ff at scheduled future
+        joint states — nominally along the redundancy-resolved reference
+        trajectory q_d(t)/q̇_d(t) (see phri.precompute_joint_reference) —
+        without stepping physics or corrupting the real trajectory being
+        simulated.
+
+        Returns
+        -------
+        J_v     : (3, nv) translational Jacobian at (q, dq)
+        Lam_inv : (3, 3)  Λ⁻¹ = J_v M⁻¹ J_vᵀ (+ regularisation)
+        Lam_pos : (3, 3)  Λ = Lam_inv⁻¹
+        Cq_dot  : (nv,)   MuJoCo qfrc_bias = C(q,dq)q̇ + g(q)
+        """
+        if self._shadow_data is None:
+            self._shadow_data = mujoco.MjData(self.model)
+        d = self._shadow_data
+        d.qpos[:self.nv] = q
+        d.qvel[:self.nv] = dq
+        mujoco.mj_forward(self.model, d)
+
+        try:
+            mujoco.mj_fullM(self.model, self._shadow_M, d.qM)
+        except TypeError:
+            mujoco.mj_fullM(self.model, d, self._shadow_M)
+        M = self._shadow_M.copy()
+
+        Cq_dot = d.qfrc_bias[:self.nv].copy()
+
+        self._shadow_jacp[:] = 0.0
+        self._shadow_jacr[:] = 0.0
+        mujoco.mj_jacSite(self.model, d,
+                          self._shadow_jacp, self._shadow_jacr, self.ee_site_id)
+        J_v = self._shadow_jacp.copy()
+
+        Lam_inv = J_v @ np.linalg.inv(M) @ J_v.T + 1e-6 * np.eye(3)
+        Lam_pos = np.linalg.inv(Lam_inv)
+        return J_v, Lam_inv, Lam_pos, Cq_dot
+
+    def shadow_kinematics(self, q: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        """
+        EE position and translational Jacobian at a HYPOTHETICAL q, without
+        the mass-matrix/bias/constraint work shadow_dynamics does. Uses
+        mj_kinematics (position-level FK only) instead of mj_forward, so
+        it's cheap enough to call at every step of the fine-resolution
+        offline integration in phri.precompute_joint_reference (thousands
+        of calls per episode) without materially slowing the precompute.
+
+        Returns
+        -------
+        ee_pos : (3,)    EE position, world frame
+        J_v    : (3, nv) translational Jacobian at q
+        """
+        if self._shadow_data is None:
+            self._shadow_data = mujoco.MjData(self.model)
+        d = self._shadow_data
+        d.qpos[:self.nv] = q
+        mujoco.mj_kinematics(self.model, d)
+        mujoco.mj_comPos(self.model, d)   # cdof/subtree_com — mj_jacSite needs these
+        ee_pos = d.site_xpos[self.ee_site_id].copy()
+
+        self._shadow_jacp[:] = 0.0
+        self._shadow_jacr[:] = 0.0
+        mujoco.mj_jacSite(self.model, d,
+                          self._shadow_jacp, self._shadow_jacr, self.ee_site_id)
+        J_v = self._shadow_jacp.copy()
+        return ee_pos, J_v
 
     # ------------------------------------------------------------------
     # Actuation

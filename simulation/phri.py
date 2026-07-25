@@ -19,14 +19,14 @@ Scenario (shared by all modes):
 
 Controllers (canonical names; detection is substring-based):
     Impedance, Admittance, PI Impedance,
-    Double-Integrator MPC 100 Hz, Double-Integrator MPC + Kalman 100 Hz,
-    Double-Integrator MPC 500 Hz, Double-Integrator MPC + Kalman 500 Hz
+    DI-MPC 100 Hz, DI-MPC + Kalman 100 Hz,
+    DI-MPC 500 Hz, DI-MPC + Kalman 500 Hz
 
 Examples:
     python3 phri.py compare --no-viewer --cycles 3
     python3 phri.py focused
     python3 phri.py video --cycles 2 --fps 30
-    python3 phri.py video --controllers "Impedance" "Double-Integrator MPC + Kalman 500 Hz"
+    python3 phri.py video --controllers "Impedance" "DI-MPC + Kalman 500 Hz"
 """
 
 from __future__ import annotations
@@ -97,6 +97,83 @@ def human_wrench(t: float) -> np.ndarray:
 
 
 # ===========================================================================
+#  Joint-space reference trajectory q_d(t)/q̇_d(t)/q̈_d(t) — for
+#  ImpedanceMPCParams.horizon_torque_schedule's reference-scheduled horizon
+#  constraint. circular_ref() only gives a CARTESIAN reference; the
+#  operational-space controller has no joint-space reference of its own
+#  (redundancy is resolved online, in the null-space term, not offline), so
+#  one is built here via closed-loop resolved-rate IK sharing the same
+#  null-space attractor (Q_NEUTRAL) the controller already uses.
+# ===========================================================================
+
+class JointTrajFn:
+    """Interpolating lookup over a precomputed (q_d, q̇_d, q̈_d) grid.
+    Piecewise-linear on q_d/q̇_d (consistent with the finite-difference
+    q̈_d already being piecewise-constant between grid samples at this
+    resolution); called as joint_traj_fn(t) -> (q_d, dq_d, ddq_d)."""
+
+    def __init__(self, t_grid: np.ndarray, q_d: np.ndarray,
+                 dq_d: np.ndarray, ddq_d: np.ndarray):
+        self.t_grid = t_grid
+        self.q_d, self.dq_d, self.ddq_d = q_d, dq_d, ddq_d
+
+    def __call__(self, t: float) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        t_c = min(max(t, self.t_grid[0]), self.t_grid[-1])
+        q_d  = np.array([np.interp(t_c, self.t_grid, self.q_d[:, j])  for j in range(7)])
+        dq_d = np.array([np.interp(t_c, self.t_grid, self.dq_d[:, j]) for j in range(7)])
+        idx  = min(int(np.searchsorted(self.t_grid, t_c)), len(self.t_grid) - 1)
+        return q_d, dq_d, self.ddq_d[idx]
+
+
+def precompute_joint_reference(
+    env: "FR3MuJoCoEnv", q0: np.ndarray, duration: float, *,
+    dt: float = 0.001, k_p: float = 5.0, k_null: float = 2.0,
+) -> JointTrajFn:
+    """Closed-loop resolved-rate IK: integrates a redundancy-resolved joint
+    trajectory q_d(t) that tracks circular_ref()'s Cartesian reference,
+    with a null-space attractor toward Q_NEUTRAL — the SAME redundancy-
+    resolution objective (rest-pose centering) the online controller's
+    null_torque() already uses, so q_d(t) is a plausible "what the
+    controller would do absent any disturbance" reference, not an
+    arbitrary IK branch:
+
+        q̇_d = J_v^+(q_d) [ṗ_d + k_p(p_d − FK(q_d))]  +  N̄(q_d)[−k_null(q_d − q_null)]
+
+    Integrated once, offline, at a fine fixed dt via shadow_kinematics (no
+    physics stepping, ~0.004 ms/call — a 24 s episode costs ~0.1 s to
+    precompute). q̇_d, q̈_d are then read off by finite-differencing the
+    resulting q_d(t) array (accurate at this resolution) rather than
+    differentiating the CLIK law itself.
+
+    NOTE (limitation): q_d(t) is the UNDISTURBED reference — during the
+    human push the actual robot deliberately deflects away from p_d(t),
+    so q(t) can diverge from q_d(t) exactly when the horizon constraint
+    matters most. Reference scheduling assumes this gap is small enough
+    over one MPC horizon to still be a better local model than freezing
+    at q_k; see stable_backbone_mpc.md §7 for the empirical check.
+    """
+    n_steps = int(round(duration / dt)) + 1
+    t_grid  = np.arange(n_steps) * dt
+    q_d     = np.zeros((n_steps, 7))
+    q       = q0.copy()
+    q_d[0]  = q
+    for i in range(1, n_steps):
+        t = t_grid[i - 1]
+        p_d, dp_d, _ = circular_ref(t)
+        ee_pos, J_v  = env.shadow_kinematics(q)
+        JJT     = J_v @ J_v.T + 1e-6 * np.eye(3)
+        J_pinv  = J_v.T @ np.linalg.inv(JJT)
+        N_bar   = np.eye(7) - J_pinv @ J_v
+        qdot    = (J_pinv @ (dp_d + k_p * (p_d - ee_pos))
+                  + N_bar @ (-k_null * (q - Q_NEUTRAL)))
+        q       = q + dt * qdot
+        q_d[i]  = q
+    dq_d  = np.gradient(q_d, dt, axis=0)
+    ddq_d = np.gradient(dq_d, dt, axis=0)
+    return JointTrajFn(t_grid, q_d, dq_d, ddq_d)
+
+
+# ===========================================================================
 #  Controller identity, colours, styles
 # ===========================================================================
 
@@ -105,10 +182,10 @@ ALL_CONTROLLERS = [
     "Admittance",
     "PI Impedance",
     "Variable-Impedance MPC 100 Hz",
-    "Double-Integrator MPC 100 Hz",
-    "Double-Integrator MPC + Kalman 100 Hz",
-    "Double-Integrator MPC 500 Hz",
-    "Double-Integrator MPC + Kalman 500 Hz",
+    "DI-MPC 100 Hz",
+    "DI-MPC + Kalman 100 Hz",
+    "DI-MPC 500 Hz",
+    "DI-MPC + Kalman 500 Hz",
 ]
 
 # Paper figures use only four representative curves for readability:
@@ -118,18 +195,18 @@ PAPER_CONTROLLERS = [
     "Admittance",
     "PI Impedance",
     "Variable-Impedance MPC 100 Hz",
-    "Double-Integrator MPC + Kalman 500 Hz",
+    "DI-MPC + Kalman 500 Hz",
 ]
 PAPER_LABELS = {
     "Impedance": "D1 Impedance",
     "Admittance": "D2 Admittance",
     "PI Impedance": "D3 PI Impedance",
     "Variable-Impedance MPC 100 Hz": "MPVIC Var.-Imp. MPC",
-    "Double-Integrator MPC + Kalman 500 Hz": "D7 DI-MPC+K 500 Hz",
+    "DI-MPC + Kalman 500 Hz": "D7 DI-MPC+K 500 Hz",
 }
 VIDEO_CONTROLLERS = [
     "Impedance",
-    "Double-Integrator MPC + Kalman 500 Hz",
+    "DI-MPC + Kalman 500 Hz",
 ]
 
 COLORS = {
@@ -137,20 +214,20 @@ COLORS = {
     "Admittance":                    "#9C27B0",   # purple
     "PI Impedance":                  "#F44336",   # red
     "Variable-Impedance MPC 100 Hz":         "#795548",   # brown
-    "Double-Integrator MPC 100 Hz":          "#FF9800",   # orange
-    "Double-Integrator MPC + Kalman 100 Hz": "#4CAF50",   # green
-    "Double-Integrator MPC 500 Hz":          "#00BCD4",   # teal
-    "Double-Integrator MPC + Kalman 500 Hz": "#E91E63",   # pink
+    "DI-MPC 100 Hz":          "#FF9800",   # orange
+    "DI-MPC + Kalman 100 Hz": "#4CAF50",   # green
+    "DI-MPC 500 Hz":          "#00BCD4",   # teal
+    "DI-MPC + Kalman 500 Hz": "#E91E63",   # pink
 }
 LINESTYLES = {
     "Impedance":                     "--",
     "Admittance":                    ":",
     "PI Impedance":                  "-.",
     "Variable-Impedance MPC 100 Hz":         (0, (4, 2)),
-    "Double-Integrator MPC 100 Hz":          (0, (3, 1, 1, 1)),
-    "Double-Integrator MPC + Kalman 100 Hz": "-",
-    "Double-Integrator MPC 500 Hz":          (0, (5, 1)),
-    "Double-Integrator MPC + Kalman 500 Hz": (0, (1, 1)),
+    "DI-MPC 100 Hz":          (0, (3, 1, 1, 1)),
+    "DI-MPC + Kalman 100 Hz": "-",
+    "DI-MPC 500 Hz":          (0, (5, 1)),
+    "DI-MPC + Kalman 500 Hz": (0, (1, 1)),
 }
 # Single source of truth for line weights so every curve plot and the video
 # overlay emphasise the 4 MPC variants identically (500 Hz thicker than 100 Hz,
@@ -160,10 +237,10 @@ LINE_WIDTHS = {
     "Admittance":                    1.6,
     "PI Impedance":                  1.6,
     "Variable-Impedance MPC 100 Hz":         1.8,
-    "Double-Integrator MPC 100 Hz":          1.9,
-    "Double-Integrator MPC + Kalman 100 Hz": 1.9,
-    "Double-Integrator MPC 500 Hz":          2.4,
-    "Double-Integrator MPC + Kalman 500 Hz": 2.4,
+    "DI-MPC 100 Hz":          1.9,
+    "DI-MPC + Kalman 100 Hz": 1.9,
+    "DI-MPC 500 Hz":          2.4,
+    "DI-MPC + Kalman 500 Hz": 2.4,
 }
 
 
@@ -202,6 +279,33 @@ MPC_DT_SLOW = 0.01    # s — 100 Hz QP for the non-"500" MPC variants
 MPC_DT_FAST = 0.002   # s — 500 Hz QP for the "500 Hz" MPC variants
 
 
+# Monkeypatchable override for the MPC corrective-force bound F_max, in the
+# style of F_HUMAN/human_wrench above. None -> the normal 150 N default.
+# Used by stable_backbone_comparison.py to stress-test saturation without
+# duplicating make_mpc_controller.
+F_MAX_OVERRIDE: float | None = None
+
+# FR3 joint torque limits (Nm), libfranka values — same numbers as
+# ImpedanceMPCParams.tau_max's default, duplicated here so TAU_MAX_SCALE
+# below can scale it without instantiating a throwaway params object.
+BASE_TAU_MAX = np.array([87.0, 87.0, 87.0, 87.0, 12.0, 12.0, 12.0])
+
+# Monkeypatchable multiplicative scale on tau_max (same pattern as
+# F_MAX_OVERRIDE). None -> full BASE_TAU_MAX. Used by
+# horizon_schedule_comparison.py to force the horizon-wide torque
+# constraint to actually bind — under the paper's normal 15 N push, F_max
+# is the constraint that saturates first; BASE_TAU_MAX has enough headroom
+# that frozen-vs-scheduled J_v/τ_ff scheduling never shows a difference
+# unless tau_max is tightened toward where the constraint is active.
+TAU_MAX_SCALE: float | None = None
+
+# Monkeypatchable override for ImpedanceMPCParams.schedule_rho (same
+# pattern). None -> the dataclass default (0.0, pure reference scheduling).
+# Used to sweep the error-decay correction blend without duplicating
+# make_mpc_controller.
+SCHEDULE_RHO_OVERRIDE: float | None = None
+
+
 def make_mpc_controller(name: str, dt_sim: float, *,
                         dt_slow: float = MPC_DT_SLOW,
                         dt_fast: float = MPC_DT_FAST):
@@ -214,6 +318,26 @@ def make_mpc_controller(name: str, dt_sim: float, *,
     """
     high_freq  = "500" in name
     variable   = "Variable" in name
+    # "Backbone" selects the exploratory impedance-backbone architecture
+    # (stable_backbone_mpc.md): a fixed critically-damped impedance law is
+    # applied unconditionally, and the QP only shapes a bounded ADDITIONAL
+    # correction on top, with the torque-realizability constraint extended
+    # to the whole horizon (frozen-Jacobian approximation) instead of only
+    # the first step.
+    backbone   = "Backbone" in name
+    # "Frozen" selects the horizon-wide torque-realizability constraint
+    # STANDALONE (no backbone): the same frozen-at-q_k affine row used
+    # inside Backbone, but on top of the default LQ-MPC branch instead of
+    # the backbone+additive-correction one — isolates the constraint's
+    # effect from the backbone architecture change.
+    frozen_horizon   = "Frozen" in name
+    # "Schedule" selects the reference-scheduled horizon-wide constraint
+    # instead of freezing at q_k: J_v,i/τ_ff,i are recomputed along the
+    # redundancy-resolved joint reference q_d(t) precomputed by
+    # precompute_joint_reference (falls back to the same frozen-at-q_k
+    # behavior as "Frozen" if run_episode didn't wire in a joint_traj_fn),
+    # see ImpedanceMPCParams.horizon_torque_schedule/schedule_rho.
+    schedule_horizon = "Schedule" in name
     # MPVIC always runs the Kalman observer (it schedules stiffness on d̂ but
     # does not cancel it); the DI-MPC variants use Kalman only when named.
     use_kal    = variable or ("Kalman" in name)
@@ -224,7 +348,13 @@ def make_mpc_controller(name: str, dt_sim: float, *,
         Q_pos=2e4 * np.eye(3), Q_vel=50.0 * np.eye(3),
         Q_f_scale=5.0, R_u=1e-6 * np.eye(3),
         variable_impedance=variable,
-        F_max=150.0, K_rot=20.0, D_rot=6.0,
+        backbone_track=backbone,
+        horizon_torque_constraint=backbone or frozen_horizon,
+        horizon_torque_schedule=schedule_horizon,
+        schedule_rho=SCHEDULE_RHO_OVERRIDE if SCHEDULE_RHO_OVERRIDE is not None else 0.0,
+        F_max=F_MAX_OVERRIDE if F_MAX_OVERRIDE is not None else 150.0,
+        tau_max=BASE_TAU_MAX * TAU_MAX_SCALE if TAU_MAX_SCALE is not None else BASE_TAU_MAX,
+        K_rot=20.0, D_rot=6.0,
         k_null=10.0, d_null=2.0, q_null=Q_NEUTRAL,
         # Disable Cartesian workspace projection: at the demo radius it offsets
         # p_d up to max_ws_corr near joint limits, and since that offset is
@@ -297,8 +427,14 @@ class EpisodeController:
     def mpc_rate_hz(self) -> float | None:
         return 1.0 / (self.mpc_every * self.env.dt) if self.mpc_ctrl else None
 
-    def compute(self, state, dyn, p_d, dp_d, ddp_d, R_d, wrench, i):
-        """Return (tau, F_mpc) for inner-loop step index i."""
+    def compute(self, state, dyn, p_d, dp_d, ddp_d, R_d, wrench, i, t=None,
+                joint_traj_fn=None):
+        """Return (tau, F_mpc) for inner-loop step index i.
+
+        `t`/`joint_traj_fn` are only used by the MPC branch, and only
+        matter when horizon_torque_schedule=True (t, traj_fn/dyn_query_fn/
+        joint_traj_fn are otherwise ignored by control()); joint_traj_fn
+        None falls back to the frozen-at-q_k horizon constraint."""
         dt_sim   = self.env.dt
         dx_d_6d  = np.concatenate([dp_d,  np.zeros(3)])
         ddx_d_6d = np.concatenate([ddp_d, np.zeros(3)])
@@ -331,7 +467,9 @@ class EpisodeController:
             if i % self.mpc_every == 0:
                 self.tau_cached, self.F_mpc_cached = self.mpc_ctrl.control(
                     state.ee_pos, state.ee_vel, state.ee_rot,
-                    p_d, dp_d, ddp_d, R_d, dyn, state.q, state.dq)
+                    p_d, dp_d, ddp_d, R_d, dyn, state.q, state.dq,
+                    t=t, traj_fn=circular_ref, dyn_query_fn=self.env.shadow_dynamics,
+                    joint_traj_fn=joint_traj_fn)
             tau = self.tau_cached
 
         else:  # classical impedance
@@ -403,6 +541,16 @@ def run_episode(controller_name: str, env: "FR3MuJoCoEnv", *,
     ctrl = EpisodeController(controller_name, env,
                              dt_mpc=dt_mpc, hifreq_dt=hifreq_dt)
 
+    # Reference-scheduled horizon torque constraint (ImpedanceMPCParams.
+    # horizon_torque_schedule) needs a joint-space reference trajectory to
+    # schedule against; precompute it once per episode (cheap, ~0.1 s for a
+    # full episode via shadow_kinematics) rather than inside the control
+    # loop. None for every other controller — control() falls back to the
+    # frozen-at-q_k horizon constraint when joint_traj_fn is None.
+    joint_traj_fn = None
+    if ctrl.mpc_ctrl is not None and ctrl.mpc_ctrl.p.horizon_torque_schedule:
+        joint_traj_fn = precompute_joint_reference(env, env.data.qpos[:env.nv].copy(), duration)
+
     t_log      = np.zeros(n_steps)
     err_log    = np.zeros(n_steps)
     ee_pos_log = np.zeros((n_steps, 3))
@@ -434,7 +582,8 @@ def run_episode(controller_name: str, env: "FR3MuJoCoEnv", *,
         if np.any(wrench[:3] != 0):
             env.apply_ee_wrench(wrench)
 
-        tau, F_mpc = ctrl.compute(state, dyn, p_d, dp_d, ddp_d, R_d, wrench, i)
+        tau, F_mpc = ctrl.compute(state, dyn, p_d, dp_d, ddp_d, R_d, wrench, i, t=t,
+                                  joint_traj_fn=joint_traj_fn)
         env.apply_torque(tau)
         env.step()
 
@@ -765,28 +914,28 @@ DESCRIPTIONS = {
          "Stability condition limits gain:  Kint < Dd * Kd  (here: 80 < 30*300 = 9000 N/(m*s)).",
          "Result: SS error falls from 50 mm → ~22 mm, but slow convergence — never reaches zero."],
     ),
-    "Double-Integrator MPC 100 Hz": (
+    "DI-MPC 100 Hz": (
         "QP lookahead @ 100 Hz  |  predicts disturbance within horizon",
         ["Two-layer architecture:  feedforward nonlinear inversion  +  receding-horizon QP on residual.",
          "QP state: [e, de, d_hat].  Horizon N=10 steps × 10 ms = 100 ms lookahead.",
          "QP update rate: 100 Hz (every 10 physics steps).  Torque held constant between updates.",
          "No Kalman estimator: d_hat is not updated between QP solves → persistent SS error ~3.7 mm."],
     ),
-    "Double-Integrator MPC + Kalman 100 Hz": (
+    "DI-MPC + Kalman 100 Hz": (
         "MPC @ 100 Hz + Kalman disturbance estimator  |  drives SS error → 0",
         ["Augmented state:  x_aug = [e; de; d_hat]  where d_hat in R^3 is the estimated constant input-channel disturbance.",
          "Kalman update:  d_hat(k+1) = d_hat(k) + Kf * (y(k) - C * x_aug(k))",
          "As d_hat converges, the centered QP drives F_mpc ≈ -d_hat, cancelling constant deflection.",
          "Convergence lag: ~1 QP interval (10 ms) before d_hat tracks the matched disturbance.  After that: SS error < 0.1 mm."],
     ),
-    "Double-Integrator MPC 500 Hz": (
+    "DI-MPC 500 Hz": (
         "QP lookahead @ 500 Hz  |  faster update reduces peak deflection",
         ["Same two-layer MPC as 100 Hz variant — only the QP update rate changes: every 2 ms.",
          "Shorter zero-order-hold:  torque refreshed every 2 ms instead of 10 ms.",
          "Peak deflection falls vs. 100 Hz because force onset is corrected faster.",
          "No Kalman: persistent SS error ~1.1 mm remains.  Frequency affects transient, NOT steady state."],
     ),
-    "Double-Integrator MPC + Kalman 500 Hz": (
+    "DI-MPC + Kalman 500 Hz": (
         "MPC @ 500 Hz + Kalman  |  peak < 1 mm, SS error < 0.1 mm",
         ["Combines both improvements: 500 Hz QP (fast transient) + Kalman estimator (zero SS error).",
          "The two axes are ORTHOGONAL: update rate governs peak deflection; Kalman governs SS error.",
@@ -1011,6 +1160,11 @@ def run_episode_video(ctrl_name, env, renderer, cam, ref_circle, *,
     ctrl = EpisodeController(ctrl_name, env, dt_mpc=MPC_DT_SLOW, hifreq_dt=None)
     ctrl_rgb_float = COLORS_RGB.get(ctrl_name, [0.5, 0.5, 0.5])
 
+    joint_traj_fn = None
+    if ctrl.mpc_ctrl is not None and ctrl.mpc_ctrl.p.horizon_torque_schedule:
+        joint_traj_fn = precompute_joint_reference(
+            env, env.data.qpos[:env.nv].copy(), n_cycles * PERIOD)
+
     def _sid(name):
         return mujoco.mj_name2id(env.model, mujoco.mjtObj.mjOBJ_SITE, name)
     target_sid, wrist_sid = _sid("target_pos"), _sid("human_wrist")
@@ -1033,7 +1187,8 @@ def run_episode_video(ctrl_name, env, renderer, cam, ref_circle, *,
         if np.any(wrench[:3] != 0):
             env.apply_ee_wrench(wrench)
 
-        tau, _ = ctrl.compute(state, dyn, p_d, dp_d, ddp_d, R_d, wrench, i)
+        tau, _ = ctrl.compute(state, dyn, p_d, dp_d, ddp_d, R_d, wrench, i, t=t,
+                              joint_traj_fn=joint_traj_fn)
         env.apply_torque(tau)
         env.step()
 

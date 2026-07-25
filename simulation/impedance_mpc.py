@@ -97,6 +97,83 @@ class ImpedanceMPCParams:
     vic_w_e:   float = 2e4     # tracking-error weight in the K-selection cost
     vic_w_F:   float = 3e-3    # task-force weight  (interior optimum ⇒ finite K*)
 
+    # ── Impedance-backbone mode (stability fallback under saturation) ────────
+    # Motivation: when the QP output IS the entire corrective force (every
+    # mode above), a saturated/zeroed F_mpc (tight F_max, a solver fault, or
+    # an under-realizable predicted torque) leaves ONLY τ_ff applied — pure
+    # feedforward, zero corrective stiffness, not a stable regulator. Setting
+    # backbone_track=True instead applies a fixed, critically-damped
+    # impedance law F_bb = K_bb e + D_bb ė UNCONDITIONALLY (outside the QP,
+    # always realized regardless of what the QP returns), and the QP only
+    # searches for a BOUNDED *additional* corrective force F_mpc on top of
+    # it, predicted through the backbone dynamics LINEARIZED ALONG A
+    # NOMINAL TRAJECTORY — A_cl = A_d + B_d(ρ_k) G_bb frozen at the current
+    # configuration by default, or A_cl,i = A_d + B_d,i G_bb scheduled per
+    # horizon step when horizon_torque_schedule is also set — rather than
+    # the open-loop A_d. So even if F_mpc saturates to exactly zero, the
+    # realized controller is still the
+    # stable critically-damped backbone (bounded tracking, not offset-free —
+    # offset-free rejection is what the bounded F_mpc term contributes on
+    # top, same −d̂ centering trick as impedance_track).
+    backbone_track: bool = False
+    k_backbone:     float = 300.0   # backbone translational stiffness (N/m)
+    zeta_backbone:  float = 1.0     # backbone damping ratio (1 → critical)
+
+    # ── Horizon-wide torque realizability (frozen-Jacobian approximation) ──
+    # The applied-torque constraint (9b) is, by construction, feasible only
+    # for the FIRST predicted step; steps 1..N-1 of the horizon can still
+    # imply a torque the actuators cannot realize, which silently feeds a
+    # physically-unrealizable predicted trajectory back into the first-step
+    # optimum. Setting horizon_torque_constraint=True replicates the same
+    # affine row (frozen at the current J_v(q_k), τ_base(q_k)) for every
+    # step i=0..N-1 instead of only i=0 — a local approximation (it does not
+    # track how J_v or τ_base evolve along the horizon) but one that stops
+    # the QP from planning around inputs that are obviously unrealizable
+    # from the current configuration.
+    horizon_torque_constraint: bool = False
+
+    # ── Reference-scheduled horizon torque realizability ────────────────────
+    # Alternative to horizon_torque_constraint's frozen-at-q_k row: instead of
+    # reusing today's J_v(q_k)/τ_ff(q_k,q̇_k) for every horizon step, schedule
+    # them along the nominal reference trajectory q_d(t)/q̇_d(t) (precomputed
+    # offline by phri.precompute_joint_reference and passed in as
+    # joint_traj_fn — see control()). τ_ff,i is recomputed at (q̄_i, q̇̄_i)
+    # with the desired Cartesian acceleration ẍ_{d,i} taken from the
+    # caller's traj_fn at t_k+i·dt_mpc (exact — no extrapolation needed
+    # there), using the SAME Layer-1 formula as step 0. Requires
+    # `joint_traj_fn`, `dyn_query_fn`, and `traj_fn` to be passed into
+    # control(); if `joint_traj_fn` is unavailable, falls back to
+    # horizon_torque_constraint's frozen-at-q_k behavior (reps=N, but not
+    # scheduled) rather than any extrapolation scheme — there was previously
+    # a constant-velocity "coast" fallback here; removed after §7 of
+    # stable_backbone_mpc.md found it added implementation complexity
+    # (shadow dynamics queries, a velocity cap to tune) without any
+    # measurable benefit over just freezing at q_k, which the paper can
+    # already justify directly from the 20 ms horizon being too short for
+    # the robot-dependent quantities to change appreciably. Orientation/
+    # null-space torque and (if backbone_track) F_backbone are NOT
+    # rescheduled — they stay frozen at their current-step value, same
+    # simplification the frozen-Jacobian version already makes for the whole
+    # τ_base.
+    horizon_torque_schedule: bool = False
+
+    # Error-decay correction blended into reference scheduling: q̄_i =
+    # q_d,i + rho^i·(q_k − q_d,k) (and analogously for q̇), rho in [0,1].
+    # rho=0 (default) is PURE reference scheduling (q̄_i = q_d,i exactly) —
+    # this is what a naive reading of "schedule along q_d(t)" gives, but it
+    # is empirically WORSE than frozen-at-q_k in the regime where the torque
+    # constraint actually binds without being globally infeasible
+    # (stable_backbone_mpc.md §7): q_d(t) is the UNDISTURBED reference, and
+    # during contact the real q deliberately deflects away from it, so
+    # scheduling J_v,i/τ_ff,i purely on q_d,i can be a WORSE local model
+    # than the actual current state. rho>0 blends in a decaying correction
+    # toward the actual (q_k, q̇_k) so step i=0 stays exact regardless of
+    # rho and later steps relax toward the reference — see the Remark in
+    # stable_backbone_mpc.md §7 for when this recovers (but does not beat)
+    # frozen-at-q_k empirically. NOT recommended for the manuscript — kept
+    # as exploratory code, see §7's conclusion.
+    schedule_rho: float = 0.0
+
     # MPC corrective force bound (N, ∞-norm per component)
     F_max:     float = 150.0
     tau_max:   np.ndarray = field(default_factory=lambda: np.array(
@@ -336,6 +413,131 @@ class ImpedanceMPCController:
         dt = self.p.dt_mpc
         return np.vstack([-0.5 * dt * dt * Lam_inv, -Lam_inv * dt])
 
+    def _build_closed_loop_horizon(
+        self, Bd: np.ndarray, A_cl: np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Phi/Gamma/D_bar for a TIME-INVARIANT closed-loop transition
+        A_cl = A_d + Bd @ G (e.g. the impedance-backbone loop), mirroring
+        Phi/_build_Gamma/D_bar but around A_cl instead of the open-loop
+        A_d. Rebuilt every call since A_cl is configuration-dependent
+        through Bd (frozen at the CURRENT configuration for the whole
+        horizon — used when horizon_torque_schedule is off, or scheduling
+        inputs weren't supplied; see _build_scheduled_closed_loop_horizon
+        for the horizon-varying counterpart)."""
+        N = self.p.N
+        Acl_pow = [np.eye(6)]
+        for _ in range(N - 1):
+            Acl_pow.append(Acl_pow[-1] @ A_cl)
+        Phi_cl   = np.vstack([Acl_pow[k] @ A_cl for k in range(N)])
+        Gamma_cl = np.zeros((6 * N, 3 * N))
+        D_bar_cl = np.zeros((6 * N, 3))
+        cumsum   = np.zeros((6, 3))
+        for i in range(N):
+            for j in range(i + 1):
+                Gamma_cl[6*i:6*(i+1), 3*j:3*(j+1)] = Acl_pow[i - j] @ Bd
+            cumsum = cumsum + Acl_pow[i] @ Bd
+            D_bar_cl[6*i:6*(i+1)] = cumsum
+        return Phi_cl, Gamma_cl, D_bar_cl
+
+    def _build_scheduled_closed_loop_horizon(
+        self, Bd_list: list[np.ndarray], G_bb: np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Phi/Gamma/D_bar for a TIME-VARYING (scheduled) closed-loop
+        transition A_cl,i = A_d + Bd_list[i] @ G_bb, i.e. the backbone
+        dynamics LINEARIZED ALONG the scheduled nominal trajectory rather
+        than frozen at one configuration — the LTV counterpart of
+        _build_closed_loop_horizon. Since A_cl,i genuinely varies with i,
+        the state-transition/input-map blocks are chain products of the
+        per-step A_cl,i rather than powers of a single matrix:
+
+            x_{i+1|k} = (A_cl,i···A_cl,0) x_e
+                       + Σ_j (A_cl,i···A_cl,j+1) Bd_j (F_mpc,j|k + d̂)
+
+        O(N^2) 6x6/6x3 matmuls — negligible at N~10. Reduces exactly to
+        _build_closed_loop_horizon's output when every Bd_list[i] is the
+        same matrix (frozen special case)."""
+        N = self.p.N
+        Acl_list = [self.A_d + Bd_list[i] @ G_bb for i in range(N)]
+        Phi_cl   = np.zeros((6 * N, 6))
+        Gamma_cl = np.zeros((6 * N, 3 * N))
+        D_bar_cl = np.zeros((6 * N, 3))
+        for i in range(N):
+            chain = np.eye(6)
+            for k in range(i, -1, -1):
+                chain = chain @ Acl_list[k]
+            Phi_cl[6*i:6*(i+1)] = chain
+            cumsum = np.zeros((6, 3))
+            for j in range(i + 1):
+                coeff = Bd_list[j]
+                for k in range(j + 1, i + 1):
+                    coeff = Acl_list[k] @ coeff
+                Gamma_cl[6*i:6*(i+1), 3*j:3*(j+1)] = coeff
+                cumsum = cumsum + coeff
+            D_bar_cl[6*i:6*(i+1)] = cumsum
+        return Phi_cl, Gamma_cl, D_bar_cl
+
+    def _schedule_horizon(
+        self,
+        q:        np.ndarray,   # (7,) current joint positions
+        dq:       np.ndarray,   # (7,) current joint velocities
+        t:        float,        # current simulation time
+        J_v0:     np.ndarray,   # (3,7) already-computed step-0 Jacobian
+        tau_ff0:  np.ndarray,   # (7,)  already-computed step-0 feedforward
+        Lam_inv0: np.ndarray,   # (3,3) already-computed step-0 Λ⁻¹
+        traj_fn,                 # t -> (p_d, dp_d, ddp_d)
+        dyn_query_fn,             # (q_i, dq_i) -> (J_v_i, Lam_inv_i, Lam_pos_i, Cq_dot_i)
+        joint_traj_fn,            # t -> (q_d, q̇_d, q̈_d) — required; see control()
+    ) -> tuple[list[np.ndarray], list[np.ndarray], list[np.ndarray]]:
+        """Reference-scheduled horizon torque realizability AND (when
+        backbone_track is also on) the LTV backbone prediction — see
+        ImpedanceMPCParams.horizon_torque_schedule. Step 0 reuses the exact
+        (J_v0, tau_ff0, Lam_inv0) already computed for the real applied
+        torque — no redundant dynamics query and guaranteed consistency
+        with the first-step-only constraint (9b) this generalizes. Steps
+        1..N-1 evaluate dyn_query_fn along
+        q̄_i = q_d,i + schedule_rho^i·(q_k − q_d,k) (and analogously q̇̄_i),
+        and τ_ff,i is recomputed with the Layer-1 formula at (q̄_i, q̇̄_i)
+        against the exact Cartesian acceleration reference ẍ_{d,i} taken
+        from traj_fn. schedule_rho=0 (the default) gives PURE reference
+        scheduling, q̄_i = q_d,i exactly — the arm's planned motion,
+        ignoring the actual current state entirely past i=0. This is NOT
+        always better than tracking the actual state (see
+        ImpedanceMPCParams.schedule_rho and stable_backbone_mpc.md §7):
+        during contact the real q deliberately deflects away from the
+        undisturbed q_d(t), so a nonzero schedule_rho — blending in a
+        decaying correction toward (q_k, q̇_k) that vanishes as i grows —
+        can matter in practice, not just as a theoretical nicety.
+
+        control() only calls this when `joint_traj_fn` is available;
+        otherwise it uses horizon_torque_constraint's frozen-at-q_k rows
+        instead (see the ImpedanceMPCParams.horizon_torque_schedule
+        docstring — an earlier constant-velocity "coast" fallback lived
+        here and was removed, see stable_backbone_mpc.md §7). Does not
+        re-integrate through the QP's own solution, which would make the
+        constraint depend on the decision variable and break QP
+        linearity."""
+        N   = self.p.N
+        dt  = self.p.dt_mpc
+        rho = self.p.schedule_rho
+        if rho > 0.0:
+            q_d_k, dq_d_k, _ = joint_traj_fn(t)
+            delta_q, delta_dq = q - q_d_k, dq - dq_d_k
+        J_list        = [J_v0]
+        tauff_list    = [tau_ff0]
+        lam_inv_list  = [Lam_inv0]
+        for i in range(1, N):
+            q_i, dq_i, _ = joint_traj_fn(t + i * dt)
+            if rho > 0.0:
+                w = rho ** i
+                q_i, dq_i = q_i + w * delta_q, dq_i + w * delta_dq
+            J_v_i, Lam_inv_i, Lam_pos_i, Cq_dot_i = dyn_query_fn(q_i, dq_i)
+            _, _, ddp_d_i = traj_fn(t + i * dt)
+            tau_ff_i = Cq_dot_i + J_v_i.T @ (Lam_pos_i @ ddp_d_i)
+            J_list.append(J_v_i)
+            tauff_list.append(tau_ff_i)
+            lam_inv_list.append(Lam_inv_i)
+        return J_list, tauff_list, lam_inv_list
+
     def _build_Gamma(self, Lam_inv: np.ndarray) -> np.ndarray:
         """
         Build lower-triangular input-to-state map Γ ∈ ℝ^{6N×3N}.
@@ -414,45 +616,57 @@ class ImpedanceMPCController:
     # QP solvers
     # ------------------------------------------------------------------
 
-    def _torque_constraint_matrix(self, J_v: np.ndarray | None, n_u: int) -> np.ndarray | None:
-        if J_v is None:
+    def _torque_constraint_reps(self) -> int:
+        """1 = first-applied-step only (9b); N = horizon-wide realizability,
+        either frozen-Jacobian (horizon_torque_constraint) or
+        reference-scheduled (horizon_torque_schedule); see ImpedanceMPCParams."""
+        return self.p.N if (self.p.horizon_torque_constraint
+                            or self.p.horizon_torque_schedule) else 1
+
+    def _torque_constraint_matrix(self, J_list: list[np.ndarray] | None, n_u: int) -> np.ndarray | None:
+        if J_list is None:
             return None
-        A_tau = np.zeros((7, n_u))
-        A_tau[:, :3] = J_v.T
+        reps  = len(J_list)
+        A_tau = np.zeros((7 * reps, n_u))
+        for i, J_v in enumerate(J_list):
+            A_tau[7*i:7*(i+1), 3*i:3*(i+1)] = J_v.T
         return A_tau
 
-    def _torque_constraint_sparse(self, J_v: np.ndarray, n_u: int, sp):
-        rows = np.tile(np.arange(7), 3)
-        cols = np.repeat(np.arange(3), 7)
-        data = J_v.T[:, :3].T.reshape(-1)
-        return sp.csc_matrix((data, (rows, cols)), shape=(7, n_u))
+    def _torque_constraint_sparse(self, J_list: list[np.ndarray], n_u: int, sp):
+        reps = len(J_list)
+        local_rows = np.tile(np.arange(7), 3)
+        local_cols = np.repeat(np.arange(3), 7)
+        rows = np.concatenate([7*i + local_rows for i in range(reps)])
+        cols = np.concatenate([3*i + local_cols for i in range(reps)])
+        data = np.concatenate([J_v.reshape(-1) for J_v in J_list])  # matches A_tau[:, i]=J_v.T
+        return sp.csc_matrix((data, (rows, cols)), shape=(7 * reps, n_u))
 
     def _solve_qp(
         self,
         H: np.ndarray,
         h: np.ndarray,
-        J_v: np.ndarray | None = None,
-        tau_base: np.ndarray | None = None,
+        J_list: list[np.ndarray] | None = None,
+        tau_base_list: list[np.ndarray] | None = None,
     ) -> np.ndarray:
         """Dispatch to the configured QP solver.  Returns flat solution u ∈ ℝ^{3N}."""
         if self.p.solver == 'osqp':
-            return self._solve_qp_osqp(H, h, J_v, tau_base)
-        return self._solve_qp_scipy(H, h, J_v, tau_base)
+            return self._solve_qp_osqp(H, h, J_list, tau_base_list)
+        return self._solve_qp_scipy(H, h, J_list, tau_base_list)
 
     def _solve_qp_scipy(
         self,
         H: np.ndarray,
         h: np.ndarray,
-        J_v: np.ndarray | None = None,
-        tau_base: np.ndarray | None = None,
+        J_list: list[np.ndarray] | None = None,
+        tau_base_list: list[np.ndarray] | None = None,
     ) -> np.ndarray:
         n_u  = 3 * self.p.N
         Fmax = self.p.F_max
         constraints = []
-        A_tau = self._torque_constraint_matrix(J_v, n_u)
-        if A_tau is not None and tau_base is not None:
-            margin_lo = -self.p.tau_max - tau_base
-            margin_hi =  self.p.tau_max - tau_base
+        A_tau = self._torque_constraint_matrix(J_list, n_u)
+        if A_tau is not None and tau_base_list is not None:
+            margin_lo = np.concatenate([-self.p.tau_max - tb for tb in tau_base_list])
+            margin_hi = np.concatenate([ self.p.tau_max - tb for tb in tau_base_list])
             constraints.append(LinearConstraint(A_tau, margin_lo, margin_hi))
         res  = minimize(
             fun=lambda u: 0.5 * float(u @ H @ u) + float(h @ u),
@@ -469,8 +683,8 @@ class ImpedanceMPCController:
         self,
         H: np.ndarray,
         h: np.ndarray,
-        J_v: np.ndarray | None = None,
-        tau_base: np.ndarray | None = None,
+        J_list: list[np.ndarray] | None = None,
+        tau_base_list: list[np.ndarray] | None = None,
     ) -> np.ndarray:
         """
         Solve the force- and applied-torque-constrained QP with OSQP.
@@ -480,8 +694,15 @@ class ImpedanceMPCController:
             s.t.  l ≤ A u ≤ u_ub
         where P = H (symmetric, upper-triangular stored), q = h,
         the first rows bound every force component, and the final rows bound
-        the first applied joint torque:
-            -tau_max <= tau_base + J_v.T @ F_mpc(0) <= tau_max.
+        the applied joint torque:
+            -tau_max <= tau_base_list[i] + J_list[i].T @ F_mpc(i) <= tau_max,
+        for i=0 only (default, Eq. 9b), for every i=0..N-1 with J_list[i]/
+        tau_base_list[i] frozen at their i=0 values (horizon_torque_constraint=True,
+        frozen-Jacobian horizon-wide check — also the fallback for
+        horizon_torque_schedule=True when no joint_traj_fn was supplied),
+        or for every i=0..N-1 with J_list[i]/tau_base_list[i] reference-
+        scheduled along q_d(t) (horizon_torque_schedule=True with
+        joint_traj_fn supplied).
 
         The OSQP instance is created once and warm-started on every call.
         """
@@ -492,11 +713,11 @@ class ImpedanceMPCController:
         A_force = sp.eye(n_u, format='csc')
         lb_force = -self.p.F_max * np.ones(n_u)
         ub_force =  self.p.F_max * np.ones(n_u)
-        A_tau = self._torque_constraint_matrix(J_v, n_u)
-        if A_tau is not None and tau_base is not None:
-            A_sp = sp.vstack([A_force, self._torque_constraint_sparse(J_v, n_u, sp)], format='csc')
-            lb = np.concatenate([lb_force, -self.p.tau_max - tau_base])
-            ub = np.concatenate([ub_force,  self.p.tau_max - tau_base])
+        A_tau = self._torque_constraint_matrix(J_list, n_u)
+        if A_tau is not None and tau_base_list is not None:
+            A_sp = sp.vstack([A_force, self._torque_constraint_sparse(J_list, n_u, sp)], format='csc')
+            lb = np.concatenate([lb_force] + [-self.p.tau_max - tb for tb in tau_base_list])
+            ub = np.concatenate([ub_force] + [ self.p.tau_max - tb for tb in tau_base_list])
         else:
             A_sp = A_force
             lb = lb_force
@@ -558,6 +779,10 @@ class ImpedanceMPCController:
         dyn,                   # FrankaDynamics
         q:       np.ndarray,   # (7,)  joint positions
         dq:      np.ndarray,   # (7,)  joint velocities
+        t:            float | None = None,   # current sim time (schedule mode)
+        traj_fn=None,           # t -> (p_d, dp_d, ddp_d)     (schedule mode)
+        dyn_query_fn=None,      # (q_i,dq_i) -> (J_v,Λ⁻¹,Λ,Cq̇) (schedule mode)
+        joint_traj_fn=None,     # t -> (q_d,q̇_d,q̈_d), preferred schedule source
     ) -> tuple[np.ndarray, np.ndarray]:
         """
         Compute joint torques.
@@ -613,6 +838,24 @@ class ImpedanceMPCController:
         # ── Layer 2: receding-horizon QP ─────────────────────────────────
         Bd    = self._B_d(Lam_inv)
 
+        # Horizon scheduling, computed EARLY (before the mode dispatch below)
+        # so backbone_track can build the LTV backbone prediction from
+        # lam_inv_list, not just the torque-constraint rows built later.
+        # J_list/tauff_list are reused verbatim near the end of this method
+        # (not recomputed) for the tau_base_list construction.
+        # joint_traj_fn is required for reference scheduling (no coast
+        # fallback, see ImpedanceMPCParams.horizon_torque_schedule); if
+        # horizon_torque_schedule is set but no reference trajectory was
+        # supplied, schedule_active stays False and the final dispatch
+        # below falls back to horizon_torque_constraint's frozen-at-q_k
+        # rows instead.
+        schedule_active = (self.p.horizon_torque_schedule
+                           and traj_fn is not None and dyn_query_fn is not None
+                           and t is not None and joint_traj_fn is not None)
+        if schedule_active:
+            J_list, tauff_list, lam_inv_list = self._schedule_horizon(
+                q, dq, t, J_v, tau_ff, Lam_inv, traj_fn, dyn_query_fn, joint_traj_fn)
+
         if self.p.variable_impedance:
             # ---- MPVIC baseline: predictive variable impedance -----------
             # Select the apparent stiffness by horizon rollout (predictive),
@@ -630,6 +873,7 @@ class ImpedanceMPCController:
                 xi = A_cl @ xi
             H = self.R_bar
             h = -self.R_bar @ U_vic
+            F_backbone = np.zeros(3)
         elif self.p.impedance_track:
             # ---- Impedance-equivalence mode (Theorem 1) ------------------
             # Track the prescribed impedance law F = K_d e + D_d ė − d̂.
@@ -649,7 +893,48 @@ class ImpedanceMPCController:
                 xi = A_cl @ xi
             H = self.R_bar
             h = -self.R_bar @ U_imp
+            F_backbone = np.zeros(3)
+        elif self.p.backbone_track:
+            # ---- Impedance-backbone + bounded additive MPC correction ----
+            # F_backbone = K_bb e + D_bb ė is applied UNCONDITIONALLY below
+            # (folded into tau_base), so it is realized even if the QP's
+            # F_mpc saturates to exactly zero. The QP here only shapes a
+            # BOUNDED additional correction on top, with the LQ-regulation
+            # cost (same Q_bar/R_bar as the default branch) predicted
+            # through the backbone dynamics LINEARIZED ALONG A NOMINAL
+            # TRAJECTORY: A_cl = A_d + Bd @ G_bb frozen at the current
+            # configuration by default, or A_cl,i = A_d + Bd_i @ G_bb
+            # scheduled per horizon step when horizon_torque_schedule is
+            # also on (schedule_active) — either way the "residual plant"
+            # the QP sees already has the backbone's restoring
+            # stiffness/damping in it, just evaluated at one configuration
+            # (frozen) or along the schedule (LTV) rather than re-derived
+            # from an open-loop A_d.
+            K_bb = self.p.k_backbone * np.eye(3)
+            D_bb = 2.0 * self.p.zeta_backbone * np.sqrt(self.p.k_backbone) * np.eye(3)
+            G_bb = np.hstack([K_bb, D_bb])                    # (3×6) backbone gain
+            F_backbone = G_bb @ x_e
+
+            if schedule_active:
+                # Bd,i scheduled consistently with J_v,i/τ_ff,i above — the
+                # torque MAP and the PREDICTION MODEL now vary together
+                # along the horizon, rather than the torque map alone.
+                Bd_list = [self._B_d(li) for li in lam_inv_list]
+                Phi_cl, Gamma, D_bar = self._build_scheduled_closed_loop_horizon(Bd_list, G_bb)
+            else:
+                A_cl = self.A_d + Bd @ G_bb
+                Phi_cl, Gamma, D_bar = self._build_closed_loop_horizon(Bd, A_cl)
+            x_free = Phi_cl @ x_e + D_bar @ d_hat
+
+            H = Gamma.T @ self.Q_bar @ Gamma + self.R_bar
+            H = 0.5 * (H + H.T)
+            # Same offset-free input-centering trick as the default branch,
+            # applied to the ADDITIONAL correction (backbone itself is not
+            # offset-free — see the param docstring).
+            d_seq = np.tile(d_hat, self.p.N)
+            h = Gamma.T @ self.Q_bar @ x_free + self.R_bar @ d_seq
         else:
+            F_backbone = np.zeros(3)
             Gamma = self._build_Gamma(Lam_inv)
 
             # Disturbance propagation over N steps: D̄ ∈ ℝ^{6N×3}
@@ -684,8 +969,36 @@ class ImpedanceMPCController:
         # ── Null-space joint-limit avoidance (barrier + centering + damping) ───
         tau_null = self.null_torque(q, dq, N_bar)
 
-        tau_base = tau_ff + tau_orient + tau_null
-        u_seq = self._solve_qp(H, h, J_v=J_v, tau_base=tau_base)  # (3N,)
+        # F_backbone is nonzero only in backbone_track mode; folding it into
+        # tau_base means it is applied UNCONDITIONALLY (it is realized even
+        # if the QP below returns F_mpc = 0 under saturation) and that the
+        # torque-realizability constraint(s) in _solve_qp correctly account
+        # for it as part of the frozen offset.
+        tau_base = tau_ff + J_v.T @ F_backbone + tau_orient + tau_null
+
+        # ── Horizon-wide torque constraint rows: J_list/tau_base_list ─────
+        if schedule_active:
+            # J_list/tauff_list already computed above (before the mode
+            # dispatch, so backbone_track could also use lam_inv_list) —
+            # reused here, not recomputed. J_v,i/τ_ff,i are reference-
+            # scheduled (see _schedule_horizon); orientation/null/backbone
+            # stay frozen at their step-0 value (extra = tau_base -
+            # tau_ff), matching how horizon_torque_constraint already
+            # freezes those.
+            extra = tau_base - tau_ff
+            tau_base_list = [tf + extra for tf in tauff_list]
+        elif self.p.horizon_torque_constraint or self.p.horizon_torque_schedule:
+            # Frozen-at-q_k, horizon-wide (9c). Also the fallback for
+            # horizon_torque_schedule=True when no joint_traj_fn was
+            # supplied (schedule_active False) — see the
+            # ImpedanceMPCParams.horizon_torque_schedule docstring.
+            J_list        = [J_v] * self.p.N
+            tau_base_list = [tau_base] * self.p.N
+        else:
+            J_list        = [J_v]
+            tau_base_list = [tau_base]
+
+        u_seq = self._solve_qp(H, h, J_list=J_list, tau_base_list=tau_base_list)  # (3N,)
         F_mpc = u_seq[:3]                                        # first step
         self._F_prev = F_mpc.copy()
         self.F_seq   = u_seq.reshape(self.p.N, 3)
