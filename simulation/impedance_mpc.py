@@ -21,8 +21,8 @@ After this cancellation the residual plant seen by Layer 2 is a
     x_e[k+1] = A_d x_e[k] + B_d(ρ_k) F_mpc[k]
     A_d = [[I3, Δt I3],   (constant — precomputed once)
            [0,  I3    ]]
-    B_d = [[0           ],   (parameter-varying via Λ_pos(q))
-           [-Λ_pos^{-1} Δt]]
+    B_d = [[-½ Δt² Λ_pos^{-1}],   (parameter-varying via Λ_pos(q))
+           [-Δt   Λ_pos^{-1}]]
 
 Layer 2 solves a small QP with 3N ≤ 30 decision variables at the selected
 MPC rate.
@@ -70,7 +70,9 @@ class ImpedanceMPCParams:
     # impedance law F = K_d e + D_d ė (offset-free via −d̂) instead of an
     # LQ-regulation cost.  The unconstrained, disturbance-free solution is
     # then EXACTLY the classical impedance gain (K_d, D_d) — the QP deviates
-    # only to honour the F_max box constraint.  D_d = 2ζ√(K_d) (critical).
+    # only to honour the F_max box constraint.  D_d = 2ζ√(K_d), which is the
+    # familiar unit-effective-mass tuning; with configuration-dependent Λ it
+    # remains positive damping but is not exactly modal-critical in general.
     # Optional: prescribe the impedance gain directly instead of using the LQ
     # cost.  Left OFF by default — the LQ-MPC (Theorem 1: exact equivalence to
     # the realized impedance Λ K_∞) gives the predictive high-bandwidth tracking
@@ -102,22 +104,24 @@ class ImpedanceMPCParams:
     # mode above), a saturated/zeroed F_mpc (tight F_max, a solver fault, or
     # an under-realizable predicted torque) leaves ONLY τ_ff applied — pure
     # feedforward, zero corrective stiffness, not a stable regulator. Setting
-    # backbone_track=True instead applies a fixed, critically-damped
-    # impedance law F_bb = K_bb e + D_bb ė UNCONDITIONALLY (outside the QP,
-    # always realized regardless of what the QP returns), and the QP only
+    # backbone_track=True instead commands a fixed, positively damped
+    # impedance law F_bb = K_bb e + D_bb ė outside the QP on every MPC update,
+    # independently of what the QP returns, and the QP only
     # searches for a BOUNDED *additional* corrective force F_mpc on top of
     # it, predicted through the backbone dynamics LINEARIZED ALONG A
     # NOMINAL TRAJECTORY — A_cl = A_d + B_d(ρ_k) G_bb frozen at the current
     # configuration by default, or A_cl,i = A_d + B_d,i G_bb scheduled per
     # horizon step when horizon_torque_schedule is also set — rather than
     # the open-loop A_d. So even if F_mpc saturates to exactly zero, the
-    # realized controller is still the
-    # stable critically-damped backbone (bounded tracking, not offset-free —
+    # commanded controller still contains the
+    # stable restoring backbone (not offset-free —
     # offset-free rejection is what the bounded F_mpc term contributes on
-    # top, same −d̂ centering trick as impedance_track).
+    # top, same −d̂ centering trick as impedance_track). This does not bypass
+    # physical actuator saturation: if tau_base itself exceeds tau_max, the
+    # plant can still clip the backbone torque.
     backbone_track: bool = False
     k_backbone:     float = 300.0   # backbone translational stiffness (N/m)
-    zeta_backbone:  float = 1.0     # backbone damping ratio (1 → critical)
+    zeta_backbone:  float = 1.0     # unit-effective-mass damping tuning
 
     # ── Horizon-wide torque realizability (frozen-Jacobian approximation) ──
     # The applied-torque constraint (9b) is, by construction, feasible only
@@ -286,6 +290,8 @@ class ImpedanceMPCController:
 
         # OSQP instance — created lazily on first QP call, reused thereafter
         self._osqp_prob: object = None
+        self.last_qp_success = True
+        self.last_qp_status = "not solved"
 
         # MPVIC baseline: last selected stiffness (for logging / warm continuity)
         self._vic_K_last = float(np.median(params.vic_K_set))
@@ -677,6 +683,29 @@ class ImpedanceMPCController:
             constraints=constraints,
             options={'ftol': 1e-9, 'maxiter': 200},
         )
+        # res.success reflects SLSQP's convergence-TOLERANCE criterion, not
+        # feasibility: on a large/tight horizon problem it routinely reports
+        # success=False with message="Iteration limit reached" even when
+        # res.x is a perfectly good, feasible point (verified: finite, zero
+        # constraint violation) -- gating the zero-correction fallback on
+        # res.success alone silently zeroed out ~36% of steps in a real
+        # running episode. Check feasibility directly instead: finite
+        # values, the box bounds, and (if present) the torque-realizability
+        # rows, independent of whether SLSQP fully converged to ftol.
+        finite = bool(np.all(np.isfinite(res.x)))
+        if finite:
+            viol = float(np.maximum(np.abs(res.x) - Fmax, 0).max())
+            if A_tau is not None and tau_base_list is not None:
+                Au = A_tau @ res.x
+                viol = max(viol,
+                           float(np.maximum(margin_lo - Au, 0).max()),
+                           float(np.maximum(Au - margin_hi, 0).max()))
+        else:
+            viol = np.inf
+        self.last_qp_success = bool(finite and viol < 1e-6)
+        self.last_qp_status = str(res.message)
+        if not self.last_qp_success:
+            return np.zeros(n_u)
         return res.x
 
     def _solve_qp_osqp(
@@ -733,16 +762,22 @@ class ImpedanceMPCController:
                 eps_abs        = 1e-6,
                 eps_rel        = 1e-6,
                 max_iter       = 4000,
-                polish         = False,   # off for real-time; C++ deployment matches
+                polishing      = False,   # off for real-time; C++ deployment matches
                 adaptive_rho   = True,
             )
         else:
             # Reuse the same sparsity pattern — only values change
             self._osqp_prob.update(Px=P_sp.data, q=h, Ax=A_sp.data, l=lb, u=ub)
 
-        res = self._osqp_prob.solve()
+        res = self._osqp_prob.solve(raise_error=False)
         # status_val 1 = solved, 2 = solved (inaccurate but acceptable)
-        if res.info.status_val not in (1, 2):
+        self.last_qp_success = bool(
+            res.info.status_val in (1, 2)
+            and res.x is not None
+            and np.all(np.isfinite(res.x))
+        )
+        self.last_qp_status = str(res.info.status)
+        if not self.last_qp_success:
             return np.zeros(n_u)
         return res.x
 
@@ -757,6 +792,8 @@ class ImpedanceMPCController:
         self._first_step = True
         self._F_prev[:]  = 0.0
         self.F_seq[:]    = 0.0
+        self.last_qp_success = True
+        self.last_qp_status = "not solved"
         # Destroy the OSQP instance so the next control() call re-creates it
         # with fresh rho scaling.  warm_start() alone resets primal/dual
         # variables but leaves adaptive-rho at whatever value the previous
@@ -896,9 +933,9 @@ class ImpedanceMPCController:
             F_backbone = np.zeros(3)
         elif self.p.backbone_track:
             # ---- Impedance-backbone + bounded additive MPC correction ----
-            # F_backbone = K_bb e + D_bb ė is applied UNCONDITIONALLY below
-            # (folded into tau_base), so it is realized even if the QP's
-            # F_mpc saturates to exactly zero. The QP here only shapes a
+            # F_backbone = K_bb e + D_bb ė is commanded independently below
+            # (folded into tau_base), so it remains present if the QP's
+            # F_mpc saturates or falls back to zero. The QP here only shapes a
             # BOUNDED additional correction on top, with the LQ-regulation
             # cost (same Q_bar/R_bar as the default branch) predicted
             # through the backbone dynamics LINEARIZED ALONG A NOMINAL
@@ -970,10 +1007,11 @@ class ImpedanceMPCController:
         tau_null = self.null_torque(q, dq, N_bar)
 
         # F_backbone is nonzero only in backbone_track mode; folding it into
-        # tau_base means it is applied UNCONDITIONALLY (it is realized even
-        # if the QP below returns F_mpc = 0 under saturation) and that the
+        # tau_base means it is commanded independently of the QP (it remains
+        # present if the QP below returns F_mpc = 0) and that the
         # torque-realizability constraint(s) in _solve_qp correctly account
-        # for it as part of the frozen offset.
+        # for it as part of the frozen offset. Physical actuator clipping can
+        # still prevent realization if tau_base itself exceeds tau_max.
         tau_base = tau_ff + J_v.T @ F_backbone + tau_orient + tau_null
 
         # ── Horizon-wide torque constraint rows: J_list/tau_base_list ─────

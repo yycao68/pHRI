@@ -1,4 +1,4 @@
-# Impedance-Backbone MPC: a saturation-robust architecture for the pHRI controller
+# Impedance-Backbone MPC: a correction-authority-robust architecture for the pHRI controller
 
 Status: **exploratory, not yet in the paper.** This documents a proposed architectural change, its implementation as a new controller option, and a simulation comparison against the current proposed controller (D7, `DI-MPC + Kalman 500 Hz`) — now including a protocol-matched 3-cycle re-run (§4.3) confirming the 1-cycle snapshot generalizes. **§7 (horizon scheduling) is a settled negative result: §2c's frozen-Jacobian formulation is retained.** A constant-velocity coast extrapolation was tried and removed (unjustifiable second approximation, no benefit); reference scheduling along the trajectory generator's own $(q_d,\dot q_d,\ddot q_d)$ — the theoretically cleaner alternative — was then implemented and found to be not just unnecessary but a measurable **regression** (up to 26× worse steady-state error) in the regime where the torque constraint binds, because it schedules against the undisturbed reference exactly when the real robot has deflected away from it during contact. Reference-scheduling code remains available for a future longer-horizon/slower-rate revision but is not recommended now. Nothing in `double_integrator_phri_ieee.md` or `arXiv/phri_main.tex` has been touched; question 1 in §6 has a recommendation but is explicitly left as your editorial call, not decided here.
 
@@ -21,21 +21,23 @@ $$-\tau_{\max} \;\le\; \tau_{\rm base}(k) + J_v^\top(q_k)\,F_{{\rm mpc},0|k} \;\
 — and the "Constraint interpretation" remark explicitly notes that horizon-wide torque rows are not required for feasibility of the *applied* action, only for a stronger predicted-trajectory-realizability claim, which the manuscript does not make. That scoping is correct and honestly stated. But it leaves two related gaps worth closing:
 
 1. **Steps $1,\dots,N-1$ of the horizon can imply an unrealizable torque.** Those steps still shape the first-step optimum through the QP cost, so the first step, while itself feasible, can be the output of a plan that assumes impossible future authority.
-2. **The entire corrective torque comes from one box-constrained decision variable.** In every mode currently implemented (default LQ-MPC, `impedance_track`, `variable_impedance`), $F_{\rm mpc}$ *is* the whole correction. If it saturates hard — tight $F_{\max}$, a solver fault, a timeout — the realized command degrades to $\tau = \tau_{\rm ff}$ alone: feedforward with **zero corrective stiffness**, not a stable regulator.
+2. **The entire corrective torque comes from one box-constrained decision variable.** In every mode currently implemented (default LQ-MPC, `impedance_track`, `variable_impedance`), $F_{\rm mpc}$ *is* the whole correction. If it is forced to zero by a tight $F_{\max}$ bound or by the solver-failure fallback, the commanded torque degrades to $\tau = \tau_{\rm ff}$ alone: feedforward with **zero corrective stiffness**, not a stable regulator. The experiments below directly test the tight-bound case; they do not inject a real solver timeout or crash.
 
-Neither gap contradicts anything currently claimed in the paper (which already scopes its offset-free/stability claims to the constraint-feasible regime), but both are real robustness weaknesses worth closing before claiming the controller is saturation-robust.
+Neither gap contradicts anything currently claimed in the paper (which already scopes its offset-free/stability claims to the constraint-feasible regime), but both are real robustness weaknesses worth closing before claiming improved robustness to loss of correction authority.
 
 ## 2. Proposed architecture
 
 Split the corrective torque into two parts instead of one:
 
-**(a) A fixed, critically-damped impedance backbone, applied unconditionally**
+**(a) A fixed, positively damped impedance backbone, commanded independently of the QP**
 
-$$F_{\rm bb} = K_{\rm bb}\,e + D_{\rm bb}\,\dot e, \qquad D_{\rm bb} = 2\,\zeta_{\rm bb}\sqrt{K_{\rm bb}} \quad (\zeta_{\rm bb}=1 \Rightarrow \text{critical damping})$$
+$$F_{\rm bb} = K_{\rm bb}\,e + D_{\rm bb}\,\dot e, \qquad D_{\rm bb} = 2\,\zeta_{\rm bb}\sqrt{K_{\rm bb}}$$
 
 $$\tau_{\rm base} = \tau_{\rm ff} + J_v^\top F_{\rm bb} + \tau_{\rm orient} + \tau_{\rm null}$$
 
-$F_{\rm bb}$ is *not* a QP decision variable — it is computed directly from the current state and folded into $\tau_{\rm base}$ every step, the same way $\tau_{\rm ff}$, $\tau_{\rm orient}$, $\tau_{\rm null}$ already are. It is realized even if the QP below returns exactly zero.
+$F_{\rm bb}$ is *not* a QP decision variable — it is computed directly from the current state and folded into $\tau_{\rm base}$ every MPC update, the same way $\tau_{\rm ff}$, $\tau_{\rm orient}$, $\tau_{\rm null}$ already are. It remains in the commanded torque even if the QP below returns exactly zero.
+
+The familiar scalar rule $D_{\rm bb}=2\zeta_{\rm bb}\sqrt{K_{\rm bb}}$ is exactly critically damped only for unit effective mass. Here the force-to-acceleration map is $\Lambda^{-1}(q)$, generally anisotropic and configuration dependent, so $\zeta_{\rm bb}=1$ is a **nominal unit-effective-mass tuning**, not an exact modal-critical-damping statement. Positive $K_{\rm bb}$ and $D_{\rm bb}$ still provide restoring stiffness and damping in the local continuous-time model. Exact modal tuning would require a $\Lambda(q)$-dependent damping matrix and a corresponding scheduled prediction model.
 
 **(b) The QP now shapes only a bounded additional correction $F_{\rm mpc}$**
 
@@ -49,7 +51,9 @@ $$A_{\rm cl} = A_d + B_d(\rho_k)\,G_{\rm bb} \qquad \text{(linearized at the cur
 
 $$x_{i+1|k} = A_{\rm cl}\,x_{i|k} + B_d\big(F_{{\rm mpc},i|k} + \hat d\big)$$
 
-The QP minimizes the same LQ running/terminal cost as the default branch ($\bar Q$, $\bar R$), built from $A_{\rm cl}$ instead of $A_d$, with the same offset-free input-centering trick ($\hat d$ absorbed into the additional term, not the backbone — the backbone alone is *not* claimed offset-free, only stable). Concretely: if $F_{\rm mpc}\to 0$ for any reason, the realized controller is exactly the critically-damped impedance backbone — bounded, stable, non-zero corrective stiffness — never bare feedforward.
+The QP minimizes the same LQ running/terminal cost as the default branch ($\bar Q$, $\bar R$), built from $A_{\rm cl}$ instead of $A_d$, with the same offset-free input-centering trick ($\hat d$ absorbed into the additional term, not the backbone — the backbone alone is *not* claimed offset-free, only restoring and damped). Concretely: if $F_{\rm mpc}\to 0$, the commanded controller retains non-zero corrective stiffness instead of reverting to bare feedforward.
+
+**Actuator-limit caveat.** QP independence is not actuator independence. If $\tau_{\rm base}$ itself exceeds the joint limits, the simulator/robot still clips it and the backbone is not realized exactly. The horizon constraint can allocate the *additional* $F_{\rm mpc}$ only when the affine feasible set is nonempty; it cannot repair an already-infeasible $\tau_{\rm base}$. Accordingly, the evidence below supports robustness to loss of **additive QP correction authority**, not a blanket guarantee under arbitrary actuator saturation.
 
 **Note (added on review):** if the horizon-wide torque constraint (c) below is scheduled along a varying nominal trajectory rather than frozen, $B_d$ varies with it — and leaving $A_{\rm cl}$ fixed while the torque map varies would be an internal inconsistency (the map used to check torque feasibility would disagree with the map used to predict the state). §7 generalizes this to a genuinely time-varying $A_{{\rm cl},i} = A_d + B_{d,i}\,G_{\rm bb}$, scheduled together with the torque constraint, not just once at the current configuration.
 
@@ -77,9 +81,9 @@ All in `simulation/`, no paper file touched.
 
 - **`phri.py`** — `make_mpc_controller` recognizes `"Backbone"` in the controller name and sets `backbone_track=horizon_torque_constraint=True`; added `F_MAX_OVERRIDE` (monkeypatchable, same pattern as `F_HUMAN`) so a comparison script can sweep the corrective-force bound $F_{\max}$ without duplicating the controller-construction code. New controller name used below: `"DI-MPC + Kalman + Backbone 500 Hz"` (C6).
 
-- **`stable_backbone_comparison.py`** (new) — runs the standard circular-trajectory + step-force benchmark shared with the paper's other experiments, comparing C1 (`Impedance`), C5 (`DI-MPC + Kalman 500 Hz`, current proposed), and C6 (new). Two experiments: a normal-condition benchmark, and an $F_{\max}$ stress sweep down to 0 N (a total "QP unavailable" fault).
+- **`stable_backbone_comparison.py`** (new) — runs the standard circular-trajectory + step-force benchmark shared with the paper's other experiments, comparing C1 (`Impedance`), C5 (`DI-MPC + Kalman 500 Hz`, current proposed), and C6 (new). Two experiments: a normal-condition benchmark, and an $F_{\max}$ stress sweep down to 0 N (zero additive corrective-force authority). This produces the same applied additive force as the solver's zero-output fallback, but it is not a runtime solver-fault injection.
 
-Unit-verified before running the physics benchmark: a deliberately saturating synthetic case confirmed every one of the $N$ horizon steps clips to exactly the $F_{\max}$ bound under `horizon_torque_constraint`/$F_{\max}$ box constraints, not just the first, and construction/`control()` calls succeed for both the `scipy` and `osqp` solver backends.
+Regression coverage is now preserved in `simulation/test_stable_backbone_mpc.py`: a deliberately infeasible impedance-force reference confirms that the joint-torque row clips the corresponding force at **every** one of the $N$ steps (while the first-step-only mode leaves later steps unconstrained), the dense/SLSQP and sparse/OSQP constraint matrices are checked for exact agreement, the scheduled LTV builder is checked against its frozen special case, and full one-step FR3 `control()` calls cover the default, impedance-reference, and backbone branches on both solvers.
 
 ## 4. Results
 
@@ -93,7 +97,7 @@ Both experiments use the paper's standard scenario: 3-D circular reference ($R=0
 | C5 DI-MPC + Kalman 500 Hz (current proposed) | 0.15 | 0.76 | 0.021 |
 | **C6 + Impedance backbone (new)** | **0.15** | **0.75** | **0.021** |
 
-**C6 matches C5 to measurement precision when the QP is never actually saturated** — adding the backbone costs nothing under normal operation, as expected (the additional term still has the full 150 N of authority to work with, and the backbone contributes an unconditional restoring term the unconstrained QP would have produced anyway).
+**C6 matches C5 to measurement precision when the QP is never actually saturated** — adding the backbone costs nothing under normal operation, as expected (the additional term still has the full 150 N of authority to work with, and the backbone contributes a QP-independent restoring term the unconstrained QP would have produced anyway).
 
 ### 4.2 $F_{\max}$ stress sweep — the key comparison
 
@@ -103,9 +107,9 @@ Both experiments use the paper's standard scenario: 3-D circular reference ($R=0
 | 20 | 0.15 | 0.15 | 0.75 | 0.75 | 0.021 | 0.021 |
 | 5 | 306.70 | **22.42** | 396.57 | **28.68** | 358.135 | **24.368** |
 | 1 | 352.40 | **37.48** | 450.88 | **46.93** | 391.585 | **41.168** |
-| 0 (QP fully unavailable) | 360.14 | **41.13** | 456.04 | **50.76** | 407.206 | **45.492** |
+| 0 (zero additive authority) | 360.14 | **41.13** | 456.04 | **50.76** | 407.206 | **45.492** |
 
-At $F_{\max} \ge 20$ N there is enough headroom that both controllers are unaffected. Below that, **C5's error jumps by ~30-40× (0.15 → 300+ mm)** the moment the corrective force can no longer supply the needed authority — this is exactly the predicted failure mode: with $F_{\rm mpc}$ saturated away, the realized command is bare feedforward, i.e. no corrective stiffness at all against the 15 N push. **C6 degrades gracefully instead**, settling at 20-50 mm even in the $F_{\max} = 0$ limit (backbone-only, critically-damped impedance at $K_{\rm bb} = 300$ N/m) — an 8-14× smaller error than C5 across the saturated range, and, crucially, *bounded* rather than diverging.
+At $F_{\max} \ge 20$ N there is enough headroom that both controllers are unaffected. Below that, **C5's error jumps by ~30-40× (0.15 → 300+ mm)** the moment the corrective force can no longer supply the needed authority — this is exactly the predicted failure mode: with $F_{\rm mpc}$ forced toward zero, the commanded controller approaches bare feedforward, i.e. no corrective stiffness against the 15 N push. **C6 degrades gracefully instead**, settling at 20-50 mm in the $F_{\max} = 0$ limit (backbone-only command at $K_{\rm bb} = 300$ N/m) — an 8-14× smaller error than C5 across the saturated range.
 
 Verified over a longer 3-cycle run at $F_{\max} = 0$ (not just the 1-cycle snapshot above) that both controllers stay finite/periodic rather than drifting further: C5 settles around 400-475 mm RMS with peaks near 630 mm; C6 settles around 35-45 mm RMS with peaks near 200 mm (the 200 mm peak comes from the free-space circular-tracking transient, not the push — a 300 N/m backbone alone cannot track a fast 0.12 m circle at high bandwidth, which is expected and separate from the push-rejection result above).
 
@@ -141,18 +145,19 @@ Figure: `simulation/stable_backbone_comparison_3cycle.png`. Raw numbers: `simula
 
 ## 5. What this does and doesn't show
 
-**Shown:** the two-term (unconditional backbone + bounded additive QP correction) architecture is a strict improvement in the saturation/fault regime — no measurable cost when unsaturated, 8-14× smaller error and bounded (not diverging) behavior when the QP's authority is heavily curtailed or entirely removed.
+**Shown:** the two-term (QP-independent commanded backbone + bounded additive QP correction) architecture improves this deterministic corrective-authority stress test — no measurable cost when unsaturated and 8-14× smaller error when the additive correction is heavily curtailed or forced to zero.
 
 **Not (yet) shown / open:**
 
 - ~~Single seed, single scenario~~ — **addressed in §4.3**: re-ran both experiments at the paper's actual `n_cycles=3` protocol (3 independent push events averaged, matching Table I exactly), not just the 1-cycle snapshot. Note the correction to the original framing: the paper's push/sustained-force benchmarks (Table I/III) are themselves *deterministic* single-run-per-condition (no measurement noise, no RNG seed) — "paired multi-seed statistics" describes a *different* experiment (§VI-F, measurement-noise/model-mismatch robustness, Monte Carlo over 5 noise seeds in `cloud_verify/robustness_verification.py`). Matching Table I's actual protocol means 3-cycle averaging, not noise seeds; that is what §4.3 now provides, and it confirms the 1-cycle numbers generalize (14.1×/11.0×/10.3× vs. the original 8-14× estimate). A genuine noise-seed Monte Carlo for C6 specifically (does the backbone change noise sensitivity?) is still open and would need its own run through the `cloud_verify` harness rather than `phri.py`.
 - The horizon-wide torque constraint (§2c) is a **frozen-Jacobian local approximation** — it does not track how $J_v$/$\tau_{\rm base}$ actually evolve along the horizon, only prevents obviously-unrealizable plans from the current configuration. A tighter (SQP/RTI, re-linearizing along the horizon) version was discussed but not implemented. See the Remark added to §2c for the precise necessary-not-sufficient scoping.
+- The $F_{\max}$ sweep is not an actuator-limit or solver-timing experiment. The MuJoCo plant retains the physical FR3 joint limits, and no timeout/crash is injected. A separate fault-injection test is needed before making runtime fault-tolerance claims.
 - No re-derivation of the paper's Theorem 1/2/3 statements for this architecture (e.g. does Theorem 1's impedance-equivalence limit still hold with a backbone in the loop — plausible since the unconstrained optimum still reduces the additive term to the correct residual, but not checked here).
 - Not yet decided whether/how this folds into the manuscript: as a replacement for D7, as an added robustness ablation/appendix result, or left out of this submission entirely.
 
 ## 6. Open questions for next step
 
-1. **Still open — editorial call, not made here.** Promote C6 to the paper's main proposed controller, add it as a new robustness ablation/appendix (Section VI), or keep it out of this submission? Recommendation given the §4.3 evidence: **add as a robustness ablation, not a replacement for D7.** C6 costs nothing when unsaturated (§4.1, §4.3) and only pays off under a fault condition ($F_{\max}$ starved to under ~20 N) the paper doesn't currently claim to defend against — framing it as "D7 plus an optional saturation-robust variant" is a strictly additive contribution, whereas replacing D7 would require re-deriving Theorem 1/2/3 for the backbone-in-the-loop case first (still unchecked, see §5). No change made to `double_integrator_phri_ieee.md` or `arXiv/phri_main.tex` — this stays a recommendation pending your decision.
+1. **Still open — editorial call, not made here.** Promote C6 to the paper's main proposed controller, add it as a new robustness ablation/appendix (Section VI), or keep it out of this submission? Recommendation given the §4.3 evidence: **add as a robustness ablation, not a replacement for D7.** C6 costs nothing when unsaturated (§4.1, §4.3) and only pays off when $F_{\max}$ is starved below about 20 N, a condition the paper doesn't currently claim to defend against. Framing it as "D7 plus an optional correction-authority-robust variant" is a strictly additive contribution, whereas replacing D7 would require re-deriving Theorem 1/2/3 for the backbone-in-the-loop case first (still unchecked, see §5). No change made to `double_integrator_phri_ieee.md` or `arXiv/phri_main.tex` — this stays a recommendation pending your decision.
 2. **Resolved — see §4.3.** The paper's own push/sustained-force benchmarks are deterministic (no noise seed), so the right match is `n_cycles=3` protocol-averaging, not a noise Monte Carlo; done, and the 1-cycle numbers hold up (14.1×/11.0×/10.3× vs. the original 8-14× estimate). A true noise-seed sweep for C6 (via `cloud_verify`) is a separate, still-open piece of work if reviewers ask whether the backbone changes noise sensitivity.
 3. **Resolved — see the Remark in §2c.** State it as "frozen-Jacobian horizon-wide extension of (9b)" with the necessary-not-sufficient caveat spelled out, not as an unqualified "(9c) extended to the whole horizon" — the latter overclaims exactness the frozen-Jacobian approximation doesn't have.
 
@@ -188,7 +193,7 @@ Sweeping `tau_max` down (`phri.TAU_MAX_SCALE`, `simulation/horizon_schedule_comp
 | **0.30** | 0.493 | **0.582** | 0.0215 | **0.567** |
 | 0.15 | 441.96 | 956.68 | 335.5 | 965.5 |
 
-At scale 0.30 — the constraint clearly binds, but the system hasn't otherwise collapsed, the cleanest test point — reference scheduling is **worse**: RMS up 18%, steady-state error up **26×**. The mechanism: $q_d(t)$ is the *undisturbed* reference, but the torque constraint binds hardest exactly when the human push has deflected the real arm away from it, so scheduling against the planned configuration evaluates the wrong local model exactly when it matters. (At scale 0.15 both formulations are deep in a separate failure mode — the unconditional gravity/orientation/null-space part of $\tau_{\rm base}$ alone approaches the scaled `tau_max`, making the QP itself near-infeasible regardless of scheduling scheme; reference-scheduled is worse there too, but that regime isn't a clean test of either approach.)
+At scale 0.30 — the constraint clearly binds, but the system hasn't otherwise collapsed, the cleanest test point — reference scheduling is **worse**: RMS up 18%, steady-state error up **26×**. The mechanism: $q_d(t)$ is the *undisturbed* reference, but the torque constraint binds hardest exactly when the human push has deflected the real arm away from it, so scheduling against the planned configuration evaluates the wrong local model exactly when it matters. (At scale 0.15 both formulations are deep in a separate failure mode — the QP-independent gravity/orientation/null-space part of $\tau_{\rm base}$ alone approaches the scaled `tau_max`, making the QP itself near-infeasible regardless of scheduling scheme; reference-scheduled is worse there too, but that regime isn't a clean test of either approach.)
 
 An error-decay correction ($q_i\to q_{d,i}+\rho^i(q_k-q_{d,k})$, `ImpedanceMPCParams.schedule_rho`) mostly recovers the scale-0.30 gap at $\rho\approx0.9$ (0.507 vs. Frozen's 0.493 mm RMS) — unsurprising, since high $\rho$ mostly just tracks the actual state — but doesn't beat Frozen, and doesn't help in the deep-saturation regime either. It confirms the diagnosis rather than motivating adoption.
 

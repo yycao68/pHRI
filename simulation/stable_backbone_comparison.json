@@ -1,4 +1,5 @@
 {
+  "n_cycles": 1,
   "normal_benchmark": {
     "Impedance": {
       "rms_total": 0.043471094782539625,

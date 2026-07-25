@@ -6,9 +6,10 @@ shared FR3 circular-trajectory + step-force scenario of phri.py:
 
     C1  Impedance                      classical baseline (D1 in the paper)
     C5  DI-MPC + Kalman 500 Hz         current proposed controller (D7)
-    C6  DI-MPC + Kalman + Backbone 500 Hz   NEW: fixed critically-damped
-                                        impedance backbone applied
-                                        UNCONDITIONALLY, QP only shapes a
+    C6  DI-MPC + Kalman + Backbone 500 Hz   NEW: fixed restoring/damped
+                                        impedance backbone commanded
+                                        independently of the QP, which only
+                                        shapes a
                                         bounded additional correction
                                         (backbone_track=True), plus the
                                         torque-realizability constraint
@@ -21,12 +22,13 @@ QP is never actually saturated.
 
 Experiment 2 (fmax_stress_sweep): sweeps the MPC corrective-force bound
 F_max down to (and including) 0 N via phri.F_MAX_OVERRIDE, emulating
-increasingly severe saturation up to a total "QP unavailable" fault. This is
+increasingly severe loss of additive corrective-force authority. This is
 the key comparison: C5's entire corrective torque comes from the box-
 constrained F_mpc, so F_max -> 0 leaves ONLY tau_ff applied (no restoring
-stiffness at all); C6's corrective torque is backbone (unconditional) +
-bounded additional term, so F_max -> 0 degrades gracefully to the critically
-damped backbone alone.
+stiffness at all); C6's corrective torque is backbone (QP-independent) +
+bounded additional term, so F_max -> 0 degrades gracefully to the restoring
+backbone alone. This is an authority-loss test, not a
+runtime injection of solver timeout/crash behavior.
 
 Run:  python3 stable_backbone_comparison.py
 Writes stable_backbone_comparison.json and stable_backbone_comparison.png.
@@ -78,12 +80,12 @@ def normal_benchmark(env, n_cycles=1):
 
 
 def fmax_stress_sweep(env, f_max_values, n_cycles=1):
-    """Sweep the corrective-force bound down to 0 N (total QP/actuation fault).
+    """Sweep the additive corrective-force bound down to 0 N.
 
     n_cycles=3 averages each F_max condition over three push events (same
     protocol as normal_benchmark) instead of the single-event snapshot, so
     the degrade-gracefully claim isn't resting on one push realization."""
-    print(f"\n== F_max stress sweep (saturation -> QP-unavailable fault, "
+    print(f"\n== F_max stress sweep (loss of additive correction authority, "
           f"{n_cycles} cycle(s)) ==")
     out = {PROPOSED: {"rms_contact": [], "peak": [], "ss": []},
            BACKBONE: {"rms_contact": [], "peak": [], "ss": []}}
@@ -115,7 +117,7 @@ def main(n_cycles=1, suffix=""):
              color="#E91E63", label="DI-MPC + Kalman (D7, no backbone)")
     ax1.plot(f_max_values, stress_res[BACKBONE]["rms_contact"], "s-",
              color="#2ca02c", label="+ Impedance backbone (C6)")
-    ax1.set_xlabel("F_max (N)  [150 = normal, 0 = QP fully unavailable]")
+    ax1.set_xlabel("F_max (N)  [150 = normal, 0 = zero additive authority]")
     ax1.set_ylabel("Contact-window RMS error (mm)")
     ax1.set_title("(a) Tracking error vs. corrective-force bound")
     ax1.legend(fontsize=7); ax1.grid(alpha=.3)
@@ -125,7 +127,7 @@ def main(n_cycles=1, suffix=""):
              color="#E91E63", label="DI-MPC + Kalman (D7, no backbone)")
     ax2.plot(f_max_values, stress_res[BACKBONE]["peak"], "s-",
              color="#2ca02c", label="+ Impedance backbone (C6)")
-    ax2.set_xlabel("F_max (N)  [150 = normal, 0 = QP fully unavailable]")
+    ax2.set_xlabel("F_max (N)  [150 = normal, 0 = zero additive authority]")
     ax2.set_ylabel("Peak deflection during contact (mm)")
     ax2.set_title("(b) Peak deflection vs. corrective-force bound")
     ax2.grid(alpha=.3)

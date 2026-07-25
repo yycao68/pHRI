@@ -319,8 +319,8 @@ def make_mpc_controller(name: str, dt_sim: float, *,
     high_freq  = "500" in name
     variable   = "Variable" in name
     # "Backbone" selects the exploratory impedance-backbone architecture
-    # (stable_backbone_mpc.md): a fixed critically-damped impedance law is
-    # applied unconditionally, and the QP only shapes a bounded ADDITIONAL
+    # (stable_backbone_mpc.md): a fixed restoring/damped impedance law is
+    # commanded independently of the QP, which only shapes a bounded ADDITIONAL
     # correction on top, with the torque-realizability constraint extended
     # to the whole horizon (frozen-Jacobian approximation) instead of only
     # the first step.
