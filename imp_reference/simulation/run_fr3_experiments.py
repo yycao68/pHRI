@@ -136,7 +136,7 @@ def run_case(
         )
 
         # Recomputed every tick for BOTH controllers -- the inner-loop-rate property.
-        tau_base, J_v, d_known = compute_tau_base(dyn, state, R_d, imp_params, cfg.K_rot, cfg.D_rot)
+        tau_base, J_v, d_known = compute_tau_base(dyn, state, R_d, imp_params, cfg.K_rot, cfg.D_rot, cfg.lambda_reg)
 
         if i % mpc_every == 0:
             if controller_kind == "mpc":

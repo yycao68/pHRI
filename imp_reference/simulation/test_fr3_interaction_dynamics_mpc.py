@@ -61,12 +61,18 @@ def test_mpc_respects_first_step_limits():
     assert np.all(np.abs(step.tau) <= cfg.tau_max + 1e-5)
 
 
-def test_horizon_wide_torque_feasibility():
+def test_horizon_wide_torque_feasibility_nonbinding():
     """The property this module exists to guarantee: every predicted horizon
     step's torque -- not only the first -- respects the per-joint limits.
     A first-step-only formulation could pass this scenario's i=0 check while
     still planning infeasible later steps; this test inspects the full
-    predicted sequence directly."""
+    predicted sequence directly.
+
+    With the default tau_max this scenario's peak torque utilization is only
+    ~34% (checked directly), so this test alone cannot distinguish a working
+    constraint from a silently disabled one -- it would pass identically
+    either way. See test_horizon_wide_torque_feasibility_binding below for
+    the version that actually exercises the constraint."""
     env = _env()
     dyn, state = env.get_dynamics_and_state()
     p_nominal = state.ee_pos.copy()
@@ -83,6 +89,58 @@ def test_horizon_wide_torque_feasibility():
         "a horizon step's predicted torque exceeds a per-joint limit: "
         f"max abs per joint = {np.max(np.abs(step.horizon_tau), axis=0)}, "
         f"tau_max = {cfg.tau_max}"
+    )
+
+
+def test_horizon_wide_torque_feasibility_binding():
+    """Same scenario as the nonbinding test above, but with joint 4's limit
+    artificially tightened to 5 Nm -- well below what this scenario would
+    otherwise command there (confirmed directly: ~26 Nm at the default
+    87 Nm limit). This forces the constraint to actually activate, so the
+    test can distinguish a genuinely enforced bound from one that merely
+    happens to never be approached. A working constraint should (a) hold
+    joint 4 at or under its tightened limit and (b) visibly redistribute
+    correction effort to other joints to compensate -- both checked here,
+    not just the aggregate no-violation property."""
+    env = _env()
+    dyn, state = env.get_dynamics_and_state()
+    p_nominal = state.ee_pos.copy()
+    R_d = state.ee_rot.copy()
+
+    default_tau_max = FR3MPCConfig().tau_max.copy()
+    tightened_tau_max = default_tau_max.copy()
+    tightened_tau_max[3] = 5.0  # well under the ~26 Nm this scenario naturally commands there
+
+    cfg = FR3MPCConfig(horizon=10, position_limit=0.08, speed_limit=0.4, tau_max=tightened_tau_max)
+    controller = FR3RealizationMPC(ImpedanceReference3D(stiffness=400.0, damping=40.0), cfg)
+    forecast = np.tile(np.array([15.0, -10.0, 25.0]), (cfg.horizon, 1))
+    step = controller.control(dyn, state, p_nominal, R_d, forecast)
+
+    # 1e-3, not the tighter 1e-5 used in the nonbinding test above: with the
+    # constraint genuinely active, OSQP's own KKT-residual tolerance
+    # (cfg.osqp_eps=1e-4) does not tightly bound the constraint violation
+    # itself -- confirmed empirically, the observed violation here is
+    # ~2e-4, already larger than osqp_eps. 1e-3 Nm is still utterly
+    # negligible against a 5 Nm limit; the point of this assertion is "no
+    # meaningful violation," not "zero to machine precision."
+    per_joint_ok = np.all(np.abs(step.horizon_tau) <= cfg.tau_max[None, :] + 1e-3)
+    assert per_joint_ok, "the tightened per-joint limit is violated somewhere in the horizon"
+
+    max_joint4 = np.max(np.abs(step.horizon_tau[:, 3]))
+    assert max_joint4 >= 4.9, (
+        f"joint 4's torque (max {max_joint4:.3f} Nm) never approaches its tightened "
+        "5 Nm limit -- the constraint may not be binding in this scenario, which would "
+        "make the nonbinding test's pass uninformative about whether enforcement works"
+    )
+
+    # Same scenario, unconstrained on joint 4, for direct comparison.
+    baseline_cfg = FR3MPCConfig(horizon=10, position_limit=0.08, speed_limit=0.4)
+    baseline_controller = FR3RealizationMPC(ImpedanceReference3D(stiffness=400.0, damping=40.0), baseline_cfg)
+    baseline_step = baseline_controller.control(dyn, state, p_nominal, R_d, forecast)
+    baseline_joint4 = np.max(np.abs(baseline_step.horizon_tau[:, 3]))
+    assert baseline_joint4 > 5.0, (
+        "baseline (untightened) joint 4 torque does not exceed the tightened limit -- "
+        "the tightened scenario above would not actually be testing constraint activation"
     )
 
 
@@ -112,12 +170,12 @@ def test_inner_loop_recompute_uses_fresh_state():
 
     dyn1, state1 = env.get_dynamics_and_state()
     R_d = state1.ee_rot.copy()
-    tau_base_1, J_v_1, _ = compute_tau_base(dyn1, state1, R_d, imp_params, cfg.K_rot, cfg.D_rot)
+    tau_base_1, J_v_1, _ = compute_tau_base(dyn1, state1, R_d, imp_params, cfg.K_rot, cfg.D_rot, cfg.lambda_reg)
 
     # Move to a visibly different configuration and recompute.
     env.reset(q=env.q + 0.3, dq=np.zeros(7))
     dyn2, state2 = env.get_dynamics_and_state()
-    tau_base_2, J_v_2, _ = compute_tau_base(dyn2, state2, R_d, imp_params, cfg.K_rot, cfg.D_rot)
+    tau_base_2, J_v_2, _ = compute_tau_base(dyn2, state2, R_d, imp_params, cfg.K_rot, cfg.D_rot, cfg.lambda_reg)
 
     assert not np.allclose(tau_base_1, tau_base_2), (
         "tau_base did not change between two different configurations -- "

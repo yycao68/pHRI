@@ -1,0 +1,132 @@
+{
+  "k_null=10_d_null=2": {
+    "impedance_mpc": {
+      "max_q_dev_rad": 1.3182908026869018,
+      "max_abs_position_m": 0.06207361986388965,
+      "max_tau_over_limit_Nm": 0.0,
+      "n_infeasible_solves": 0
+    },
+    "impedance_clipped": {
+      "max_q_dev_rad": 1.4243984712978424,
+      "max_abs_position_m": 0.15813214693604016,
+      "max_tau_over_limit_Nm": 1.6148016476076386,
+      "n_infeasible_solves": 0
+    },
+    "admittance_mpc": {
+      "max_q_dev_rad": 1.318312134791654,
+      "max_abs_position_m": 0.06108491661938964,
+      "max_tau_over_limit_Nm": 0.0,
+      "n_infeasible_solves": 0
+    },
+    "admittance_clipped": {
+      "max_q_dev_rad": 1.852092448887906,
+      "max_abs_position_m": 0.47391014467651693,
+      "max_tau_over_limit_Nm": 0.0,
+      "n_infeasible_solves": 0
+    }
+  },
+  "k_null=20_d_null=4": {
+    "impedance_mpc": {
+      "max_q_dev_rad": 0.27413382784723656,
+      "max_abs_position_m": 0.060182329574112625,
+      "max_tau_over_limit_Nm": 0.0,
+      "n_infeasible_solves": 0
+    },
+    "impedance_clipped": {
+      "max_q_dev_rad": 0.6339167478209731,
+      "max_abs_position_m": 0.10521521190973399,
+      "max_tau_over_limit_Nm": 0.0,
+      "n_infeasible_solves": 0
+    },
+    "admittance_mpc": {
+      "max_q_dev_rad": 0.262003364818285,
+      "max_abs_position_m": 0.06008934822572859,
+      "max_tau_over_limit_Nm": 0.0,
+      "n_infeasible_solves": 0
+    },
+    "admittance_clipped": {
+      "max_q_dev_rad": 1.1548410966670133,
+      "max_abs_position_m": 0.38722589892096804,
+      "max_tau_over_limit_Nm": 0.0,
+      "n_infeasible_solves": 0
+    }
+  },
+  "k_null=40_d_null=8": {
+    "impedance_mpc": {
+      "max_q_dev_rad": 0.12331909257700355,
+      "max_abs_position_m": 0.06018221100060317,
+      "max_tau_over_limit_Nm": 0.0,
+      "n_infeasible_solves": 0
+    },
+    "impedance_clipped": {
+      "max_q_dev_rad": 0.2321593527637926,
+      "max_abs_position_m": 0.10435951616666461,
+      "max_tau_over_limit_Nm": 0.0,
+      "n_infeasible_solves": 0
+    },
+    "admittance_mpc": {
+      "max_q_dev_rad": 0.16549145858167957,
+      "max_abs_position_m": 0.060086241892066905,
+      "max_tau_over_limit_Nm": 0.0,
+      "n_infeasible_solves": 0
+    },
+    "admittance_clipped": {
+      "max_q_dev_rad": 0.2879080190773605,
+      "max_abs_position_m": 0.10663707322136373,
+      "max_tau_over_limit_Nm": 0.0,
+      "n_infeasible_solves": 0
+    }
+  },
+  "k_null=60_d_null=12": {
+    "impedance_mpc": {
+      "max_q_dev_rad": 0.11355691095721723,
+      "max_abs_position_m": 0.06016487952920646,
+      "max_tau_over_limit_Nm": 0.0,
+      "n_infeasible_solves": 0
+    },
+    "impedance_clipped": {
+      "max_q_dev_rad": 0.20107804302604457,
+      "max_abs_position_m": 0.1038169107046999,
+      "max_tau_over_limit_Nm": 0.0,
+      "n_infeasible_solves": 0
+    },
+    "admittance_mpc": {
+      "max_q_dev_rad": 0.12797627840177359,
+      "max_abs_position_m": 0.05548926197646398,
+      "max_tau_over_limit_Nm": 0.0,
+      "n_infeasible_solves": 0
+    },
+    "admittance_clipped": {
+      "max_q_dev_rad": 0.13358031511614826,
+      "max_abs_position_m": 0.05761095883852474,
+      "max_tau_over_limit_Nm": 0.0,
+      "n_infeasible_solves": 0
+    }
+  },
+  "k_null=100_d_null=20": {
+    "impedance_mpc": {
+      "max_q_dev_rad": 0.10981261774150997,
+      "max_abs_position_m": 0.06017703503242511,
+      "max_tau_over_limit_Nm": 0.0,
+      "n_infeasible_solves": 0
+    },
+    "impedance_clipped": {
+      "max_q_dev_rad": 0.18730482892552724,
+      "max_abs_position_m": 0.102109591866064,
+      "max_tau_over_limit_Nm": 0.0,
+      "n_infeasible_solves": 0
+    },
+    "admittance_mpc": {
+      "max_q_dev_rad": 0.09339041912868148,
+      "max_abs_position_m": 0.04427120262982842,
+      "max_tau_over_limit_Nm": 0.0,
+      "n_infeasible_solves": 0
+    },
+    "admittance_clipped": {
+      "max_q_dev_rad": 0.11825791997612022,
+      "max_abs_position_m": 0.05782671695578989,
+      "max_tau_over_limit_Nm": 0.0,
+      "n_infeasible_solves": 0
+    }
+  }
+}

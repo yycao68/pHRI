@@ -166,8 +166,10 @@ class FR3MPCConfig:
     # leakage is tiny per tick, but it is a slow, one-directional drift, and
     # a weak restoring spring lets it accumulate to over a radian of joint
     # deviation from Q_NEUTRAL by mid-run in several benchmark conditions --
-    # confirmed empirically by sweeping k_null/d_null and checking max
-    # deviation over the full 6 s run, not just an early window. Stronger
+    # confirmed by sweep_null_space_gains.py, saved as
+    # results/null_space_gain_sweep.json, tracking max deviation over the
+    # full 6 s run (not just an early window) in all four benchmark
+    # conditions. Stronger
     # settings (e.g. 100/20) control drift even further but measurably
     # suppress the admittance generator's own task-space response (checked
     # directly, not assumed); 40/8 was the gentlest increase in the sweep
@@ -204,6 +206,7 @@ def compute_tau_base(
     imp_params: ImpedanceParams,
     K_rot: float,
     D_rot: float,
+    lambda_reg: float,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Feedforward + orientation-hold + null-space torque, J_v, and the
     known residual acceleration from auxiliary torque plus ``Jdot_v*qdot``.
@@ -219,9 +222,12 @@ def compute_tau_base(
     Jacobian): ``N_bar_v = I - J_v_bar @ J_v`` with ``J_v_bar = M^-1 J_v^T
     Lambda_pos``. This is the standard dynamically-consistent decomposition
     (Khatib 1987) restricted to the 3-DOF position task. With an exact inverse
-    it gives ``J_v @ M^-1 @ N_bar_v^T == 0``. This implementation uses a
-    small Tikhonov regularization in ``Lambda_pos`` for numerical robustness,
-    so the decoupling is approximate rather than algebraically exact; the
+    it gives ``J_v @ M^-1 @ N_bar_v^T == 0``. This implementation uses the
+    same Tikhonov regularization (``lambda_reg``, the config's single
+    regularization constant -- previously a separate hardcoded value was
+    used here, inconsistent with the value recorded in the benchmark
+    configuration) in ``Lambda_pos`` for numerical robustness, so the
+    decoupling is approximate rather than algebraically exact; the
     remaining, directly computed leakage is retained as ``d_known``.
 
     An earlier version of this module projected ``tau_null`` through the
@@ -258,8 +264,7 @@ def compute_tau_base(
     tau_null_raw = -imp_params.k_null * (state.q - imp_params.q_null) - imp_params.d_null * state.dq
 
     M_inv = np.linalg.inv(dyn.M)
-    lam_reg = 1.0e-4
-    Lam_pos = np.linalg.inv(J_v @ M_inv @ J_v.T + lam_reg * np.eye(3))
+    Lam_pos = np.linalg.inv(J_v @ M_inv @ J_v.T + lambda_reg * np.eye(3))
     J_v_bar = M_inv @ J_v.T @ Lam_pos
     n_dof = J_v.shape[1]
     N_bar_v = np.eye(n_dof) - J_v_bar @ J_v
@@ -336,7 +341,7 @@ class FR3RealizationMPC:
         J_v = dyn.J[:3, :]
         M_inv = np.linalg.inv(dyn.M)
         Lam_inv = J_v @ M_inv @ J_v.T + cfg.lambda_reg * np.eye(3)  # = Lambda(q_k)^{-1}
-        tau_base, _, d_known = compute_tau_base(dyn, state, R_d, self.imp_params, cfg.K_rot, cfg.D_rot)
+        tau_base, _, d_known = compute_tau_base(dyn, state, R_d, self.imp_params, cfg.K_rot, cfg.D_rot, cfg.lambda_reg)
 
         A = np.block(
             [
