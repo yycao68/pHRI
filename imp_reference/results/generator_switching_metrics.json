@@ -1,0 +1,32 @@
+{
+  "configuration": {
+    "dt": 0.02,
+    "horizon": 20,
+    "robot_mass": 2.5,
+    "force_limit": 18.0,
+    "speed_limit": 0.22,
+    "position_limit": 0.1,
+    "realization_weight": 1.0,
+    "force_weight": 0.0002,
+    "force_rate_weight": 0.001,
+    "force_rate_limit": 180.0,
+    "osqp_eps": 1e-07
+  },
+  "switch_times_s": [
+    2.0,
+    4.0
+  ],
+  "force_magnitude_N": 1.0,
+  "metrics": {
+    "max_abs_position_m": 0.06651967682024529,
+    "max_speed_mps": 0.08280992445257251,
+    "position_limit_m": 0.1,
+    "speed_limit_mps": 0.22,
+    "command_jump_at_switch_N": {
+      "t=2.0": 0.24858389931588665,
+      "t=4.0": 3.0160144712228316
+    },
+    "command_rate_limit_N": 3.6,
+    "no_switch_jump_exceeds_rate_limit": true
+  }
+}

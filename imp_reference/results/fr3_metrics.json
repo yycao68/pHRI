@@ -1,0 +1,111 @@
+{
+  "configuration": {
+    "dt": 0.02,
+    "horizon": 15,
+    "tau_max": [
+      87.0,
+      87.0,
+      87.0,
+      87.0,
+      12.0,
+      12.0,
+      12.0
+    ],
+    "force_limit": 150.0,
+    "speed_limit": 0.35,
+    "position_limit": 0.06,
+    "realization_weight": 1.0,
+    "force_weight": 0.01,
+    "force_rate_weight": 0.0001,
+    "force_rate_limit": 2000.0,
+    "slack_weight": 100000000.0,
+    "K_rot": 20.0,
+    "D_rot": 6.0,
+    "k_null": 10.0,
+    "d_null": 2.0,
+    "lambda_reg": 1e-06,
+    "osqp_eps": 0.0001,
+    "osqp_max_iter": 20000
+  },
+  "force_forecast": "measured force held constant over the horizon",
+  "generators": {
+    "impedance": {
+      "mass": 2.0,
+      "stiffness": 200.0,
+      "damping": 28.0,
+      "name": "impedance"
+    },
+    "admittance": {
+      "time_constant": 0.3,
+      "force_to_velocity": 0.01,
+      "name": "admittance"
+    }
+  },
+  "cases": {
+    "impedance_mpc": {
+      "realization_rmse_mps2": 1.3156851896835446,
+      "max_abs_position_m": 0.06017225180004582,
+      "max_speed_mps": 0.3127329316650389,
+      "max_abs_torque_Nm": 32.80775236080116,
+      "max_abs_command_N": 27.789240697340592,
+      "position_violation_m": 0.00017225180004581953,
+      "speed_violation_mps": 0.0,
+      "torque_violation_Nm": 0.0,
+      "active_constraint_steps": 6000,
+      "mean_solve_time_ms": 3.60641027490298,
+      "max_solve_time_ms": 6.62591599393636,
+      "final_z_m": -0.0041255263125828945,
+      "peak_z_m": -0.06017225180004582,
+      "n_infeasible_solves": 0
+    },
+    "impedance_clipped": {
+      "realization_rmse_mps2": 0.12649816014641246,
+      "max_abs_position_m": 0.1040045624383803,
+      "max_speed_mps": 0.41379369834048174,
+      "max_abs_torque_Nm": 32.436491268587226,
+      "max_abs_command_N": 28.067883112927216,
+      "position_violation_m": 0.0440045624383803,
+      "speed_violation_mps": 0.06379369834048176,
+      "torque_violation_Nm": 0.0,
+      "active_constraint_steps": 0,
+      "mean_solve_time_ms": 0.0,
+      "max_solve_time_ms": 0.0,
+      "final_z_m": -0.057332091555390985,
+      "peak_z_m": -0.1040045624383803,
+      "n_infeasible_solves": 0
+    },
+    "admittance_mpc": {
+      "realization_rmse_mps2": 2.515254021726613,
+      "max_abs_position_m": 0.06390880462640885,
+      "max_speed_mps": 0.10354215463421014,
+      "max_abs_torque_Nm": 35.10643496750947,
+      "max_abs_command_N": 68.09776024330408,
+      "position_violation_m": 0.003908804626408857,
+      "speed_violation_mps": 0.0,
+      "torque_violation_Nm": 0.0,
+      "active_constraint_steps": 6000,
+      "mean_solve_time_ms": 41.37229831656441,
+      "max_solve_time_ms": 128.03812499623746,
+      "final_z_m": -0.06202210985009993,
+      "peak_z_m": -0.06361310018450339,
+      "n_infeasible_solves": 0
+    },
+    "admittance_clipped": {
+      "realization_rmse_mps2": 0.061432639863111115,
+      "max_abs_position_m": 0.1476271932803318,
+      "max_speed_mps": 0.11362663125116138,
+      "max_abs_torque_Nm": 27.3712241607926,
+      "max_abs_command_N": 17.31404999523724,
+      "position_violation_m": 0.0876271932803318,
+      "speed_violation_mps": 0.0,
+      "torque_violation_Nm": 0.0,
+      "active_constraint_steps": 0,
+      "mean_solve_time_ms": 0.0,
+      "max_solve_time_ms": 0.0,
+      "final_z_m": -0.1476271932803318,
+      "peak_z_m": -0.1476271932803318,
+      "n_infeasible_solves": 0
+    }
+  },
+  "wall_time_s": 21.55306266702246
+}
