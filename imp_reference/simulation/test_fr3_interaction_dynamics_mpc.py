@@ -143,6 +143,20 @@ def test_horizon_wide_torque_feasibility_binding():
         "the tightened scenario above would not actually be testing constraint activation"
     )
 
+    # The docstring's claim (b): a working constraint doesn't just clip
+    # joint 4, it makes the QP redistribute correction effort elsewhere.
+    # Check directly that at least one other joint's peak torque increased
+    # once joint 4 was constrained, rather than only asserting joint 4
+    # itself and inferring redistribution occurred.
+    other_joints = [j for j in range(7) if j != 3]
+    max_other_tightened = np.max(np.abs(step.horizon_tau[:, other_joints]), axis=0)
+    max_other_baseline = np.max(np.abs(baseline_step.horizon_tau[:, other_joints]), axis=0)
+    assert np.any(max_other_tightened > max_other_baseline + 1.0), (
+        "no other joint's torque increased by more than 1 Nm once joint 4 was "
+        "constrained -- the QP may be reducing overall correction effort rather than "
+        "redistributing it, which the docstring claims but this test did not previously check"
+    )
+
 
 def test_invalid_forecast_shape_is_rejected():
     env = _env()

@@ -1,7 +1,7 @@
 """Online generator switching: one MPC controller instance, no restart, no retuning.
 
-Demonstrates the practical content of Theorem 1 (Affine Generator Independence,
-paper.md Section 6) directly rather than only by running two separate
+Demonstrates the practical content of Theorem 1 (Affine Generator Template
+Invariance, paper.md Section 6) directly rather than only by running two separate
 simulations side by side (Section 7's main experiment). A single
 ``InteractionDynamicsMPC`` instance is constructed once; at each scheduled
 switch time, exactly one attribute -- ``controller.generator`` -- is

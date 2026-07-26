@@ -48,7 +48,7 @@ def test_switching_never_exceeds_the_controllers_own_rate_limit():
 def test_only_the_generator_attribute_changes_across_a_switch():
     """Construct the controller once, swap .generator, and confirm the
     plant matrices and previous_command state are untouched by the swap --
-    the literal content of Theorem 1 (Affine Generator Independence)."""
+    the literal content of Theorem 1 (Affine Generator Template Invariance)."""
     cfg = MPCConfig()
     controller = InteractionDynamicsMPC(ImpedanceReference(), cfg)
     a_before, b_before = controller.A.copy(), controller.B.copy()

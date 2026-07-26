@@ -2,21 +2,38 @@
 
 Section 8.1 states that the original k_null=10, d_null=2 gains let joint
 configuration drift more than a radian from Q_NEUTRAL over a full 6 s
-benchmark run in three of four conditions, and that k_null=40, d_null=8
-controls this without measurably damping either generator's own requested
-response. That claim was previously backed only by ad hoc interactive
-sessions with no saved script or artifact -- this script is the
-reproducible version, run over the same four (generator, controller)
-conditions as run_fr3_experiments.py's main benchmark.
+benchmark run -- in every one of the four conditions, not three -- and that
+k_null=40, d_null=8 substantially controls it. That claim was previously
+backed only by ad hoc interactive sessions with no saved script or
+artifact; this script is the reproducible version, run over the same four
+(generator, controller) conditions as run_fr3_experiments.py's main
+benchmark.
 
 For each (k_null, d_null) pair and each condition, this script tracks:
   - max_q_dev: the largest ||q - Q_NEUTRAL|| observed over the full run,
     the quantity Section 8.1's claim is directly about;
-  - max_abs_position_m: to confirm a stronger gain does not, as a side
-    effect, suppress the generator's own requested displacement (this is
-    exactly the effect that ruled out even-stronger gains like 100/20);
-  - torque_violation_Nm and n_infeasible_solves: to confirm no gain value
-    in the sweep silently breaks the hard safety guarantees.
+  - max_abs_position_m: a coarse proxy for whether a stronger gain
+    suppresses the generator's own requested displacement as a side
+    effect (it does, visibly, at k_null=100/d_null=20 for admittance).
+    This is only a proxy, not a clean measurement of generator damping in
+    isolation: for the predictive conditions, position is independently
+    constrained by the workspace box, so its peak cannot isolate the
+    gain's effect from the constraint's; even for the reactive
+    conditions, the qualitative decoupling failure this sweep is
+    diagnosing (approximate, regularization-limited, not exact) is itself
+    what couples null-space gain to task-space displacement, so the two
+    effects are not separable from this metric alone.
+  - max_tau_over_limit_Nm and n_infeasible_solves: reported for every
+    condition, not assumed zero. The reactive (clipped) controller has no
+    QP and therefore no hard torque constraint at all -- unlike the
+    predictive conditions, which never violate at any gain in this sweep,
+    the reactive impedance condition at the original k_null=10, d_null=2
+    gains is actuator-infeasible, exceeding tau_max by about 1.6 Nm. This
+    sweep does not soften or hide that: it is direct evidence for why a
+    hard, QP-enforced torque constraint (Section 8.1) is not a
+    formality -- an under-tuned auxiliary term can push an unconstrained
+    reactive law past the actuator limit even when the interaction task
+    itself is unremarkable.
 """
 
 from __future__ import annotations

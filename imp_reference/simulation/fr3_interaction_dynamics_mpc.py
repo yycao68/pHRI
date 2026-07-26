@@ -165,16 +165,21 @@ class FR3MPCConfig:
     # leakage from tau_aux over a full multi-second run. That residual
     # leakage is tiny per tick, but it is a slow, one-directional drift, and
     # a weak restoring spring lets it accumulate to over a radian of joint
-    # deviation from Q_NEUTRAL by mid-run in several benchmark conditions --
-    # confirmed by sweep_null_space_gains.py, saved as
+    # deviation from Q_NEUTRAL, in every one of the four benchmark
+    # conditions -- confirmed by sweep_null_space_gains.py, saved as
     # results/null_space_gain_sweep.json, tracking max deviation over the
-    # full 6 s run (not just an early window) in all four benchmark
-    # conditions. Stronger
-    # settings (e.g. 100/20) control drift even further but measurably
-    # suppress the admittance generator's own task-space response (checked
-    # directly, not assumed); 40/8 was the gentlest increase in the sweep
-    # that keeps deviation under ~0.2 rad in every benchmark condition
-    # without visibly damping the requested interaction dynamics.
+    # full 6 s run (not just an early window). This is not only a
+    # tracking-quality problem: at 10/2, the reactive (clipped) impedance
+    # condition becomes actuator-infeasible, exceeding tau_max by ~1.6 Nm
+    # (the reactive law has no QP and hence no hard torque constraint to
+    # catch this, unlike the predictive conditions). Stronger settings
+    # (e.g. 100/20) control drift further but measurably suppress the
+    # admittance generator's own task-space response; 40/8 was the
+    # gentlest increase in the sweep that keeps deviation under 0.29 rad
+    # in every condition and clears the torque limit throughout, at the
+    # cost of a real but smaller effect on task-space response than 10/2
+    # produces -- the sweep artifact does not support a stronger claim
+    # than that (see its docstring for what it does and does not isolate).
     k_null: float = 40.0
     d_null: float = 8.0
     lambda_reg: float = 1.0e-6
@@ -191,7 +196,9 @@ class FR3MPCStep:
     status: str
     solve_time_s: float
     horizon_tau: np.ndarray  # (horizon, 7) predicted torque at EVERY horizon step, not just i=0
-    horizon_slack_max: float  # max slack used across the horizon; 0 = workspace/speed box never traded off
+    horizon_slack_max: float  # max of position and speed slack combined; 0 = box never traded off
+    horizon_slack_max_position: float  # max position slack alone (s_pos_0..s_pos_{H-1})
+    horizon_slack_max_speed: float  # max speed slack alone (s_speed_0..s_speed_{H-1})
 
 
 # ---------------------------------------------------------------------------
@@ -578,7 +585,11 @@ class FR3RealizationMPC:
             horizon_tau[k] = combine_full_torque(tau_base, J_v, f_k)
             predicted_x = A @ predicted_x + B @ (f_k + fh_k) + B_accel @ d_known
 
-        slack_max = float(np.max(sequence[n_i:])) if n_s > 0 else 0.0
+        slack_position = sequence[n_i : n_i + H]
+        slack_speed = sequence[n_i + H : n_i + n_s]
+        slack_max_position = float(np.max(slack_position)) if H > 0 else 0.0
+        slack_max_speed = float(np.max(slack_speed)) if H > 0 else 0.0
+        slack_max = max(slack_max_position, slack_max_speed)
 
         return FR3MPCStep(
             command=command,
@@ -589,6 +600,8 @@ class FR3RealizationMPC:
             solve_time_s=solve_time,
             horizon_tau=horizon_tau,
             horizon_slack_max=slack_max,
+            horizon_slack_max_position=slack_max_position,
+            horizon_slack_max_speed=slack_max_speed,
         )
 
 

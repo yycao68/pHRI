@@ -121,12 +121,18 @@ def run_case(
         "active": [],
         "solver_status": [],
         "solve_time_s": [],
+        "slack_position": [],
+        "slack_speed": [],
     }
     last_residual = 0.0
     last_active: list[str] = []
     last_status = "not_applicable"
     last_solve_time = 0.0
+    last_slack_position = 0.0
+    last_slack_speed = 0.0
     n_infeasible = 0
+    n_solves_with_nontrivial_slack = 0
+    slack_epsilon = 1e-6  # below this, treat slack as "not used" (solver/rounding noise)
 
     for i in range(n_steps):
         t = env.time
@@ -148,6 +154,10 @@ def run_case(
                     last_active = list(step.active_constraints)
                     last_status = step.status
                     last_solve_time = step.solve_time_s
+                    last_slack_position = step.horizon_slack_max_position
+                    last_slack_speed = step.horizon_slack_max_speed
+                    if step.horizon_slack_max > slack_epsilon:
+                        n_solves_with_nontrivial_slack += 1
                 except RuntimeError:
                     # Recursive feasibility is not guaranteed (paper.md
                     # Prop. 3): the frozen-Jacobian prediction and MuJoCo's
@@ -166,6 +176,8 @@ def run_case(
                     last_active = ["infeasible_fallback"]
                     last_status = "infeasible_fallback"
                     last_solve_time = 0.0
+                    last_slack_position = 0.0
+                    last_slack_speed = 0.0
                     n_infeasible += 1
                 previous_command = f_cmd_held
             elif controller_kind == "clipped":
@@ -176,6 +188,8 @@ def run_case(
                 last_active = []
                 last_status = "not_applicable"
                 last_solve_time = 0.0
+                last_slack_position = 0.0
+                last_slack_speed = 0.0
             else:
                 raise ValueError(controller_kind)
 
@@ -199,6 +213,8 @@ def run_case(
         log["active"].append(last_active)
         log["solver_status"].append(last_status)
         log["solve_time_s"].append(last_solve_time)
+        log["slack_position"].append(last_slack_position)
+        log["slack_speed"].append(last_slack_speed)
 
         env.apply_torque(tau)
         env.apply_ee_wrench(np.concatenate([force, np.zeros(3)]))
@@ -213,6 +229,8 @@ def run_case(
         "human_force",
         "reference_acceleration",
         "predicted_realization_residual",
+        "slack_position",
+        "slack_speed",
     ):
         log[key] = np.asarray(log[key])
     # Empirical task acceleration from the MuJoCo trajectory. This includes
@@ -229,6 +247,7 @@ def run_case(
     # physically realized residual.
     log["realization_residual"] = log["empirical_realization_residual"]
     log["n_infeasible"] = n_infeasible
+    log["n_solves_with_nontrivial_slack"] = n_solves_with_nontrivial_slack
     return log
 
 
@@ -248,6 +267,15 @@ def metrics(log, cfg: FR3MPCConfig) -> dict:
     solve_times = [t for t in log["solve_time_s"] if t > 0.0]
     max_per_joint = np.max(np.abs(tau), axis=0)
     torque_utilization = max_per_joint / cfg.tau_max
+    slack_position = log["slack_position"]
+    slack_speed = log["slack_speed"]
+    # These are vector-norm RMSE: the squared per-sample 3-vector residual is
+    # summed across x/y/z, then averaged over time, then sqrt'd. The planar
+    # study's realization_rmse_mps2 (run_experiments.py) is componentwise
+    # RMSE instead: it flattens all components and time samples into one mean
+    # before the sqrt. The two are not the same quantity and are not directly
+    # comparable across studies -- see paper.md's Table 1/2 captions, which
+    # label each one explicitly for this reason.
     return {
         "realization_rmse_mps2": float(
             np.sqrt(np.mean(np.sum(residual[valid_empirical] ** 2, axis=1)))
@@ -258,6 +286,9 @@ def metrics(log, cfg: FR3MPCConfig) -> dict:
         "predicted_realization_rmse_mps2": float(
             np.sqrt(np.mean(np.sum(predicted_residual**2, axis=1)))
         ),
+        "max_position_slack_m": float(np.max(slack_position)) if len(slack_position) else 0.0,
+        "max_speed_slack_mps": float(np.max(slack_speed)) if len(slack_speed) else 0.0,
+        "n_solves_with_nontrivial_slack": int(log.get("n_solves_with_nontrivial_slack", 0)),
         "max_abs_position_m": float(np.max(np.abs(position))),
         "max_speed_mps": float(np.max(np.abs(velocity))),
         "max_speed_norm_mps": float(np.max(np.linalg.norm(velocity, axis=1))),

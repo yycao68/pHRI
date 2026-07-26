@@ -46,6 +46,9 @@
       "realization_rmse_mps2": 2.408273919034847,
       "empirical_realization_rmse_mps2": 2.408273919034847,
       "predicted_realization_rmse_mps2": 2.5047367021698124,
+      "max_position_slack_m": 5.30980462873755e-05,
+      "max_speed_slack_mps": 4.7116831809170004e-07,
+      "n_solves_with_nontrivial_slack": 110,
       "max_abs_position_m": 0.06018221100060317,
       "max_speed_mps": 0.2996982754364203,
       "max_speed_norm_mps": 0.3006611804051502,
@@ -75,8 +78,8 @@
       "torque_violation_Nm": 0.0,
       "active_constraint_steps": 2240,
       "torque_constraint_active_steps": 0,
-      "mean_solve_time_ms": 4.34157360267515,
-      "max_solve_time_ms": 8.694541058503091,
+      "mean_solve_time_ms": 4.375822670990601,
+      "max_solve_time_ms": 7.200709078460932,
       "final_z_m": 0.002419056468664804,
       "peak_z_m": -0.06018221100060317,
       "n_infeasible_solves": 0
@@ -85,6 +88,9 @@
       "realization_rmse_mps2": 0.3869960868541059,
       "empirical_realization_rmse_mps2": 0.3869960868541059,
       "predicted_realization_rmse_mps2": 0.10705723571403625,
+      "max_position_slack_m": 0.0,
+      "max_speed_slack_mps": 0.0,
+      "n_solves_with_nontrivial_slack": 0,
       "max_abs_position_m": 0.10435951616666461,
       "max_speed_mps": 0.41509326056208445,
       "max_speed_norm_mps": 0.4155715077327342,
@@ -124,6 +130,9 @@
       "realization_rmse_mps2": 0.36646933672160964,
       "empirical_realization_rmse_mps2": 0.36646933672160964,
       "predicted_realization_rmse_mps2": 0.5018689977981017,
+      "max_position_slack_m": 2.6457358877618298e-05,
+      "max_speed_slack_mps": 7.89859923186976e-07,
+      "n_solves_with_nontrivial_slack": 203,
       "max_abs_position_m": 0.060086241892066905,
       "max_speed_mps": 0.0700107836712423,
       "max_speed_norm_mps": 0.07025305773397136,
@@ -153,8 +162,8 @@
       "torque_violation_Nm": 0.0,
       "active_constraint_steps": 4140,
       "torque_constraint_active_steps": 0,
-      "mean_solve_time_ms": 11.581045232790833,
-      "max_solve_time_ms": 106.49812500923872,
+      "mean_solve_time_ms": 11.823098746826872,
+      "max_solve_time_ms": 108.68916707113385,
       "final_z_m": -0.060007595938089464,
       "peak_z_m": -0.060086241892066905,
       "n_infeasible_solves": 0
@@ -163,6 +172,9 @@
       "realization_rmse_mps2": 0.34585194677561465,
       "empirical_realization_rmse_mps2": 0.34585194677561465,
       "predicted_realization_rmse_mps2": 0.05934996515485266,
+      "max_position_slack_m": 0.0,
+      "max_speed_slack_mps": 0.0,
+      "n_solves_with_nontrivial_slack": 0,
       "max_abs_position_m": 0.10663707322136373,
       "max_speed_mps": 0.04133318903425324,
       "max_speed_norm_mps": 0.0475619305804531,
@@ -199,5 +211,5 @@
       "n_infeasible_solves": 0
     }
   },
-  "wall_time_s": 12.927440874977037
+  "wall_time_s": 13.195807083044201
 }

@@ -93,22 +93,25 @@ def test_predictive_realization_has_no_unhandled_infeasibility():
 
 
 def test_predictive_realization_respects_workspace_bound():
-    """Table 2: predictive peak |e_z| is 0.0602 m / 0.0639 m against a 0.06 m
-    bound -- within millimeters, via the slack-relaxed soft constraint. This
-    asserts a 1 cm envelope around the bound (roughly 3x the largest observed
-    slack use), tight enough to catch a real regression, loose enough not to
-    be flaky against minor retuning."""
+    """Table 2: predictive peak |e_z| is 0.0602 m / 0.0601 m against a 0.06 m
+    bound -- within a fraction of a millimeter, via the slack-relaxed soft
+    constraint. This asserts a 2 mm envelope around the bound (roughly 10x
+    the largest observed overshoot of ~0.2 mm): tight enough to catch a real
+    regression, loose enough not to be flaky against minor retuning. An
+    earlier version of this test used a 1 cm envelope -- 50x looser than the
+    actual margin -- which would not have caught a regression an order of
+    magnitude worse than what is actually reported."""
     cfg = FR3MPCConfig()
     for generator_name in ("impedance", "admittance"):
         m = _all_conditions()[(generator_name, "mpc")]
-        assert m["max_abs_position_m"] <= cfg.position_limit + 0.01, (
+        assert m["max_abs_position_m"] <= cfg.position_limit + 0.002, (
             f"{generator_name} predictive: peak |e_z|={m['max_abs_position_m']:.4f} m "
-            f"is more than 1 cm past the {cfg.position_limit} m bound"
+            f"is more than 2 mm past the {cfg.position_limit} m bound"
         )
 
 
 def test_reactive_clipping_overshoots_predictive_realization():
-    """The paper's central empirical contrast (Table 2, Figure 3): under an
+    """The paper's central empirical contrast (Table 2, Figure 4): under an
     identical command/rate box and an identical generator, reactive clipping
     -- which has no lookahead on the workspace bound -- displaces the EE
     further than predictive realization. Checked as a relative comparison
