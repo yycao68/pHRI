@@ -118,7 +118,8 @@ def metrics(log, cfg: MPCConfig) -> dict:
     rate_step = cfg.force_rate_limit * cfg.dt
     return {
         "max_abs_position_m": float(np.max(np.abs(position))),
-        "max_speed_mps": float(np.max(np.linalg.norm(velocity, axis=1))),
+        "max_speed_mps": float(np.max(np.abs(velocity))),
+        "max_speed_norm_mps": float(np.max(np.linalg.norm(velocity, axis=1))),
         "position_limit_m": cfg.position_limit,
         "speed_limit_mps": cfg.speed_limit,
         "command_jump_at_switch_N": log["command_jump_at_switch"],
@@ -129,7 +130,7 @@ def metrics(log, cfg: MPCConfig) -> dict:
     }
 
 
-def make_figure(log, cfg: MPCConfig, output: Path) -> None:
+def make_figure(log, cfg: MPCConfig, output: Path, switch_times=SWITCH_TIMES) -> None:
     colors = {"impedance": "#0072B2", "admittance": "#D55E00"}
     time = log["time"]
     active = np.asarray(log["active_generator"])
@@ -137,12 +138,12 @@ def make_figure(log, cfg: MPCConfig, output: Path) -> None:
     fig, axes = plt.subplots(3, 1, figsize=(9.0, 8.0), sharex=True)
 
     # Shade the background by active generator.
-    boundaries = [0.0] + list(SWITCH_TIMES) + [time[-1]]
+    boundaries = [0.0] + list(switch_times) + [time[-1]]
     names = ["impedance", "admittance", "impedance"]
     for ax in axes:
         for start, end, name in zip(boundaries[:-1], boundaries[1:], names):
             ax.axvspan(start, end, color=colors[name], alpha=0.08, lw=0)
-        for switch_t in SWITCH_TIMES:
+        for switch_t in switch_times:
             ax.axvline(switch_t, color="0.3", linestyle=":", linewidth=1.2)
 
     axes[0].plot(time, log["state"][:, 1], color="black", linewidth=2)

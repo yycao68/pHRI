@@ -23,6 +23,8 @@ exact value.
 import sys
 from pathlib import Path
 
+import numpy as np
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "simulation"))
 
@@ -63,6 +65,17 @@ def test_no_torque_violation_in_any_condition():
     violated at the executed sample in any of the four conditions."""
     for key, m in _all_conditions().items():
         assert m["torque_violation_Nm"] == 0.0, f"{key}: torque limit violated ({m['torque_violation_Nm']} Nm)"
+        assert m["max_torque_utilization"] <= 1.0 + 1e-8
+
+
+def test_reports_empirical_and_model_predicted_residuals_separately():
+    """The paper distinguishes the residual observed from MuJoCo motion from
+    the residual reconstructed through the controller model. Both must be
+    finite, and the legacy realization key must denote the empirical value."""
+    for key, m in _all_conditions().items():
+        assert np.isfinite(m["empirical_realization_rmse_mps2"]), key
+        assert np.isfinite(m["predicted_realization_rmse_mps2"]), key
+        assert m["realization_rmse_mps2"] == m["empirical_realization_rmse_mps2"]
 
 
 def test_predictive_realization_has_no_unhandled_infeasibility():

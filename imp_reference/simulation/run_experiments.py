@@ -119,7 +119,8 @@ def metrics(log, cfg: MPCConfig) -> dict[str, float | int]:
     return {
         "realization_rmse_mps2": float(np.sqrt(np.mean(residual**2))),
         "max_abs_position_m": float(np.max(np.abs(position))),
-        "max_speed_mps": float(np.max(np.linalg.norm(velocity, axis=1))),
+        "max_speed_mps": float(np.max(np.abs(velocity))),
+        "max_speed_norm_mps": float(np.max(np.linalg.norm(velocity, axis=1))),
         "max_abs_command_N": float(np.max(np.abs(command))),
         "position_violation_m": float(
             max(0.0, np.max(np.abs(position)) - cfg.position_limit)

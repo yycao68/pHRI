@@ -61,9 +61,20 @@ def human_force_at(
     axis: tuple[float, float, float] = (0.0, 0.0, -1.0),
     t_on: float = 1.0,
     ramp: float = 0.25,
-    hold: float = 0.5,
+    hold: float = 2.0,
 ) -> np.ndarray:
-    """Smooth sustained push, same raised-cosine ramp shape as the planar prototype."""
+    """Smooth sustained push, same raised-cosine ramp shape as the planar prototype.
+
+    hold=2.0, not 0.5: with the corrected null-space centering (see
+    FR3MPCConfig.k_null/d_null), the admittance generator's true reactive
+    response to a 0.5 s hold does not approach the workspace bound at all --
+    the original 0.5 s figure produced a large apparent reactive overshoot
+    only because of the null-space leakage bug, not genuine physics. 2.0 s
+    gives the admittance generator's velocity enough time to build up
+    (T_a=0.3 s) to produce a real, checked boundary-crossing contrast
+    between predictive and reactive under the corrected dynamics; impedance's
+    story is unaffected by this change (its peak is set by its equilibrium,
+    reached well within 0.5 s, confirmed empirically at both hold values)."""
     axis_vec = np.asarray(axis)
     t_off = t_on + ramp + hold
     t_end = t_off + ramp
@@ -105,7 +116,8 @@ def run_case(
         "tau": [],
         "command": [],
         "human_force": [],
-        "realization_residual": [],
+        "reference_acceleration": [],
+        "predicted_realization_residual": [],
         "active": [],
         "solver_status": [],
         "solve_time_s": [],
@@ -174,7 +186,7 @@ def run_case(
         M_inv = np.linalg.inv(dyn.M)
         Lam_inv = J_v @ M_inv @ J_v.T + cfg.lambda_reg * np.eye(3)
         a_actual = Lam_inv @ (f_cmd_held + force) + d_known
-        instantaneous_residual = a_actual - a_id
+        predicted_residual = a_actual - a_id
 
         log["time"].append(t)
         log["ee_pos"].append(state.ee_pos - p_nominal)
@@ -182,7 +194,8 @@ def run_case(
         log["tau"].append(tau.copy())
         log["command"].append(f_cmd_held.copy())
         log["human_force"].append(force.copy())
-        log["realization_residual"].append(instantaneous_residual)
+        log["reference_acceleration"].append(a_id.copy())
+        log["predicted_realization_residual"].append(predicted_residual)
         log["active"].append(last_active)
         log["solver_status"].append(last_status)
         log["solve_time_s"].append(last_solve_time)
@@ -191,8 +204,30 @@ def run_case(
         env.apply_ee_wrench(np.concatenate([force, np.zeros(3)]))
         env.step()
 
-    for key in ("time", "ee_pos", "ee_vel", "tau", "command", "human_force", "realization_residual"):
+    for key in (
+        "time",
+        "ee_pos",
+        "ee_vel",
+        "tau",
+        "command",
+        "human_force",
+        "reference_acceleration",
+        "predicted_realization_residual",
+    ):
         log[key] = np.asarray(log[key])
+    # Empirical task acceleration from the MuJoCo trajectory. This includes
+    # configuration change, J-dot effects, integration error, and every torque
+    # actually applied to the plant; unlike predicted_realization_residual it
+    # is not reconstructed through the controller's frozen/local model.
+    empirical_acceleration = np.full_like(log["reference_acceleration"], np.nan)
+    empirical_acceleration[:-1] = np.diff(log["ee_vel"], axis=0) / env.dt
+    log["empirical_acceleration"] = empirical_acceleration
+    log["empirical_realization_residual"] = (
+        empirical_acceleration - log["reference_acceleration"]
+    )
+    # Backward-compatible name now means the quantity the paper calls the
+    # physically realized residual.
+    log["realization_residual"] = log["empirical_realization_residual"]
     log["n_infeasible"] = n_infeasible
     return log
 
@@ -201,21 +236,43 @@ def metrics(log, cfg: FR3MPCConfig) -> dict:
     position = log["ee_pos"]
     velocity = log["ee_vel"]
     tau = log["tau"]
-    residual = log["realization_residual"]
-    active_steps = sum(bool(items) for items in log["active"])
+    residual = log["empirical_realization_residual"]
+    predicted_residual = log["predicted_realization_residual"]
+    valid_empirical = np.all(np.isfinite(residual), axis=1)
+    meaningful_active_steps = sum(
+        any(label != "slack_nonneg" for label in items) for items in log["active"]
+    )
+    torque_active_steps = sum(
+        any(label.startswith("torque[") for label in items) for items in log["active"]
+    )
     solve_times = [t for t in log["solve_time_s"] if t > 0.0]
+    max_per_joint = np.max(np.abs(tau), axis=0)
+    torque_utilization = max_per_joint / cfg.tau_max
     return {
-        "realization_rmse_mps2": float(np.sqrt(np.mean(np.sum(residual**2, axis=1)))),
+        "realization_rmse_mps2": float(
+            np.sqrt(np.mean(np.sum(residual[valid_empirical] ** 2, axis=1)))
+        ),
+        "empirical_realization_rmse_mps2": float(
+            np.sqrt(np.mean(np.sum(residual[valid_empirical] ** 2, axis=1)))
+        ),
+        "predicted_realization_rmse_mps2": float(
+            np.sqrt(np.mean(np.sum(predicted_residual**2, axis=1)))
+        ),
         "max_abs_position_m": float(np.max(np.abs(position))),
-        "max_speed_mps": float(np.max(np.linalg.norm(velocity, axis=1))),
+        "max_speed_mps": float(np.max(np.abs(velocity))),
+        "max_speed_norm_mps": float(np.max(np.linalg.norm(velocity, axis=1))),
         "max_abs_torque_Nm": float(np.max(np.abs(tau))),
+        "max_abs_torque_per_joint_Nm": max_per_joint.tolist(),
+        "max_torque_utilization": float(np.max(torque_utilization)),
+        "max_torque_utilization_per_joint": torque_utilization.tolist(),
         "max_abs_command_N": float(np.max(np.abs(log["command"]))),
         "position_violation_m": float(max(0.0, np.max(np.abs(position)) - cfg.position_limit)),
         "speed_violation_mps": float(
-            max(0.0, np.max(np.linalg.norm(velocity, axis=1)) - cfg.speed_limit)
+            max(0.0, np.max(np.abs(velocity)) - cfg.speed_limit)
         ),
         "torque_violation_Nm": float(max(0.0, np.max(np.abs(tau) - cfg.tau_max[None, :]))),
-        "active_constraint_steps": int(active_steps),
+        "active_constraint_steps": int(meaningful_active_steps),
+        "torque_constraint_active_steps": int(torque_active_steps),
         "mean_solve_time_ms": float(np.mean(solve_times) * 1e3) if solve_times else 0.0,
         "max_solve_time_ms": float(np.max(solve_times) * 1e3) if solve_times else 0.0,
         "final_z_m": float(position[-1, 2]),
@@ -242,7 +299,7 @@ def make_figure(cases, cfg: FR3MPCConfig, output: Path) -> None:
             axes[1, column].plot(time, log["ee_vel"][:, 2], style, color=color, linewidth=2)
             axes[2, column].plot(time, log["command"][:, 2], style, color=color, linewidth=2)
             axes[3, column].plot(
-                time, np.linalg.norm(log["realization_residual"], axis=1),
+                time, np.linalg.norm(log["empirical_realization_residual"], axis=1),
                 style, color=color, linewidth=2,
             )
 

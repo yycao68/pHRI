@@ -20,6 +20,7 @@
   "metrics": {
     "max_abs_position_m": 0.06651967682024529,
     "max_speed_mps": 0.08280992445257251,
+    "max_speed_norm_mps": 0.08280992445257251,
     "position_limit_m": 0.1,
     "speed_limit_mps": 0.22,
     "command_jump_at_switch_N": {

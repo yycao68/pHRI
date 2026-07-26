@@ -159,8 +159,22 @@ class FR3MPCConfig:
     slack_weight: float = 1.0e8
     K_rot: float = 20.0
     D_rot: float = 6.0
-    k_null: float = 10.0
-    d_null: float = 2.0
+    # 40.0 / 8.0, not 10.0 / 2.0: the weaker gains left the null-space
+    # centering torque too small to counteract the residual (regularization-
+    # induced, no longer exactly zero -- see compute_tau_base's docstring)
+    # leakage from tau_aux over a full multi-second run. That residual
+    # leakage is tiny per tick, but it is a slow, one-directional drift, and
+    # a weak restoring spring lets it accumulate to over a radian of joint
+    # deviation from Q_NEUTRAL by mid-run in several benchmark conditions --
+    # confirmed empirically by sweeping k_null/d_null and checking max
+    # deviation over the full 6 s run, not just an early window. Stronger
+    # settings (e.g. 100/20) control drift even further but measurably
+    # suppress the admittance generator's own task-space response (checked
+    # directly, not assumed); 40/8 was the gentlest increase in the sweep
+    # that keeps deviation under ~0.2 rad in every benchmark condition
+    # without visibly damping the requested interaction dynamics.
+    k_null: float = 40.0
+    d_null: float = 8.0
     lambda_reg: float = 1.0e-6
     osqp_eps: float = 1.0e-4
     osqp_max_iter: int = 20_000
@@ -192,7 +206,7 @@ def compute_tau_base(
     D_rot: float,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Feedforward + orientation-hold + null-space torque, J_v, and the
-    translational cross-coupling those "auxiliary" torques produce.
+    known residual acceleration from auxiliary torque plus ``Jdot_v*qdot``.
 
     ``tau_ff = dyn.Cq_dot`` exactly cancels the joint-space bias C*qdot+g in
     the real dynamics (the nominal interaction pose is held fixed, so there
@@ -204,10 +218,11 @@ def compute_tau_base(
     projector of the POSITION Jacobian ``J_v`` alone (not the full 6-row
     Jacobian): ``N_bar_v = I - J_v_bar @ J_v`` with ``J_v_bar = M^-1 J_v^T
     Lambda_pos``. This is the standard dynamically-consistent decomposition
-    (Khatib 1987) restricted to the 3-DOF position task, and it guarantees
-    ``J_v @ M^-1 @ N_bar_v^T @ (anything) == 0`` exactly: any torque of the
-    form ``N_bar_v^T @ x`` has zero effect on translational acceleration,
-    by construction, regardless of what ``x`` is.
+    (Khatib 1987) restricted to the 3-DOF position task. With an exact inverse
+    it gives ``J_v @ M^-1 @ N_bar_v^T == 0``. This implementation uses a
+    small Tikhonov regularization in ``Lambda_pos`` for numerical robustness,
+    so the decoupling is approximate rather than algebraically exact; the
+    remaining, directly computed leakage is retained as ``d_known``.
 
     An earlier version of this module projected ``tau_null`` through the
     FULL-task null-space projector (built from the 6-row Jacobian including
@@ -225,8 +240,9 @@ def compute_tau_base(
     ``k_null``/``d_null``/``K_rot``/``D_rot`` gain changes -- ruling out
     "just tune the gains" as a fix) and not fixable by tuning; only
     preventing the leakage at its source (this projection) fixes it.
-    Projecting through ``N_bar_v`` instead makes ``d_known`` identically
-    zero in exact arithmetic, so the feedback loop cannot occur.
+    Projecting through ``N_bar_v`` instead makes ``d_known`` small and
+    explicitly modeled, removing the large unprojected feedback path without
+    pretending the regularized projector is exact.
 
     Recomputing this every inner-loop tick (not just at QP-solve ticks) is
     what keeps the loop at its claimed rate -- see ``run_fr3_experiments.py``.
@@ -249,7 +265,12 @@ def compute_tau_base(
     N_bar_v = np.eye(n_dof) - J_v_bar @ J_v
 
     tau_aux = N_bar_v.T @ (tau_orient_raw + tau_null_raw)
-    d_known = J_v @ M_inv @ tau_aux  # ~0 by construction; kept for defensive robustness
+    # The task acceleration is J_v qdd + Jdot_v qdot. Bias cancellation removes
+    # C(q,qdot)qdot+g(q) from qdd, but it does not remove the kinematic
+    # Jdot_v*qdot term. Both known contributions belong in the residual model.
+    d_aux = J_v @ M_inv @ tau_aux  # small but nonzero under regularization
+    d_kinematic = dyn.dJ[:3, :] @ state.dq
+    d_known = d_aux + d_kinematic
 
     return tau_ff + tau_aux, J_v, d_known
 
