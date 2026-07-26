@@ -50,9 +50,11 @@ sys.path.insert(0, str(Path(__file__).parent))   # for impedance_mpc (same dir)
 from fr3_impedance import (
     make_impedance_params, cartesian_impedance_control, RobotState,
     AdmittanceController, make_admittance_params,
+    build_operational_space_model,
 )
 from fr3_mujoco import FR3MuJoCoEnv, Q_NEUTRAL
 from impedance_mpc import ImpedanceMPCController, ImpedanceMPCParams
+from so3_utils import rotation_error_matrix
 
 
 # ===========================================================================
@@ -470,7 +472,22 @@ class EpisodeController:
                     p_d, dp_d, ddp_d, R_d, dyn, state.q, state.dq,
                     t=t, traj_fn=circular_ref, dyn_query_fn=self.env.shadow_dynamics,
                     joint_traj_fn=joint_traj_fn)
-            tau = self.tau_cached
+                tau = self.tau_cached
+            else:
+                # 1 kHz inner loop: feedforward, orientation, and
+                # null-space torques are recomputed every tick from
+                # fresh (q, dq); only the QP correction F_mpc is held
+                # from the last solve.
+                J_v, J_w = dyn.J[:3, :], dyn.J[3:, :]
+                Lam_pos = np.linalg.inv(
+                    J_v @ np.linalg.inv(dyn.M) @ J_v.T + 1e-6 * np.eye(3))
+                tau_ff = dyn.Cq_dot + J_v.T @ (Lam_pos @ ddp_d)
+                e_R    = rotation_error_matrix(R_d, state.ee_rot)
+                p_mpc  = self.mpc_ctrl.p
+                tau_or = J_w.T @ (-p_mpc.K_rot * e_R - p_mpc.D_rot * state.ee_vel[3:])
+                N_bar  = build_operational_space_model(dyn, state.ee_vel).N_bar
+                tau    = (tau_ff + J_v.T @ self.F_mpc_cached + tau_or
+                          + self.mpc_ctrl.null_torque(state.q, state.dq, N_bar))
 
         else:  # classical impedance
             tau = cartesian_impedance_control(

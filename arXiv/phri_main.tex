@@ -10,6 +10,7 @@
 \usepackage{booktabs}
 \usepackage{bm}
 \usepackage{cite}
+\usepackage{enumitem}
 \usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
 
 \interdisplaylinepenalty=2500
@@ -67,32 +68,30 @@ Policy, George Mason University, Fairfax, VA, USA
 
 % ----------------------------------------------------------
 \begin{abstract}
-Safe physical human--robot interaction (pHRI) is fundamentally a problem
-of interaction dynamics: the robot must track a commanded motion, yield
-under human forces, respect actuator and joint limits, and stay
-predictable under persistent contact.
-Classical impedance control trades accuracy for safety---a sustained force
-produces the steady-state bias $e_\infty=-K_d^{-1}F_h$.
-We propose a predictive framework that makes the interaction error itself the
-modeled object: an operational-space feedforward cancels gravity and Coriolis
-terms and normalizes the task inertia, leaving a linear interaction-dynamics
-backbone (a double-integrator reduction of the interaction error) whose
-state-transition matrix is configuration-independent, with all robot
-dependence isolated in the input matrix.
+Safe physical human--robot interaction (pHRI) requires tracking a
+commanded motion, yielding under human forces, respecting actuator and
+joint limits, and staying predictable under persistent contact.
+Classical impedance control trades accuracy for safety: a sustained
+force produces the steady-state bias $e_\infty=-K_d^{-1}F_h$.
+We propose a predictive framework that models the interaction error
+itself: an operational-space feedforward cancels gravity and Coriolis
+terms and normalizes the task inertia, leaving a linear
+interaction-dynamics backbone --- a double-integrator reduction of the
+interaction error --- whose state-transition matrix is
+configuration-independent.
 This converts nonlinear torque-controlled pHRI into a linear
-constrained-control problem, so offset-free tracking, actuator feasibility,
-workspace-wide quadratic stabilizability of the nominal backbone, and
-sampled-data joint-limit safety follow with explicit assumptions.
-The online realization is a 30-variable convex QP at 100\,Hz with a Kalman
-filter that rejects persistent forces without steady-state error.
-In MuJoCo simulation of a 7-DOF Franka FR3, it attains
-sub-0.05\,mm steady-state error under a sustained 15\,N force versus
-44.8\,mm for classical impedance, sub-millimeter tracking on four 3-D
-circles, and robustness to measurement noise and 30\% inertial mismatch.
-Because the backbone reduces contact dynamics to a linear model with a known,
-fixed transition matrix, it may provide an analytic interaction-dynamics prior
-for model-based physical AI, on which a learned model need only capture the
-residual uncertainty of human intent, contact, and environment.
+constrained-control problem: offset-free tracking, actuator feasibility,
+quadratic stabilizability over a certified polytope of configurations,
+and sampled-data joint-limit safety follow from a 30-variable convex QP
+at 100\,Hz with a Kalman filter that rejects persistent forces without
+steady-state error.
+In MuJoCo simulation of a 7-DOF Franka FR3, it reduces steady-state
+error under a sustained 15\,N force from 44.8\,mm to below 0.05\,mm,
+holds sub-millimeter tracking on four 3-D circles, and is robust to
+position-measurement noise and up to 30\% inertial mismatch.
+Because the backbone reduces contact to a linear model with a fixed
+transition matrix, it may serve as a dynamics prior for model-based
+physical AI.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -218,8 +217,8 @@ per-sample enforcement.
 On a 7-DOF Franka FR3 in MuJoCo simulation, the controller reduces
 steady-state error under a sustained 15\,N force from 44.8\,mm (classical
 impedance) to below 0.05\,mm---a $>$800$\times$ reduction---while holding
-sub-millimeter tracking on four 3-D circles and remaining robust to measurement
-noise and 30\% inertial mismatch. Although developed for pHRI, the
+sub-millimeter tracking on four 3-D circles and remaining robust to
+position-measurement noise and up to 30\% inertial mismatch. Although developed for pHRI, the
 interaction-dynamics backbone requires only $M$, $C\dot q+G$, and $J_v$,
 offering a path toward interaction models that transfer across configurations
 for manipulation and whole-body control; a full realization of that vision is
@@ -448,30 +447,16 @@ of Definition~\ref{def:id}; offset-free tracking,
 actuator feasibility, and joint-limit safety are properties of this model, not
 of the configuration dynamics.
 
-\textbf{Key structural result.}
+\textbf{Structural result.}
 The continuous-time matrix $A_c=\begin{bmatrix}0&I_3\\0&0\end{bmatrix}$
-is nilpotent ($A_c^2=0$), so $e^{A_c\Delta t}=I+A_c\Delta t$ exactly
-and $A_d$ is configuration-independent.
-
-\textbf{Discretization note.}
-Since $A_c$ is nilpotent, both $A_d=I+A_c\Delta t$ and the exact ZOH input
-integral
-$B_d(\rho_k)=\int_0^{\Delta t}e^{A_c s}B_c\,ds
- =[-\tfrac{\Delta t^2}{2}\Laminv;\;-\Delta t\Laminv]^\top$
-are closed-form (no Forward-Euler $O(\Delta t^2)$ artifact); the same
-$B_d(\rho_k)$ is used in $\Gamma$ and the Kalman model~\eqref{eq:augstate}.
-
-\begin{remark}[Controllability and Detectability]\label{rem:feasibility}
-Since $\Lambda(q)$ in \eqref{eq:Lambda} is SPD away from kinematic singularities, $B_d(\rho_k)$ in
-\eqref{eq:lpv} has full column rank~3, and with $A_d$ mixing velocity into position the
-controllability matrix $[B_d\mid A_dB_d]$ has rank~6: the pair is uniformly
-controllable across the singularity-free workspace. Hence for $Q\succeq0$ with
-$(Q^{1/2},A_d)$ detectable, the DARE solution and gain
-$K_\infty=(R+B_d^\top P_\infty B_d)^{-1}B_d^\top P_\infty A_d$ exist at every
-configuration. Full column rank of $B_d$ likewise makes the augmented
-disturbance state detectable (an unobservable mode has $x_e=0$, forcing
-$B_d d=0$, i.e.\ $d=0$).
-\end{remark}
+is nilpotent ($A_c^2=0$), so the matrix exponential terminates exactly at
+first order and $A_d=e^{A_c\Delta t}=I+A_c\Delta t$ is
+configuration-independent and exact, with no discretization
+approximation; the exact ZOH input integral $B_d(\rho_k)$ is likewise
+closed-form. The LPV pair $(A_d,B_d(\rho))$ is uniformly controllable,
+and the disturbance state augmented in Sec.~\ref{sec:layer2c} is
+detectable, at every configuration away from kinematic singularities
+(proof: supplementary material, Sec.~S1, Remark~S1).
 
 \textit{Implementation note (regularization).}
 In code $\Lambda^{-1}(q)=J_vM^{-1}J_v^\top+\sigma I$ with $\sigma=10^{-6}$; this
@@ -533,8 +518,8 @@ similarly be softened with a penalized slack $s\geq0$ so the QP stays
 feasible and returns a minimum-violation command --- analogous to the
 joint-limit CBF relaxation of Sec.~\ref{sec:cbf}, though the present
 implementation instead returns a zero correction on infeasibility (see the
-correction-authority ablation below), which is simpler but not
-minimum-violation.
+correction-authority ablation in the supplementary material, Sec.~S8),
+which is simpler but not minimum-violation.
 
 The following result establishes that classical impedance control is not a
 competitor to the proposed framework but a special case of it: it is what the
@@ -633,7 +618,8 @@ impedance.
 \begin{corollary}[Existence of a Gain-Scheduled Infinite-Horizon
 Implementation]\label{cor:1khz}
 The infinite-horizon MPC admits a pure state-feedback realization
-$\Fmpck{k}=-K_\infty(\rho_k)x_{e,k}$. By Remark~\ref{rem:feasibility} the
+$\Fmpck{k}=-K_\infty(\rho_k)x_{e,k}$. By the DARE detectability result
+established in the supplementary material (Sec.~S1, Remark~S1), the
 stabilizing DARE solution $P_\infty(\rho)$ exists for each fixed $\rho$
 under the stated detectability assumptions, and $K_\infty(\rho_k)$ depends
 on $\rho_k$ only through $\Laminv$ --- a symmetric $3\times3$ SPD matrix,
@@ -747,8 +733,8 @@ it fixes $\rho_k=q$ so that $B_d(\rho_k)$ and the regulator gain are
 constant. Theorem~\ref{thm:workspace} below relaxes this to a single
 \emph{fixed feedback law} certified over a polytope of configurations,
 rather than one frozen configuration --- but that certified law is not the
-deployed receding-horizon MPC's realized policy (see the Scope remark
-after Theorem~\ref{thm:workspace}'s proof), so it does not by itself
+deployed receding-horizon MPC's realized policy (see the scope discussion
+accompanying Theorem~\ref{thm:workspace}), so it does not by itself
 remove the frozen-configuration caveat for the actual controller. The
 moving-reference experiments in Section~\ref{sec:experiments} are an
 empirical illustration, not a direct consequence, of
@@ -758,121 +744,28 @@ trajectory visits.
 \end{remark}
 
 \begin{theorem}[Quadratic Stabilizability of the Interaction-Dynamics Backbone]\label{thm:workspace}
-Consider the LPV interaction dynamics
-$x_{e,k+1}=A_d x_{e,k}+B_d(\rho_k)\Fmpck{k}$ with constant $A_d$ and
-$B_d(\rho)$ as in \eqref{eq:lpv}, and suppose $\Laminv(q)$ lies in a
-compact polytope over the operating region of interest,
-$\Laminv(q)\in\mathcal P=\operatorname{conv}\{L_1,\dots,L_V\}$ (e.g.\ the
-entry-wise box with $0\prec\lambda_{\min}I\preceq\Laminv\preceq\lambda_{\max}I$)
---- a certified bound on $\Laminv$, either established analytically over the
-entire singularity-free workspace or, as instantiated in the Numerical
-remark below, sampled over a specific operating region --- with vertex
-input matrices $B_v=[-\tfrac{\Delta t^2}{2}L_v;\,-L_v\Delta t]$. If there exist
-$Q=Q^\top\succ0$ and $Y\in\mathbb R^{3\times6}$ such that for every vertex
-$v=1,\dots,V$
-\begin{equation}\label{eq:lmi}
-  \begin{bmatrix} Q & (A_d Q + B_v Y)^\top\\ A_d Q + B_v Y & Q \end{bmatrix}\succ0,
-\end{equation}
-then the \emph{fixed} feedback $\Fmpc=Kx_e$, $K=YQ^{-1}$, makes $V(x)=x^\top Px$,
-$P=Q^{-1}$, a \emph{common} quadratic Lyapunov function
-($V(x_{e,k+1})\le\gamma V(x_{e,k})$, $\gamma<1$) for \emph{every} admissible
-configuration trajectory $\{\rho_k\}\subset\mathcal P$; this one fixed
-linear feedback law is thus exponentially stabilizing uniformly over
-$\mathcal P$, not only at a frozen configuration. This is a statement
-about the LPV \emph{backbone} under a single certified feedback gain, not
-directly about the finite-horizon receding-horizon MPC actually deployed
-(see the Scope remark below).
+If $\Laminv(q)$ stays within a compact polytope $\mathcal P$ over the
+operating region of interest, a finite vertex LMI feasibility test
+certifies a \emph{single} fixed linear feedback gain $K$ that makes the
+LPV backbone $x_{e,k+1}=A_dx_{e,k}+B_d(\rho_k)\Fmpck{k}$ exponentially
+stable --- by one common quadratic Lyapunov function --- uniformly over
+$\mathcal P$, independent of how fast the configuration $\rho_k$ varies.
+This is a statement about the LPV \emph{backbone} under that single
+certified gain, not directly about the finite-horizon receding-horizon
+MPC actually deployed, whose realized policy at each step is the QP's
+own minimizer rather than necessarily the certified $K$; the disturbance
+estimator, the receding-horizon re-solve, and the safety/passivity
+filters (Theorem~\ref{thm:invariance}, Proposition~\ref{prop:tank}) are
+separately-scoped results, not covered by this one certificate. For the
+FR3, sampling $\Laminv(q)$ along the circular benchmark (4700 samples,
+64 polytope vertices, all confirmed positive-definite) gives a feasible,
+well-conditioned certificate at guaranteed rate $\rho\le0.996$ over the
+\emph{sampled operating region traversed by the benchmark trajectory}
+--- not a verified bound over the entire singularity-free workspace. The
+full statement, the LMI, the proof, and the numerical instantiation are
+in the supplementary material (Sec.~S2, Theorem~S1), reproducible from
+the released script (\texttt{lmi\_workspace\_stability\_probe.py}).
 \end{theorem}
-
-\begin{proof}
-$B_d(\rho)$ is affine in $\Laminv(\rho)$, so for $\Laminv(\rho)=\sum_v\alpha_v L_v$
-($\alpha_v\ge0,\sum_v\alpha_v=1$), $A_d Q+B_d(\rho)Y=\sum_v\alpha_v(A_d Q+B_v Y)$.
-The block in~\eqref{eq:lmi} is affine in that quantity and the PSD cone is convex,
-so~\eqref{eq:lmi} holds for all $\rho\in\mathcal P$. A Schur complement gives
-$A_\text{cl}(\rho)Q A_\text{cl}(\rho)^\top\prec Q$ with
-$A_\text{cl}(\rho)=A_d+B_d(\rho)K$, i.e.\
-$A_\text{cl}(\rho)^\top P A_\text{cl}(\rho)-P\prec0$ with $P=Q^{-1}$, for all
-$\rho\in\mathcal P$. Hence $V$ decreases along every trajectory irrespective of
-how $\rho_k$ varies, for this fixed-gain closed loop. Composing with the
-detectable integrating-disturbance estimator of Theorem~\ref{thm:zss} makes
-the tracking error offset-free at each constant-contact equilibrium the
-trajectory visits, for this fixed-gain closed loop.
-\end{proof}
-
-This is the polytope-level counterpart of the per-configuration DARE
-solvability (Remark~\ref{rem:feasibility}) and the continuous scheduled law
-(Corollary~\ref{cor:1khz}): the constant $A_d$ confines all configuration
-variation to the affine $B_d(\rho)$, making~\eqref{eq:lmi} a finite vertex
-program, so a single Lyapunov function certifies quadratic stabilizability of the
-interaction-dynamics representation over $\mathcal P$, under one fixed
-certified gain.
-
-\begin{remark}[Scope]
-Theorem~\ref{thm:workspace} establishes exponential stability of the
-\emph{nominal predictive backbone under one fixed, LMI-certified linear
-feedback gain} --- the disturbance-free LPV closed loop
-$(A_d,B_d(\rho))$, with the input constraint inactive --- not
-workspace-wide stability of the complete deployed controller. In
-particular it does \textbf{not} by itself analyze: the disturbance
-estimator (offset-free tracking under the Kalman estimator is
-Theorem~\ref{thm:zss}'s separate result, composed with
-Theorem~\ref{thm:workspace} only informally, at the end of the proof
-above); the finite-horizon receding-horizon re-solve, whose realized
-policy at each step is the QP's actual minimizer, not the certified fixed
-$K$ (the unconstrained QP realizes \emph{a} member of this same class of
-linear state feedback, Theorem~\ref{thm:equiv}/Corollary~\ref{cor:1khz},
-but not necessarily the specific certified $K$); or the safety and
-passivity filters (Theorem~\ref{thm:invariance}, Proposition~\ref{prop:tank}).
-The complete controller's closed-loop guarantees are therefore this
-\emph{collection} of separately-scoped results about different feedback
-laws, not one monolithic proof that the deployed MPC is workspace-stable.
-\end{remark}
-
-\begin{remark}[Rate-independence and the frozen horizon]
-The certificate uses a \emph{single, parameter-independent} $P=Q^{-1}$ shared by
-all vertices, so it is robust to \emph{arbitrary} (even arbitrarily fast)
-variation of $\rho_k\in\mathcal P$: the Lyapunov decrease holds at every vertex
-and hence, by convexity of \eqref{eq:lmi} in $\Laminv$, for any $\rho_k\in\mathcal P$,
-\emph{provided the certified fixed $K$ is what is actually applied}. This
-gives a \emph{structural reason}, not a proof, for why the frozen-$\Gamma$
-approximation used online (built from the current $B_d(q_k)$, held over
-the horizon) is unlikely to be destabilizing: the frozen-vs-future gap is
-a bounded variation inside $\mathcal P$, and a fixed-$K$ closed loop over
-$\mathcal P$ would not be destabilized by that variation regardless of
-its rate. This motivates, but does not establish, that the deployed
-receding-horizon policy --- which re-solves a QP rather than applying the
-certified $K$ --- inherits the same robustness; the frozen horizon shapes
-only the \emph{predicted} trajectory, while the receding-horizon re-solve
-keeps the \emph{applied} move matched to the current $\rho_k$, but no
-result here proves the resulting closed loop shares this
-rate-independence.
-\end{remark}
-
-\begin{remark}[Numerical instantiation of $\mathcal P$]
-For the FR3, sampling $\Laminv(q)$ along the circular benchmark (4700 samples)
-gives $\operatorname{eig}\Laminv\in[0.059,0.354]\,\text{kg}^{-1}$ (task inertia
-$2.8$--$16.9$\,kg). The resulting entry-wise box has 64 corners in
-general, but not every corner of an independent per-entry box need be
-positive-definite; any that are not are discarded (none were, here --- all
-64 corners were confirmed SPD, minimum eigenvalue $\approx0.023\,\text{kg}^{-1}$
-across vertices). This instantiates $\mathcal P$ over the \emph{sampled
-operating region traversed by the benchmark trajectory}, not a verified
-bound over the entire singularity-free workspace; extending the certified
-range to other trajectories or the full workspace would need re-sampling
-or an analytic eigenvalue bound, neither done here. Over this $\mathcal P$
-($\Delta t=10$\,ms), the
-minimum-condition-number common-$P$ certificate at guaranteed rate
-$\rho\le0.996$ is feasible, returning a well-conditioned $P$ with
-$\operatorname{cond}P\approx2.2$, closed-loop spectral radius $\le0.996$ at
-every vertex, and
-$\max\operatorname{eig}(A_\text{cl}^\top P A_\text{cl}-P)\approx-5\times10^{-3}$,
-\emph{for the certified fixed $K=YQ^{-1}$} --- the realized MPC, with its
-far larger tracking weights and different (receding-horizon) policy, is
-not shown to converge at this rate, only observed empirically to converge
-faster. This establishes the qualitative backbone-stabilizability claim
-rigorously over the sampled region rather than empirically, and is
-reproducible from the released script.
-\end{remark}
 
 \subsection{Disturbance Prediction Validity over the Horizon}
 
@@ -930,8 +823,8 @@ piecewise constant, so $\varepsilon_N\approx\varepsilon_1$ except across the
 force-onset transient; the gap $\varepsilon_N-\varepsilon_1$ isolates exactly
 the horizon-extrapolation error and is the quantity to watch when porting the
 controller to time-varying interaction; it is measured directly under
-time-varying forces in Table~\ref{tab:tv}, where it grows linearly with the
-disturbance rate as~\eqref{eq:predbound} predicts.
+time-varying forces in the supplementary material (Sec.~S6, Table~S4), where
+it grows linearly with the disturbance rate as~\eqref{eq:predbound} predicts.
 
 % ----------------------------------------------------------
 \section{Orientation Stabilization and Null-Space Control}
@@ -1229,13 +1122,25 @@ energy-tank passivity filter; direct benchmark scripts are used only for
 algorithm comparisons and figures.
 
 Every numeric constant used across the experiments of
-Section~\ref{sec:experiments} is consolidated in
-Table~\ref{tab:params} at the end of that section.
+Section~\ref{sec:experiments} is consolidated in Table~S1 of the
+supplementary material.
 
 % ----------------------------------------------------------
 \section{Experiments}\label{sec:experiments}
 
-\subsection{Baseline Controllers}
+We evaluate the controller on two dynamic benchmarks and two stress
+tests, against classical baselines and a predictive variable-impedance
+comparator. \textbf{DI-MPC} denotes the proposed double-integrator MPC
+realization, and \textbf{MPVIC} is the predictive variable-impedance
+comparator, in the class of~\cite{liu2025model,roveda2019optimal}. MPVIC
+rolls out the same horizon and uses the same estimate $\hat d$ as the
+proposed controller, but only to \emph{schedule} the apparent stiffness
+$K^\star\in\{200,\dots,3000\}$\,N/m rather than to cancel the force ---
+isolating variable-impedance adaptation from offset-free augmentation.
+All controllers use $K_d=300$\,N/m nominal, critically damped, with the
+inner feedforward loop running at 1\,kHz for every variant. Tables
+report every controller; plots show four representative curves
+(D1--D3, D7) for readability.
 
 \begin{table}[!t]
 \caption{Benchmarked Controllers}
@@ -1258,27 +1163,11 @@ C7 & DI-MPC + Kalman, 500\,Hz & Augmented Kalman\\
 \end{tabular}
 \end{table}
 
-Here DI-MPC denotes the proposed double-integrator MPC realization.
-\textbf{MPVIC} is a predictive variable-impedance comparator in the class
-of~\cite{liu2025model,roveda2019optimal}: at each 100\,Hz step it selects the
-apparent stiffness $K^\star\in\{200,\dots,3000\}$\,N/m by rolling out the
-double-integrator horizon and minimising a weighted sum of tracking error and
-task force, given the \emph{same} disturbance estimate $\hat d$ used by the
-proposed controller. That estimate only \emph{schedules} $K^\star$; it is not
-cancelled ($F_{\text{mpc}}=K^\star e+D^\star\dot e$, no $-\hat d$ term),
-isolating variable-impedance adaptation from offset-free augmentation.
-All controllers use $K_d=300$\,N/m nominal. The inner feedforward runs at
-1\,kHz for all variants.
-Tables report all controller variants for ablation completeness.
-For plot readability, the trajectory figures show only four representative
-curves: D1=C1/G1, D2=C2/G2, D3=C3/G3, and D7=C7/G7.
-
-\subsection{Benchmark I: Circular Trajectory Under Step Force}
-
-The end-effector tracks a 12\,cm radius circle in the XZ plane
-($\omega=2\pi/8$\,rad/s).
-A step force $F_h=[0,0,-15]$\,N is applied from $t=3$--6\,s per 8\,s
-cycle (3 cycles, 24\,s total).
+\textbf{Benchmark I --- circular trajectory under step force.}
+The end-effector tracks a 12\,cm radius circle in the XZ sagittal plane
+($\omega=2\pi/8$\,rad/s) while a 15\,N step force $F_h=[0,0,-15]$\,N is
+applied for 3\,s of every 8\,s cycle (3 cycles, 24\,s total); metrics
+are averaged over the three force events.
 
 \begin{table}[!t]
 \caption{Benchmark I --- Circular Trajectory, 15\,N Step Force}
@@ -1294,11 +1183,11 @@ cycle (3 cycles, 24\,s total).
 C1 -- Impedance     & 35.6 & 41.1 & 51.8 & 44.8\\
 C2 -- Admittance    & 113.9 & 174.7 & 210.5 & 186.7\\
 C3 -- PI Impedance  & 36.2 & 27.4 & 43.7 & 21.4\\
-MPVIC -- Var.-Imp. MPC & 12.8 & 4.5 & 7.5 & 4.8\\
+MPVIC -- Var.-Imp. MPC & 12.9 & 4.5 & 7.5 & 4.8\\
 C4 -- MPC 100\,Hz   & \textbf{11.4} & 2.2 & 2.9 & 2.8\\
-C5 -- MPC+K 100\,Hz & \textbf{11.4} & 0.5 & 2.5 & \textbf{$<$0.05}\\
-C6 -- MPC 500\,Hz   & 13.0 & 0.8 & 1.1 & 1.1\\
-C7 -- MPC+K 500\,Hz & 12.8 & \textbf{0.2} & \textbf{0.8} & \textbf{$<$0.05}\\
+C5 -- MPC+K 100\,Hz & \textbf{11.4} & 0.5 & 2.6 & \textbf{$<$0.05}\\
+C6 -- MPC 500\,Hz   & 12.8 & 0.8 & 1.1 & 1.1\\
+C7 -- MPC+K 500\,Hz & 12.6 & \textbf{0.2} & \textbf{0.8} & \textbf{$<$0.05}\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1316,121 +1205,75 @@ C7 -- MPC+K 500\,Hz & 12.8 & \textbf{0.2} & \textbf{0.8} & \textbf{$<$0.05}\\
   \label{fig:bm1}
 \end{figure}
 
-Key findings:
-(1)~\emph{The optimized interaction-dynamics feedback is the dominant
-contributor here:} C4 reduces contact-window RMS from 41.1\,mm to
-2.2\,mm ($19\times$) over C1, validating the constant-$A_d$ QP. C1's
-declared $K_d=300$\,N/m is a design choice, not C4's realized closed-loop
-gain (Remark~\ref{rem:gains}), so this does not by itself isolate
-look-ahead from a stiffer realized gain at the same horizon; a
-matched-gain, horizon-length ablation ($N{=}1,3,5,10$) is left to future
-work.
-(2)~\emph{Kalman achieves zero SS error:} C5 drives SS error to
-effectively zero ($<$0.05\,mm) — a 44.8\,mm $\to$ $\approx$0
-improvement over C1.
-(3)~\emph{Adapting the stiffness is not enough:} the predictive
-variable-impedance baseline MPVIC cuts contact-window RMS to 4.5\,mm
-(beating all reactive baselines), but with the \emph{same} estimate
-$\hat d$ as C5 it still leaves a 4.8\,mm SS error, since a finite
-stiffness can only reach $e_\infty=-K^{\star-1}\hat d\neq0$
-($K^\star\!\approx\!3000$\,N/m $\Rightarrow 15/3000\approx5$\,mm); C5
-removes it ($\sim$140$\times$), showing the decisive ingredient is
-predictive \emph{cancellation} (Theorem~\ref{thm:zss}), not stiffness
-adaptation---the concrete separation from~\cite{liu2025model,roveda2019optimal}.
-(4)~\emph{Rate and estimation are orthogonal:} rate reduces ZOH
-transient; Kalman eliminates SS error; their combination (C7) achieves
-best-in-class contact performance.
+The comparison isolates five mechanisms:
 
-\subsection{Four-Plane Circle Tracking}
+\begin{itemize}[leftmargin=*,itemsep=1pt,topsep=2pt]
+\item \textbf{Kalman augmentation removes steady-state error (C4 vs.\
+C5).} With QP rate and horizon held fixed, folding $\hat d$ into the
+free response drives steady-state error below 0.05\,mm --- down from
+2.8\,mm over C4 and 44.8\,mm over C1. This is the cleanest isolated
+comparison in the table: the only thing that changes between C4 and C5
+is whether the disturbance estimate is used, so the improvement is
+attributable to offset-free cancellation itself, not a confounded gain
+change.
+\item \textbf{A large early gain, but gain-confounded (C1 vs.\ C4).}
+With no disturbance model at all, C4's QP still cuts contact-window RMS
+from 41.1 to 2.2\,mm ($19\times$) and peak deflection from 51.8 to
+2.9\,mm. However, C1's nominal $K_d=300$\,N/m is a design choice, not
+C4's realized closed-loop gain (Remark~\ref{rem:gains}), so unlike the
+C4-vs-C5 comparison above, this one does not separate how much of the
+improvement is predictive look-ahead versus a stiffer realized gain at
+the same horizon; a matched-gain, horizon-length ablation is left to
+future work.
+\item \textbf{Adapting stiffness alone is not enough (MPVIC vs.\ C5).}
+MPVIC uses the \emph{same} $\hat d$ as C5 but only to schedule
+stiffness, cutting contact RMS to 4.5\,mm --- better than every
+reactive baseline --- yet it retains a 4.8\,mm steady-state error,
+since a finite apparent stiffness can only bound deflection at
+$e_\infty=-K^{\star-1}\hat d\neq0$. Offset-free cancellation
+(Theorem~\ref{thm:zss}) removes this residual entirely
+($\sim$140$\times$): the concrete separation between the proposed
+controller and the predictive variable-impedance methods
+\cite{liu2025model,roveda2019optimal} it generalizes. MPVIC here is our
+own discrete-stiffness scheduler in that family, not a reproduction of
+a specific published algorithm, and its candidate stiffness set and
+force penalty have not been swept for sensitivity; the comparison shows
+one representative instance of the class, not an upper bound on it.
+\item \textbf{Rate and estimation are largely orthogonal (C4--C7).}
+Raising the QP rate from 100 to 500\,Hz mainly shrinks the
+zero-order-hold transient; adding the Kalman estimator mainly removes
+the steady-state error. C7 combines both and gives the lowest
+contact-window RMS, peak deflection, and steady-state error of any
+controller, though its total RMS (12.6\,mm, averaged over the whole
+cycle including the force-free majority of it) is marginally higher
+than C4/C5's (11.4\,mm) --- the faster QP rate sharpens the contact
+transient without improving free-motion tracking, so it is not simply
+better on every metric.
+\item \textbf{Admittance yields by design (C2).} Its 174.7\,mm
+contact-window RMS matches the equilibrium prediction $15/100=150$\,mm
+--- the expected behavior of intentional compliance, not a controller
+failure.
+\end{itemize}
 
-C5 is evaluated on four 3-D circle planes (Table~\ref{tab:bm1b}).
+\textbf{Empirical joint-limit avoidance by the dual soft barrier
+(boundary test).}
+A 20\,cm radius circle pushes the arm toward its workspace boundary
+(Table~\ref{tab:safety}, Fig.~\ref{fig:safety}). This test exercises
+the soft null-space barrier and workspace projection only, not the
+final one-step CBF safety filter of
+Theorem~\ref{thm:invariance} --- no CBF residual or slack is logged
+here, so the result below is empirical joint-limit avoidance by the
+dual soft barrier, not a demonstration of the theorem's sampled-data
+invariance certificate.
 
-\begin{table}[!t]
-\caption{Free-Space Circle Tracking, $R=12$\,cm, $T=8$\,s}
-\label{tab:bm1b}
-\renewcommand{\arraystretch}{1.0}
-\centering
-\setlength{\tabcolsep}{4pt}
-\footnotesize
-\begin{tabular}{@{}lccc@{}}
-\toprule
-\textbf{Plane} & \textbf{IMP RMSE [mm]} & \textbf{MPC RMSE [mm]} & \textbf{Improvement}\\
-\midrule
-XZ sagittal  & 23.54 & 0.24 & $\times$97\\
-XY horizontal & 25.06 & 0.33 & $\times$77\\
-YZ frontal   & 16.25 & 0.20 & $\times$79\\
-XZ$\to$XY tilted & 25.07 & 0.31 & $\times$80\\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\subsection{Benchmark II: Reach-and-Hold under Human Push}
-
-The robot navigates a triangle of three waypoints (A, B, C) in one lap.
-At each waypoint, a directionally varied 15\,N push fires for 2\,s
-(3 push events, one per waypoint).
-
-\begin{table}[!t]
-\caption{Benchmark II --- Waypoint-Hold Under Directionally Varied Push}
-\label{tab:bm2}
-\renewcommand{\arraystretch}{1.0}
-\footnotesize
-\begin{tabular}{lcccc}
-\toprule
-\textbf{Controller} & \textbf{WP} & \textbf{RMS free} & \textbf{RMS contact} & \textbf{Peak}\\
- & & \textbf{[mm]} & \textbf{[mm]} & \textbf{[mm]}\\
-\midrule
-G1 -- Stiff Imp.      & 3/3 & 63.6 & 41.4 & 47.1\\
-G2 -- Pure Adm.       & 3/3 & 72.8 & 190.2 & 226.6\\
-G3 -- Var. Compl.     & 3/3 & 69.3 & 133.5 & 170.1\\
-MPVIC -- Var.-Imp.    & 3/3 & 51.1 & 5.0 & 5.9\\
-G4 -- MPC 100\,Hz     & 3/3 & 47.8 & 2.2 & 2.6\\
-G5 -- MPC+K 100\,Hz   & 3/3 & \textbf{47.7} & 0.6 & 2.5\\
-G6 -- MPC 500\,Hz     & 3/3 & 52.6 & 0.9 & 1.0\\
-G7 -- MPC+K 500\,Hz   & 3/3 & 52.1 & \textbf{0.2} & \textbf{0.7}\\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\begin{figure}[!t]
-  \centering
-  \includegraphics[width=0.8\columnwidth]{figures/guidance_controller_comparison.png}
-  \caption{Benchmark II --- reach-and-hold under directionally varied
-           push. For visibility the plot shows D1/D2/D3/D7 (corresponding
-           to G1/G2/G3/G7) plus the predictive variable-impedance MPVIC
-           baseline; Table~\ref{tab:bm2} reports the full ablation. The
-           final D7 controller reaches every waypoint with sub-millimeter
-           contact-window deflection.}
-  \label{fig:bm2}
-\end{figure}
-
-\textbf{Analysis.}
-The static-waypoint hold confirms the separation seen in Benchmark~I.
-Against the stiff-impedance baseline (G1) the MPC cuts contact-window
-RMS from 41.4 to 2.2\,mm and peak from 47.1 to 2.6\,mm (G4); adding the
-Kalman augmentation improves the contact and free-motion metrics --- G5 lowers
-contact RMS to 0.6\,mm and slightly reduces peak (2.6$\to$2.5\,mm), so
-unlike a higher gain it carries no peak penalty. Raising the QP rate to
-500\,Hz sharpens the first-contact transient further (G7: 0.2\,mm
-contact RMS, 0.7\,mm peak), since the 2\,ms ZOH window lets $\dhat$
-converge before significant error builds. The predictive
-variable-impedance baseline (MPVIC) behaves oppositely to the reactive
-G3: it stiffens predictively to reject the push (contact RMS 5.0\,mm,
-an order of magnitude below G1--G3) rather than softening, yet stays a
-further order of magnitude above the offset-free G5 (0.6\,mm) --- the
-same non-offset-free residual as in Benchmark~I. Adapting the apparent
-stiffness, reactively or predictively, does not substitute for
-predictive disturbance cancellation.
-
-\subsection{Joint-Limit Safety}
-
-Table~\ref{tab:safety} and Fig.~\ref{fig:safety} summarize the boundary
-circle test used to exercise joint-limit safety. The classical impedance
-baseline crosses the 5\% joint-margin threshold, whereas the predictive
-controller with the dual-barrier mechanism maintains positive clearance
-throughout the run. The higher RMSE is intentional: the workspace projection
-trades tracking accuracy for joint-limit clearance near the edge of the
-reachable set.
+\begin{itemize}[leftmargin=*,itemsep=1pt,topsep=2pt]
+\item Classical impedance violates the 5\% margin; the dual-barrier MPC
+avoids it, holding a 0.083--0.084 margin at both 100 and 30\,Hz ---
+joint-limit avoidance is insensitive to QP rate.
+\item The elevated MPC RMSE (12.4\,mm vs.\ 0.3\,mm at $R=12$\,cm)
+reflects the workspace projection deliberately trading tracking
+accuracy for clearance near the boundary.
+\end{itemize}
 
 \begin{table}[!t]
 \caption{Boundary Test, $R=20$\,cm Circle}
@@ -1444,9 +1287,9 @@ reachable set.
 \toprule
 \textbf{Controller} & \textbf{RMSE [mm]} & \textbf{Min margin} & \textbf{Result}\\
 \midrule
-IMP         & 26.97 & 0.048 & \textsf{LIMIT VIOLATION}\\
+IMP         & 26.97 & 0.049 & \textsf{LIMIT VIOLATION}\\
 MPC (C5, 100\,Hz QP) & 12.35 & 0.084 & \textsf{AVOIDED}\\
-MPC (C5, 30\,Hz QP)  & 11.21 & 0.084 & \textsf{AVOIDED}\\
+MPC (C5, 30\,Hz QP)  & 11.21 & 0.083 & \textsf{AVOIDED}\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1464,12 +1307,14 @@ MPC (C5, 30\,Hz QP)  & 11.21 & 0.084 & \textsf{AVOIDED}\\
   \label{fig:safety}
 \end{figure}
 
-\subsection{Robustness to Measurement Noise and Model Mismatch}
-
-The architecture relies on a Kalman estimator (noise-sensitive) and on
-Layer-1 cancellation (model-sensitive), so we stress both. The plant is
-always the true model; only the controller's inputs (added EE-position
-noise) or its feedforward inertia (a scaled $\Lambda$) are perturbed.
+\textbf{Robustness to position-measurement noise and model mismatch.}
+The architecture depends on a Kalman estimator, sensitive to
+measurement noise, and on Layer-1 cancellation, sensitive to model
+error, so we stress-test each independently: the plant is always the
+true model, and only the controller's inputs (added EE-position noise)
+or its model (the feedforward inertia $\Lambda$, scaled up by 0 to
+30\% relative to the true plant) are perturbed. Velocity noise, sensing
+latency, and force-sensor noise are not modeled here.
 
 \begin{table}[!t]
 \caption{Robustness of MPC+Kalman (100\,Hz QP)}
@@ -1494,278 +1339,30 @@ Kalman off & 0.96 & 0.87 / 0.80 & 0.74\\
 \end{tabular}
 \end{table}
 
-\emph{(a)} Even at an unrealistically large 5\,mm ($1\sigma$) position
-noise the offset-free law holds steady-state error below 1\,mm and the
-transient peak rises only from 1.6 to 2.2\,mm: the integrating Kalman
-state averages out zero-mean sensor noise. \emph{(b)} With the Kalman
-augmentation, free-space tracking RMSE is essentially invariant to
-$\pm30\%$ feedforward-inertia error ($0.24\to0.23$\,mm), because the
-resulting force error is slowly varying and absorbed by $\dhat$ --- the
-empirical counterpart of the exactness remark (Section~III). Disabling
-the Kalman exposes the mismatch (0.74--0.96\,mm, a 3--4$\times$ penalty),
-confirming that the disturbance state, not the nominal model, confers the
-robustness.
+\begin{itemize}[leftmargin=*,itemsep=1pt,topsep=2pt]
+\item Under a 10\,N step disturbance (top table; steady-state error as
+mean $|e|$ over the last 0.5\,s of the push, mean $\pm$ std over 5
+measurement-noise seeds), even an unrealistically large 5\,mm
+($1\sigma$) position noise leaves steady-state error below 1\,mm, with
+the transient peak rising only modestly (1.6 to 2.2\,mm) --- the
+integrating Kalman state averages out zero-mean sensor noise.
+\item Under free-space XZ-circle tracking with a deliberately wrong
+feedforward inertia (bottom table), Kalman-augmented RMSE stays
+essentially invariant to up to 30\% inertia error ($0.24\to0.23$\,mm),
+since the resulting feedforward force error is slowly varying and is
+absorbed by $\dhat$ --- the empirical counterpart of the exactness
+remark (Section~III). Disabling the Kalman exposes the mismatch
+(0.74--0.96\,mm, 3--4$\times$ worse), confirming that it is the
+disturbance state, not the nominal model, that confers the robustness.
+\end{itemize}
 
-\subsection{Time-Varying Interaction and Horizon-Prediction Validity}
-
-The benchmarks above apply constant or step forces. Because the framework
-targets \emph{interaction} dynamics broadly, we additionally exercise a
-\emph{time-varying} human force and measure a proxy for the $N$-step
-disturbance-prediction RMS $\varepsilon_N$ of Section~III-D --- the quantity
-bounding how well the flat random-walk prediction holds over the horizon,
-defined there but not previously reported. To isolate the force from the
-configuration-driven terms of~\eqref{eq:dist}, the robot holds a \emph{static}
-target while a sinusoidal push $F_z=-A\sin(2\pi f t)$ of fixed amplitude
-$A=12$\,N and increasing frequency $f$ sweeps the disturbance rate
-$L_d=A\,2\pi f/\sqrt2$. The controller is the same DI-MPC + Kalman (C5, 100\,Hz QP).
-
-\textbf{What $\varepsilon_N$ actually measures here.} Because the true
-disturbance $d_k$ is not directly logged in this experiment, we use the
-filtered estimate $\dhat_{k\mid k}$ as its proxy and the flat prediction
-$\dhat_{k\mid k{-}N}=\dhat_{k{-}N\mid k{-}N}$, so $\varepsilon_N$ measures the
-$N$-step \emph{self-consistency of the estimate}, not~\eqref{eq:predbound}'s
-prediction error against the true $d_k$ directly --- the two agree only to
-the extent $\dhat$ has converged. This is visible at $L_d=0$: the
-theoretical extrapolation term is exactly zero there, yet the measured
-$\varepsilon_N-\varepsilon_1=0.34$\,N is not --- that residual is the
-estimator's own process-noise jitter accumulated over $N$ steps, a real but
-different quantity from~\eqref{eq:predbound}'s extrapolation term. Table~\ref{tab:tv}
-should be read as evidence \emph{consistent with} the linear-in-rate scaling
-\eqref{eq:predbound} predicts, not a direct ground-truth validation; computing
-$d_{a,k}$ from the logged simulation dynamics
-($\ddot e_k+\Lambda^{-1}\Fmpck{k}$, both already available) rather than the
-filtered estimate is a well-defined follow-up not run here.
-
-\begin{table}[!t]
-\caption{Time-Varying Force --- Horizon Self-Consistency Error (Estimator Proxy) and Tracking}
-\label{tab:tv}
-\renewcommand{\arraystretch}{1.0}
-\centering
-\setlength{\tabcolsep}{4pt}
-\footnotesize
-\begin{tabular}{cccccc}
-\toprule
-$L_d$ & $\varepsilon_1$ & $\varepsilon_N$ & $\varepsilon_N{-}\varepsilon_1$
- & $L_d N\Delta t$ & RMS track\\
-{[N/s]} & [N] & [N] & [N] & [N] & [mm]\\
-\midrule
-0.0 (const) & 0.04 & 0.38 & 0.34 & 0.00 & 0.08\\
-5.3  & 0.05 & 0.52 & 0.46 & 0.53 & 0.12\\
-10.7 & 0.12 & 1.20 & 1.08 & 1.07 & 0.27\\
-21.3 & 0.25 & 2.47 & 2.22 & 2.13 & 0.54\\
-42.7 & 0.49 & 4.87 & 4.38 & 4.27 & 1.03\\
-\bottomrule
-\end{tabular}
-\end{table}
-
-The measured horizon-extrapolation gap $\varepsilon_N-\varepsilon_1$
-(self-consistency proxy) tracks the Section~III-D bound term $L_d N\Delta t$
-to within ${\approx}10\%$ across a decade of disturbance rate
-(Table~\ref{tab:tv}), consistent with the flat-prediction error being
-\emph{linear in the force rate} as~\eqref{eq:predbound} predicts, with a
-constant-force floor $\approx0.38$\,N at the $f{=}0$ row --- the
-process-noise-jitter $e_K$-analogue of~\eqref{eq:predbound}, not itself a
-prediction-error measurement (see above).
-Tracking degrades gracefully: sub-millimeter up to $L_d\approx21$\,N/s
-and ${\approx}1$\,mm at 43\,N/s,
-recovering the offset-free property (Theorem~\ref{thm:zss}) as $f\to0$. This
-is consistent with the use of the flat random-walk model inside the
-receding-horizon loop, though a ground-truth (not self-consistency)
-measurement would be needed to validate it directly;
-for a \emph{structured} high-rate force (e.g.\ tremor) the harmonic-internal-model
-extension of Section~III-D would predict that component forward exactly, removing
-it from $L_d$.
-
-\subsection{Human-Force Magnitude and Shape Sweep}
-Benchmarks I--II and the time-varying study fix the force magnitude at 12--15\,N.
-Because the offset-free property (Theorem~\ref{thm:zss}) is independent of the
-force amplitude, we sweep a sustained (step) push $F_z\in\{5,10,15,20,25\}$\,N on
-the circular tracking task and report steady-state and peak tip deflection for
-classical impedance (D1) and the proposed offset-free controller (D7,
-DI-MPC\,+\,Kalman, 500\,Hz); a shape sweep at 15\,N (step / linear ramp / 1\,Hz
-sinusoid) complements the time-varying study above.
-
-\begin{table}[t]
-\centering
-\caption{Human-Force Magnitude Sweep (steady-state / peak tip deflection, mm)}
-\label{tab:fsweep}
-\begin{tabular}{lccccc}
-\toprule
-Force $F_z$ (N) & 5 & 10 & 15 & 20 & 25\\
-\midrule
-D1 Impedance --- SS   & 26.9 & 33.7 & 45.0 & 58.5 & 73.1\\
-D1 Impedance --- peak & 28.4 & 37.0 & 51.2 & 70.1 & 88.9\\
-\textbf{D7 --- SS}   & \textbf{0.021} & \textbf{0.021} & \textbf{0.021} & \textbf{0.021} & \textbf{0.021}\\
-\textbf{D7 --- peak} & \textbf{0.29} & \textbf{0.50} & \textbf{0.76} & \textbf{1.02} & \textbf{1.27}\\
-\bottomrule
-\end{tabular}
-\end{table}
-
-Classical impedance deflects in proportion to the force --- the
-$e_\infty=K_d^{-1}F_h$ bias combined with the dynamic tracking error grows from
-27\,mm at 5\,N to 73\,mm at 25\,N --- whereas the proposed controller holds a
-\textbf{0.021\,mm steady-state deflection independent of magnitude}: the
-integrating disturbance state cancels the force whatever its size, so accuracy no
-longer trades against the human's effort. The first-contact peak grows only
-mildly (0.29 $\to$ 1.27\,mm across 5--25\,N), scaling with the force step before
-$\hat d$ converges. Under the three 15\,N shapes the proposed controller keeps
-contact-window RMS at 0.15\,mm (step), 0.10\,mm (ramp), and 0.40\,mm (1\,Hz
-sinusoid) versus 40.9\,/\,26.0\,/\,33.0\,mm for classical impedance; the sinusoid
-is the worst case, consistent with the time-varying study --- the flat
-$\dot d=0$ model lags a fast-varying force, which the harmonic internal model of
-Section~III-D would recover.
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=\columnwidth]{figures/force_sweep.png}
-\caption{Human-force magnitude sweep: steady-state (a) and peak (b) tip
-deflection versus a sustained push, for classical impedance (D1, red) and the
-proposed offset-free controller (D7, green). The proposed steady-state deflection
-is invariant to force magnitude.}
-\label{fig:fsweep}
-\end{figure}
-
-\subsection{Correction-Authority Robustness (Impedance-Backbone Ablation)}\label{sec:backbone-ablation}
-
-Every controller above places the entire task-space correction inside one
-box-constrained variable $F_{\text{mpc}}$: if it is driven toward zero --- a
-tight $F_{\max}$ bound, or an unrealizable predicted torque --- the commanded
-torque degrades to $\tau_{\text{ff}}$ alone, zero corrective stiffness. We
-evaluate an ablation, \textbf{C8}, that decouples baseline stiffness from the
-optimizer: a fixed, positively damped law
-$F_{\text{bb}}=K_{\text{bb}}e+D_{\text{bb}}\dot e$ ($K_{\text{bb}}=300$\,N/m,
-nominal unit-effective-mass damping) is commanded on every update
-independent of the QP output, and the QP shapes only a bounded additional
-correction $F_{\text{mpc}}$ ($\lVert F_{\text{mpc}}\rVert_\infty\le F_{\max}$)
-predicted through the backbone dynamics linearized at the current
-configuration, $A_{\text{cl}}=A_d+B_d(\rho_k)G_{\text{bb}}$. If $F_{\text{mpc}}\to0$,
-the commanded controller retains this corrective stiffness rather than
-reverting to bare feedforward. This is QP-independence, not actuator-limit
-independence: the \textbf{total commanded torque is
-$\tau=\tau_{\text{base}}+J_v^\top(F_{\text{bb}}+F_{\text{mpc}})$} ---
-$F_{\text{bb}}$ is not optional and must be included in any
-torque-feasibility check --- and C8 additionally applies
-\eqref{eq:QP_torque}'s row at \emph{every} horizon step rather than only
-the first, frozen at the current configuration:
-\begin{multline}
--\tau_{\max}\le\tau_{\text{base}}(0)+J_v^\top(q_0)\big(F_{\text{bb}}+\Fmpck{i}\big)\le\tau_{\max},\\
-\quad i=0,\ldots,N-1,
-\end{multline}
-the frozen-Jacobian horizon-wide extension of~\eqref{eq:QP_torque} that
-Sec.~\ref{sec:layer2} notes ``can be added'' but does not itself write
-out --- it is not implied by~\eqref{eq:QP_torque}--\eqref{eq:QP_force}
-alone, and is specific to C8, not part of the default (C1--C7)
-formulation. Freezing $J_v(q_0)$, $\tau_{\text{base}}(0)$ across the
-horizon is a local approximation, not an exact prediction of future
-torque feasibility. With this in place, the result below supports
-robustness to loss of \emph{additive} correction authority specifically, not
-a blanket saturation or solver-fault guarantee.
-
-Same protocol as Benchmark I (12\,cm circle, 15\,N step push, 3 cycles), sweeping
-the corrective-force bound $F_{\max}\in\{150,20,5,1,0\}$\,N. At $F_{\max}=150$\,N,
-C8 matches C7 to measurement precision (both reproduced under the present
-codebase; consistent with Table~\ref{tab:bm1}'s C7 row to within a small
-residual difference from a subsequent exact zero-order-hold correction).
-
-\begin{table}[t]
-\centering
-\caption{Correction-Authority Ablation: $F_{\max}$ Sweep, Contact RMS / Peak (mm)}
-\label{tab:backbone}
-\begin{tabular}{lccccc}
-\toprule
-$F_{\max}$ (N) & 150 & 20 & 5 & 1 & 0\\
-\midrule
-C7 --- RMS contact & 0.15 & 0.15 & 317.6 & 414.0 & 424.4\\
-C7 --- peak & 0.77 & 0.76 & 412.3 & 552.5 & 560.8\\
-\textbf{C8 --- RMS contact} & \textbf{0.15} & \textbf{0.15} & \textbf{22.5} & \textbf{37.7} & \textbf{41.3}\\
-\textbf{C8 --- peak} & \textbf{0.76} & \textbf{0.76} & \textbf{29.8} & \textbf{47.9} & \textbf{51.6}\\
-\bottomrule
-\end{tabular}
-\end{table}
-
-At $F_{\max}\ge20$\,N both controllers are unaffected and C8 costs nothing. Below
-that, C7's contact-window RMS jumps roughly three orders of magnitude
-(0.15\,$\to$\,424\,mm) as $F_{\text{mpc}}$ is forced toward zero, approaching bare
-feedforward against the sustained push. \textbf{C8 degrades gracefully instead},
-settling at 22--41\,mm even at $F_{\max}=0$ --- a 10--14$\times$ smaller error
-than C7 across the curtailed range, and bounded rather than diverging.
-Theorems~\ref{thm:equiv}--\ref{thm:workspace} are proved for the standard
-(non-backbone) realization; C8's additive term retains the same offset-free
-mechanism ($-\hat d$ centers $F_{\text{mpc}}$, not the backbone), but a formal
-re-derivation for the backbone-augmented closed loop is left to future work.
-Reproduced by \texttt{stable\_backbone\_comparison.py --n-cycles 3}.
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=\columnwidth]{figures/stable_backbone_comparison.png}
-\caption{Correction-authority robustness ablation: contact-window RMS (a) and
-peak deflection (b) versus the QP's corrective-force bound $F_{\max}$, with
-(C8, green) and without (C7, red) the impedance backbone. C8 degrades
-gracefully as $F_{\max}\to0$ while C7 collapses toward bare feedforward.}
-\label{fig:backbone}
-\end{figure}
-
-\textbf{Parameters.} Table~\ref{tab:params} consolidates every numeric
-constant used across the experiments above, cross-checked against the
-released code rather than restated from memory. Unless a table or figure
-caption states otherwise, these are the values used throughout.
-
-\begin{table*}[!t]
-\caption{Controller and Estimator Parameters}
-\label{tab:params}
-\renewcommand{\arraystretch}{0.95}
-\centering
-\setlength{\tabcolsep}{6pt}
-\footnotesize
-\begin{tabular}{@{}llc|llc@{}}
-\toprule
-\textbf{Parameter} & \textbf{Symbol} & \textbf{Value} &
-\textbf{Parameter} & \textbf{Symbol} & \textbf{Value}\\
-\midrule
-Prediction horizon & $N$ & 10 &
-  Backbone stiffness (C8) & $K_{\text{bb}}$ & 300\,N/m\\
-MPC sample time (100/500\,Hz) & $\Delta t$ & 10\,ms / 2\,ms &
-  Backbone damping ratio (C8) & $\zeta_{\text{bb}}$ & 1.0 (nominal)\\
-Inner loop rate & --- & 1\,kHz &
-  CBF margin & $\epsilon$ & 0.05\,rad\\
-Position / velocity stage weight & $Q_{\text{pos}},Q_{\text{vel}}$ & $2{\times}10^4 I_3$, $50 I_3$ &
-  CBF contraction rate & $\alpha$ & 0.5\\
-Terminal cost scale & $\gamma$ & 5 &
-  CBF slack penalty weight & $w_s$ & $10^{8}$\\
-Effort weight & $R$ & $10^{-6}I_3$ &
-  Tank initial energy & $E_0$ & 20.0\,J\\
-Corrective-force bound & $F_{\max}$ & 150\,N &
-  Tank lower / upper bound & $E_{\min},E_{\max}$ & 0.05\,J, 50.0\,J\\
-FR3 torque limits (Sec.~\ref{sec:layer1}) & $\tau_{\max}$ & 87/87/87/87/12/12/12\,Nm &
-  Human-recharge fraction (tank) & $\gamma$ & 0.0 (default)\\
-$\Lambda^{-1}$ regularization & $\sigma$ & $10^{-6}$ &
-  OSQP tolerances & $\epsilon_{\text{abs}},\epsilon_{\text{rel}}$ & $10^{-6}$, $10^{-6}$\\
-Kalman process noise & $Q_d$ & 10.0 &
-  OSQP iteration cap & --- & 4000\\
-Kalman obs.\ noise (pos.\ / vel.) & --- & $10^{-3}$ / $10^{-2}$ &
-  Circle radius / period & $R,T$ & 0.12\,m, 8\,s\\
-Orientation stiffness / damping & $K_{\text{rot}},D_{\text{rot}}$ & 20\,Nm/rad, 6\,Nm$\cdot$s/rad &
-  Human step force & $F_h$ & 15\,N, $t\in[3,6]$\,s\\
-Null-space stiffness / damping & $k_{\text{null}},d_{\text{null}}$ & 10\,Nm/rad, 2\,Nm$\cdot$s/rad &
-  Reference ramp time & $T_{\text{ramp}}$ & 1.5\,s\\
-Null-space barrier gain & $k_b$ & 50\,Nm &
-  FR3 neutral pose (see~\eqref{eq:tnull}) & $q_0$ & rad, 7 values\\
-Barrier activation threshold & $\eta$ & 0.10 & & &\\
-Workspace-projection gain & $k_{\text{ws}}$ & $5{\times}10^{-4}$\,m/(Nm/rad) & & &\\
-Workspace-projection cap & $p_{\max}$ & 0.06\,m & & &\\
-Workspace-projection reg.\ & $\epsilon_r$ & $10^{-8}$ & & &\\
-\bottomrule
-\end{tabular}
-\end{table*}
-
-The Kalman noise covariances and the CBF/tank constants are
-estimator/CBF-internal and are not separately swept in the ablations
-above (the latter are exercised in the \texttt{cloud\_verify}
-hardware-path suite rather than the direct benchmark scripts used for
-Tables~\ref{tab:bm1}--\ref{tab:backbone}). Reproducing any table above
-uses these values unless its own caption states a swept parameter (e.g.\
-$F_{\max}$ in Table~\ref{tab:backbone}, measurement noise in
-Table~\ref{tab:robust}).
+\textbf{Further experiments and parameters.} The supplementary material
+reports three further ablations run under the same codebase: a
+time-varying-force horizon-prediction study (Table~S4), a human-force
+magnitude and shape sweep (Table~S5), and an impedance-backbone
+ablation, \textbf{C8}, that degrades gracefully rather than collapsing to
+bare feedforward when the QP's corrective authority is curtailed
+(Table~S6) --- along with the full numeric parameter table (Table~S1).
 
 % ----------------------------------------------------------
 \section{Discussion and Conclusion}
@@ -1775,46 +1372,35 @@ This paper argued that safe pHRI is best designed by predicting
 operational-space feedforward cancellation exposes a linear
 interaction-dynamics backbone --- a double-integrator reduction of the
 interaction error --- with configuration dependence confined to
-$B_d(\rho_k)$, turning
-compliance, tracking, disturbance rejection, and safety into properties of one
-30-variable convex QP rather than four separately designed modules. The two
-benchmarks show its mechanisms to be orthogonal---prediction (QP rate) sets the
-transient peak deflection, Kalman estimation drives steady-state error to
-zero---and neither alone matches their combination.
+$B_d(\rho_k)$, turning compliance, tracking, disturbance rejection, and
+safety into properties of one 30-variable convex QP. Within its scope
+the controller recovers classical impedance in the unconstrained,
+disturbance-free limit (Theorem~\ref{thm:equiv}), is offset-free under
+constant bounded force (Theorem~\ref{thm:zss}), and is quadratically
+stabilizable by one fixed feedback gain over a certified polytope of
+configurations (Theorem~\ref{thm:workspace}). On a Franka FR3 in MuJoCo
+it reduces steady-state error under a sustained 15\,N force by
+$>$800$\times$ over classical impedance, cuts free-space circle RMSE by
+$77$--$97\times$, keeps joints inside their limits at the workspace
+boundary, and is robust to position-measurement noise and up to $30\%$
+inertial mismatch; the supplementary material adds a second waypoint-hold
+benchmark, a disturbance-rate sweep, and an impedance-backbone ablation
+(Sec.~S8) that degrades gracefully rather than collapsing when the
+optimizer's corrective authority is curtailed.
 
-The framework is one realization, not a replacement for all pHRI modes: for
-intentional co-manipulation, admittance control remains appropriate. Within its
-scope it recovers classical impedance in the unconstrained limit
-(Theorem~\ref{thm:equiv}), is offset-free under constant force
-(Theorem~\ref{thm:zss}), and---because the transition matrix is
-configuration-independent---the LPV backbone is quadratically stabilizable
-by one fixed feedback gain over a certified polytope of configurations
-under a single Lyapunov certificate (Theorem~\ref{thm:workspace}, with the
-scope of that guarantee relative to the deployed MPC stated explicitly
-there). On a Franka
-FR3 in MuJoCo it gives a $>$800$\times$ steady-state-error reduction over
-classical impedance under a sustained 15\,N force, $77$--$97\times$ RMSE
-reduction on free-space circles, and robustness to noise and $\pm30\%$ inertial
-mismatch; the interface needs only $M$, $C\dot q+G$, and $J_v$, so it ports
-across arms. The next step is hardware validation with synchronized tracking,
-force, CBF-residual, and energy-tank logs.
-
-The correction-authority ablation of Sec.~\ref{sec:backbone-ablation} adds a
-complementary lesson about deploying the predictive layer safely: when the
-optimizer's corrective authority is curtailed, decoupling a fixed, positively
-damped baseline stiffness from the optimized additive correction (C8)
-degrades gracefully instead of collapsing to bare feedforward. Future
-interaction-dynamics controllers may benefit from combining a
-guaranteed-stable passive backbone with predictive optimization on top,
-rather than relying entirely on the optimizer for corrective authority ---
-complementary to, and compatible with, the energy-tank passivity layer of
-Sec.~\ref{sec:passivity}, which governs coupled-system stability rather than
-QP-authority loss.
-
-More broadly, because the backbone reduces contact to an analytic linear model,
-it can serve as a dynamics prior for model-based physical AI---letting a learned
-world model capture only the residual uncertainty of intent, contact, and
-environment rather than re-learning robot dynamics.
+The framework is one realization, not a replacement for all pHRI modes:
+for intentional co-manipulation, admittance control remains the
+appropriate paradigm, and near the workspace boundary joint-limit
+regulation needs the task-space projection alongside the null-space
+barrier. Because the interface needs only $M$, $C\dot q+G$, and $J_v$,
+it ports across torque-controlled arms by substituting the robot model
+and joint-limit parameters; and because it reduces contact to an
+analytic linear model with a fixed transition matrix, it may serve as a
+dynamics prior for model-based physical AI, letting a learned model
+capture only the residual uncertainty of intent, contact, and
+environment. The next validation step is real FR3 pHRI testing with
+synchronized tracking, force-estimation, CBF-residual, and energy-tank
+logs.
 
 % ----------------------------------------------------------
 \bibliographystyle{IEEEtran}

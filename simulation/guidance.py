@@ -67,9 +67,11 @@ sys.path.insert(0, str(Path(__file__).parent))
 from fr3_impedance import (
     make_impedance_params, cartesian_impedance_control,
     AdmittanceController, make_admittance_params,
+    build_operational_space_model,
 )
 from fr3_mujoco    import FR3MuJoCoEnv, Q_NEUTRAL
 from impedance_mpc import ImpedanceMPCController, ImpedanceMPCParams
+from so3_utils import rotation_error_matrix
 
 
 # ---------------------------------------------------------------------------
@@ -115,20 +117,20 @@ COLORS = {
     "Pure Admittance":                  "#9C27B0",
     "Variable Compliance":              "#4CAF50",
     "Variable-Impedance MPC 100Hz":     "#795548",
-    "Double-Integrator MPC 100Hz":                    "#FF9800",
-    "Double-Integrator MPC + Kalman 100Hz":           "#F44336",
-    "Double-Integrator MPC 500Hz":              "#00BCD4",
-    "Double-Integrator MPC + Kalman 500Hz":     "#E91E63",
+    "DI-MPC 100Hz":                    "#FF9800",
+    "DI-MPC + Kalman 100Hz":           "#F44336",
+    "DI-MPC 500Hz":              "#00BCD4",
+    "DI-MPC + Kalman 500Hz":     "#E91E63",
 }
 LINESTYLES = {
     "Stiff Impedance":                  "--",
     "Pure Admittance":                  ":",
     "Variable Compliance":              "-",
     "Variable-Impedance MPC 100Hz":     (0, (4, 2)),
-    "Double-Integrator MPC 100Hz":                    (0, (3, 1, 1, 1)),
-    "Double-Integrator MPC + Kalman 100Hz":           "-.",
-    "Double-Integrator MPC 500Hz":              (0, (5, 1)),
-    "Double-Integrator MPC + Kalman 500Hz":     (0, (1, 1)),
+    "DI-MPC 100Hz":                    (0, (3, 1, 1, 1)),
+    "DI-MPC + Kalman 100Hz":           "-.",
+    "DI-MPC 500Hz":              (0, (5, 1)),
+    "DI-MPC + Kalman 500Hz":     (0, (1, 1)),
 }
 # Single source of truth for line weights so every curve plot emphasises the
 # 4 MPC variants identically (500 Hz thicker than the slow variant; baselines
@@ -139,10 +141,10 @@ LINE_WIDTHS = {
     "Pure Admittance":                  1.6,
     "Variable Compliance":              2.0,
     "Variable-Impedance MPC 100Hz":     1.8,
-    "Double-Integrator MPC 100Hz":              1.9,
-    "Double-Integrator MPC + Kalman 100Hz":     1.9,
-    "Double-Integrator MPC 500Hz":              2.4,
-    "Double-Integrator MPC + Kalman 500Hz":     2.4,
+    "DI-MPC 100Hz":              1.9,
+    "DI-MPC + Kalman 100Hz":     1.9,
+    "DI-MPC 500Hz":              2.4,
+    "DI-MPC + Kalman 500Hz":     2.4,
 }
 
 
@@ -161,7 +163,7 @@ PAUSE_SECS = 3.0
 # MPC sample-rate — SINGLE SOURCE OF TRUTH
 # ---------------------------------------------------------------------------
 # Every run path (headless `run_episode`, plot `main_compare`, and the rendered
-# `run_episode_video`) builds its Double-Integrator MPC through make_mpc_controller(),
+# `run_episode_video`) builds its DI-MPC through make_mpc_controller(),
 # so the QP sample rate is defined in exactly one place and the code paths can
 # never disagree.  A 50 Hz vs 100 Hz mismatch between two of these paths once
 # caused the Kalman variant to diverge only in the rendered video.
@@ -173,13 +175,13 @@ PAUSE_SECS = 3.0
 # entry points); it propagates to every run path automatically.
 MPC_DT_SLOW = 0.01   # s — 100 Hz QP for the non-500Hz MPC variants
 
-# The four Double-Integrator MPC controller names (single definition, shared by all
+# The four DI-MPC controller names (single definition, shared by all
 # run paths' "is this an MPC controller?" checks).
 MPC_NAMES = (
-    "Double-Integrator MPC 100Hz",
-    "Double-Integrator MPC + Kalman 100Hz",
-    "Double-Integrator MPC 500Hz",
-    "Double-Integrator MPC + Kalman 500Hz",
+    "DI-MPC 100Hz",
+    "DI-MPC + Kalman 100Hz",
+    "DI-MPC 500Hz",
+    "DI-MPC + Kalman 500Hz",
     # Predictive variable-impedance baseline: routes through the same MPC path
     # (builds an ImpedanceMPCController in variable_impedance mode).
     "Variable-Impedance MPC 100Hz",
@@ -188,7 +190,7 @@ MPC_NAMES = (
 
 def make_mpc_controller(ctrl_name: str, dt_sim: float,
                         dt_slow: float = MPC_DT_SLOW):
-    """Build the Double-Integrator MPC controller and its decimation factor for a
+    """Build the DI-MPC controller and its decimation factor for a
     controller name.  The ONE place the QP rate is resolved.
 
     Returns (mpc_ctrl, mpc_every) where the controller is already reset and the
@@ -292,6 +294,7 @@ def run_episode(
     adm_ctrl = None
     mpc_ctrl = None
     tau_cached   = np.zeros(7)
+    F_mpc_cached = np.zeros(3)
 
     if controller_name == "Pure Admittance":
         adm_ctrl = AdmittanceController(
@@ -413,14 +416,27 @@ def run_episode(
             tau += env.null_space_gravity_comp(dyn)
 
         elif mpc_ctrl is not None:
-            # Double-Integrator MPC: target is current waypoint (static hold)
+            # DI-MPC: target is current waypoint (static hold)
             if i % mpc_every == 0:
-                tau_cached, _ = mpc_ctrl.control(
+                tau_cached, F_mpc_cached = mpc_ctrl.control(
                     state.ee_pos, state.ee_vel, state.ee_rot,
                     p_d, np.zeros(3), np.zeros(3), R_d,
                     dyn, state.q, state.dq,
                 )
-            tau = tau_cached
+                tau = tau_cached
+            else:
+                # 1 kHz inner loop: feedforward, orientation, and
+                # null-space torques are recomputed every tick from
+                # fresh (q, dq); only the QP correction F_mpc is held
+                # from the last solve.
+                J_v, J_w = dyn.J[:3, :], dyn.J[3:, :]
+                tau_ff = dyn.Cq_dot  # static hold reference: ddp_d = 0
+                e_R    = rotation_error_matrix(R_d, state.ee_rot)
+                p_mpc  = mpc_ctrl.p
+                tau_or = J_w.T @ (-p_mpc.K_rot * e_R - p_mpc.D_rot * state.ee_vel[3:])
+                N_bar  = build_operational_space_model(dyn, state.ee_vel).N_bar
+                tau    = (tau_ff + J_v.T @ F_mpc_cached + tau_or
+                          + mpc_ctrl.null_torque(state.q, state.dq, N_bar))
 
         else:  # Variable Compliance
             k_eff  = K_STIFF * (1.0 - alpha) + K_SOFT * alpha
@@ -676,10 +692,10 @@ def main_demo():
         "Stiff Impedance",
         "Pure Admittance",
         "Variable Compliance",
-        "Double-Integrator MPC 100Hz",
-        "Double-Integrator MPC + Kalman 100Hz",
-        "Double-Integrator MPC 500Hz",
-        "Double-Integrator MPC + Kalman 500Hz",
+        "DI-MPC 100Hz",
+        "DI-MPC + Kalman 100Hz",
+        "DI-MPC 500Hz",
+        "DI-MPC + Kalman 500Hz",
     ]
 
     print("=" * 64)
@@ -746,10 +762,10 @@ ALL_CONTROLLERS = [
     "Stiff Impedance",
     "Pure Admittance",
     "Variable Compliance",
-    "Double-Integrator MPC 100Hz",
-    "Double-Integrator MPC + Kalman 100Hz",
-    "Double-Integrator MPC 500Hz",
-    "Double-Integrator MPC + Kalman 500Hz",
+    "DI-MPC 100Hz",
+    "DI-MPC + Kalman 100Hz",
+    "DI-MPC 500Hz",
+    "DI-MPC + Kalman 500Hz",
 ]
 
 PAPER_CONTROLLERS = [
@@ -757,18 +773,18 @@ PAPER_CONTROLLERS = [
     "Pure Admittance",
     "Variable Compliance",
     "Variable-Impedance MPC 100Hz",
-    "Double-Integrator MPC + Kalman 500Hz",
+    "DI-MPC + Kalman 500Hz",
 ]
 PAPER_LABELS = {
     "Stiff Impedance": "D1 Stiff Imp.",
     "Pure Admittance": "D2 Pure Adm.",
     "Variable Compliance": "D3 Var. Compl.",
     "Variable-Impedance MPC 100Hz": "MPVIC Var.-Imp. MPC",
-    "Double-Integrator MPC + Kalman 500Hz": "D7 DI-MPC+K 500Hz",
+    "DI-MPC + Kalman 500Hz": "D7 DI-MPC+K 500Hz",
 }
 VIDEO_CONTROLLERS = [
     "Stiff Impedance",
-    "Double-Integrator MPC + Kalman 500Hz",
+    "DI-MPC + Kalman 500Hz",
 ]
 
 # ---------------------------------------------------------------------------
@@ -910,10 +926,10 @@ def plot_controller_comparison(results: dict, save_path: str | None = None, pape
         "Stiff Impedance":              "Stiff Imp.",
         "Pure Admittance":              "Pure Adm.",
         "Variable Compliance":          "Var. Compl.",
-        "Double-Integrator MPC 100Hz":          "MPC 100Hz",
-        "Double-Integrator MPC + Kalman 100Hz": "MPC+K 100Hz",
-        "Double-Integrator MPC 500Hz":          "MPC 500Hz",
-        "Double-Integrator MPC + Kalman 500Hz": "MPC+K 500Hz",
+        "DI-MPC 100Hz":          "MPC 100Hz",
+        "DI-MPC + Kalman 100Hz": "MPC+K 100Hz",
+        "DI-MPC 500Hz":          "MPC 500Hz",
+        "DI-MPC + Kalman 500Hz": "MPC+K 500Hz",
     }
     max_wp = N_LAPS * len(WAYPOINTS)
     col_labels = ["Controller", "Reached", "RMS free\n(mm)",
@@ -1081,20 +1097,20 @@ ALL_CONTROLLERS = [
     "Stiff Impedance",
     "Pure Admittance",
     "Variable Compliance",
-    "Double-Integrator MPC 100Hz",
-    "Double-Integrator MPC + Kalman 100Hz",
-    "Double-Integrator MPC 500Hz",
-    "Double-Integrator MPC + Kalman 500Hz",
+    "DI-MPC 100Hz",
+    "DI-MPC + Kalman 100Hz",
+    "DI-MPC 500Hz",
+    "DI-MPC + Kalman 500Hz",
 ]
 
 COLORS_HEX = {
     "Stiff Impedance":                  "#2196F3",
     "Pure Admittance":                  "#9C27B0",
     "Variable Compliance":              "#4CAF50",
-    "Double-Integrator MPC 100Hz":                    "#FF9800",
-    "Double-Integrator MPC + Kalman 100Hz":           "#F44336",
-    "Double-Integrator MPC 500Hz":              "#00BCD4",
-    "Double-Integrator MPC + Kalman 500Hz":     "#E91E63",
+    "DI-MPC 100Hz":                    "#FF9800",
+    "DI-MPC + Kalman 100Hz":           "#F44336",
+    "DI-MPC 500Hz":              "#00BCD4",
+    "DI-MPC + Kalman 500Hz":     "#E91E63",
 }
 
 
@@ -1145,7 +1161,7 @@ DESCRIPTIONS = {
             "Best of both modes: compliant during contact, accurate in free motion.",
         ],
     ),
-    "Double-Integrator MPC 100Hz": (
+    "DI-MPC 100Hz": (
         "MPC @ 100 Hz — predictive rejection, lower SS error than stiff impedance",
         [
             "Two-layer: feedforward cancels nominal dynamics (500 Hz) + QP outer loop (100 Hz).",
@@ -1154,7 +1170,7 @@ DESCRIPTIONS = {
             "No Kalman estimator: reacts to accumulated error only — SS deflection ~ 15–20 mm.",
         ],
     ),
-    "Double-Integrator MPC + Kalman 100Hz": (
+    "DI-MPC + Kalman 100Hz": (
         "MPC @ 100 Hz + Kalman disturbance estimator — drives SS error → 0",
         [
             "Augmented state:  x_aug = [ e(k);  ė(k);  d̂(k) ]   where d̂ ∈ ℝ³ is the force-form input-channel disturbance.",
@@ -1164,7 +1180,7 @@ DESCRIPTIONS = {
             "Convergence: ~1 QP interval (10 ms) after push onset. Each waypoint gets its own reset.",
         ],
     ),
-    "Double-Integrator MPC 500Hz": (
+    "DI-MPC 500Hz": (
         "MPC @ 500 Hz (every step) — fastest correction, lower peak deflection",
         [
             "Same QP structure as 100 Hz variant — only the solve rate changes: every 2 ms physics step.",
@@ -1173,7 +1189,7 @@ DESCRIPTIONS = {
             "No Kalman: SS error still ~ 5–10 mm. Rate governs transient; estimator governs steady state.",
         ],
     ),
-    "Double-Integrator MPC + Kalman 500Hz": (
+    "DI-MPC + Kalman 500Hz": (
         "MPC @ 500 Hz + Kalman — fastest transient AND near-zero SS error",
         [
             "Combines highest QP rate (500 Hz) with Kalman disturbance estimation.",
@@ -1482,9 +1498,9 @@ def _make_opening_card(renderer, cam, data, fps: int,
         "  Stiff Impedance         — resists push, ~50 mm steady-state deflection",
         "  Pure Admittance         — large compliant yield (~150 mm), slow recovery",
         "  Variable Compliance     — yields during contact, snaps back to goal after release",
-        "  Double-Integrator MPC (100 Hz)  — predictive rejection, lower SS error",
+        "  DI-MPC (100 Hz)  — predictive rejection, lower SS error",
         "  Imp. MPC + Kalman 100Hz — Kalman drives d̂ → F_h, near-zero SS error",
-        "  Double-Integrator MPC 500 Hz    — fastest correction, lower peak deflection",
+        "  DI-MPC 500 Hz    — fastest correction, lower peak deflection",
         "  Imp. MPC + Kalman 500Hz — best overall: fast transient AND zero SS error",
     ]
     for ln in lines:
@@ -1711,7 +1727,8 @@ def run_episode_video(ctrl_name: str, env: FR3MuJoCoEnv,
                                       damping_ratio=1.0, q_null=Q_NEUTRAL)
     adm_ctrl  = None
     mpc_ctrl  = None
-    tau_cached = np.zeros(7)
+    tau_cached   = np.zeros(7)
+    F_mpc_cached = np.zeros(3)
     mpc_every  = 1
 
     if ctrl_name == "Pure Admittance":
@@ -1821,12 +1838,25 @@ def run_episode_video(ctrl_name: str, env: FR3MuJoCoEnv,
 
         else:  # MPC variants
             if i % mpc_every == 0:
-                tau_cached, _ = mpc_ctrl.control(
+                tau_cached, F_mpc_cached = mpc_ctrl.control(
                     state.ee_pos, state.ee_vel, state.ee_rot,
                     p_d, np.zeros(3), np.zeros(3), R_d,
                     dyn, state.q, state.dq,
                 )
-            tau = tau_cached
+                tau = tau_cached
+            else:
+                # 1 kHz inner loop: feedforward, orientation, and
+                # null-space torques are recomputed every tick from
+                # fresh (q, dq); only the QP correction F_mpc is held
+                # from the last solve.
+                J_v, J_w = dyn.J[:3, :], dyn.J[3:, :]
+                tau_ff = dyn.Cq_dot  # static hold reference: ddp_d = 0
+                e_R    = rotation_error_matrix(R_d, state.ee_rot)
+                p_mpc  = mpc_ctrl.p
+                tau_or = J_w.T @ (-p_mpc.K_rot * e_R - p_mpc.D_rot * state.ee_vel[3:])
+                N_bar  = build_operational_space_model(dyn, state.ee_vel).N_bar
+                tau    = (tau_ff + J_v.T @ F_mpc_cached + tau_or
+                          + mpc_ctrl.null_torque(state.q, state.dq, N_bar))
 
         env.apply_torque(tau)
         env.step()
