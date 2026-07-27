@@ -30,6 +30,11 @@ python3 -m pytest simulation/test_torque_activation_experiment.py -q
 python3 simulation/build_paper_pdf.py paper.md
 ```
 
+`phri2.tex` is a hand-maintained IEEEtran-journal LaTeX rendering of the
+same manuscript (theorem/proposition/definition environments, full
+bibliography); it is not generated from `paper.md` and must be edited and
+recompiled (`pdflatex`) separately if the content changes.
+
 The planar experiment writes `results/metrics.json` and
 `results/interaction_dynamics_results.png`. The FR3 experiment writes
 `results/fr3_metrics.json` and `results/fr3_interaction_dynamics_results.png`.
@@ -63,5 +68,5 @@ each solve, and slack-relaxes the Cartesian workspace/speed box rather than
 treating it as hard, since a hard box has no recursive-feasibility guarantee
 under the frozen-Jacobian approximation. A separate stress case derates joint
 4's available budget and compares horizon-wide against first-step-only torque
-feasibility. See `paper.md` Sections 8–10 for the experiments, architectural
+feasibility. See `paper.md` Sections 6–8 for the experiments, architectural
 discussion, and explicit limitations.
