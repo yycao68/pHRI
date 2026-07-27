@@ -1,0 +1,103 @@
+{
+  "purpose": "activate the realization runtime's torque constraint",
+  "derated_joint_zero_based": 3,
+  "derated_limit_Nm": 31.5,
+  "nominal_FR3_limit_Nm": 87.0,
+  "duration_s": 6.0,
+  "generator": {
+    "mass": 2.0,
+    "stiffness": 200.0,
+    "damping": 28.0,
+    "name": "impedance"
+  },
+  "cases": {
+    "horizon_wide": {
+      "realization_rmse_mps2": 1.3988273606648671,
+      "empirical_realization_rmse_mps2": 1.3988273606648671,
+      "predicted_realization_rmse_mps2": 1.4481668404205794,
+      "max_position_slack_m": 0.000172999895608487,
+      "max_speed_slack_mps": 5.1267262852475e-07,
+      "n_solves_with_nontrivial_slack": 110,
+      "max_abs_position_m": 0.060214543051623215,
+      "max_speed_mps": 0.2897870212488811,
+      "max_speed_norm_mps": 0.2907881398089521,
+      "max_abs_torque_Nm": 31.663638689410014,
+      "max_abs_torque_per_joint_Nm": [
+        0.07118440749459318,
+        9.850549453737392,
+        0.6574024399522918,
+        31.663638689410014,
+        0.7939706358488503,
+        3.319648301519138,
+        0.03346788365358822
+      ],
+      "max_torque_utilization": 1.0051948790288894,
+      "max_torque_utilization_per_joint": [
+        0.0008182115803976228,
+        0.1132247063647976,
+        0.007556349884509101,
+        1.0051948790288894,
+        0.06616421965407086,
+        0.27663735845992815,
+        0.002788990304465685
+      ],
+      "max_abs_command_N": 25.83347557197034,
+      "position_violation_m": 0.00021454305162321718,
+      "speed_violation_mps": 0.0,
+      "torque_violation_Nm": 0.16363868941001414,
+      "max_planned_torque_violation_Nm": 0.002598175462249941,
+      "active_constraint_steps": 2240,
+      "torque_constraint_active_steps": 160,
+      "mean_solve_time_ms": 4.052497748828803,
+      "max_solve_time_ms": 14.692290918901563,
+      "final_z_m": 0.0024187642903066298,
+      "peak_z_m": -0.060214543051623215,
+      "n_infeasible_solves": 0,
+      "torque_constraint_steps": 15
+    },
+    "first_step_only": {
+      "realization_rmse_mps2": 1.4645575212926842,
+      "empirical_realization_rmse_mps2": 1.4645575212926842,
+      "predicted_realization_rmse_mps2": 1.452154416078406,
+      "max_position_slack_m": 0.0016912313289253536,
+      "max_speed_slack_mps": 5.930864663888272e-07,
+      "n_solves_with_nontrivial_slack": 110,
+      "max_abs_position_m": 0.06182816575827699,
+      "max_speed_mps": 0.29916380521200503,
+      "max_speed_norm_mps": 0.3001224687693963,
+      "max_abs_torque_Nm": 31.88297930236946,
+      "max_abs_torque_per_joint_Nm": [
+        0.6495245378121567,
+        23.48678754357684,
+        1.3413142353161231,
+        31.88297930236946,
+        0.7918928431830264,
+        4.5044082927941576,
+        0.03956155992638532
+      ],
+      "max_torque_utilization": 1.012158073091094,
+      "max_torque_utilization_per_joint": [
+        0.007465799285197203,
+        0.26996307521352686,
+        0.015417405003633599,
+        1.012158073091094,
+        0.06599107026525221,
+        0.37536735773284646,
+        0.0032967966605321098
+      ],
+      "max_abs_command_N": 32.24790095505913,
+      "position_violation_m": 0.0018281657582769895,
+      "speed_violation_mps": 0.0,
+      "torque_violation_Nm": 0.3829793023694599,
+      "max_planned_torque_violation_Nm": 10.739299632121686,
+      "active_constraint_steps": 2220,
+      "torque_constraint_active_steps": 220,
+      "mean_solve_time_ms": 4.41842115794619,
+      "max_solve_time_ms": 13.114957953803241,
+      "final_z_m": 0.002485619647186743,
+      "peak_z_m": -0.06182816575827699,
+      "n_infeasible_solves": 0,
+      "torque_constraint_steps": 1
+    }
+  }
+}

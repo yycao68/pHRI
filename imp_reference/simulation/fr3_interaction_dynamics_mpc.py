@@ -137,6 +137,11 @@ class FR3MPCConfig:
     dt: float = 0.02  # QP solve period (s); inner loop can run faster, see run_fr3_experiments.py
     horizon: int = 15
     tau_max: np.ndarray = field(default_factory=lambda: TAU_LIMIT.copy())
+    # None enforces torque feasibility at every predicted step. Setting this
+    # to 1 creates the matched first-step-only ablation used by the torque
+    # activation study; the unconstrained future torque rows remain in the
+    # matrix with infinite bounds so the QP dimensions stay identical.
+    torque_constraint_steps: int | None = None
     force_limit: float = 150.0  # generous Cartesian-force safety net; torque is the real constraint
     speed_limit: float = 0.35
     position_limit: float = 0.06
@@ -444,8 +449,13 @@ class FR3RealizationMPC:
             torque_map = np.zeros((7, n))
             torque_map[:, 3 * k : 3 * k + 3] = J_v.T
             constraint_maps.append(torque_map)
-            lowers.append(-cfg.tau_max - tau_base)
-            uppers.append(cfg.tau_max - tau_base)
+            torque_steps = H if cfg.torque_constraint_steps is None else cfg.torque_constraint_steps
+            if k < torque_steps:
+                lowers.append(-cfg.tau_max - tau_base)
+                uppers.append(cfg.tau_max - tau_base)
+            else:
+                lowers.append(-np.inf * np.ones(7))
+                uppers.append(np.inf * np.ones(7))
             labels.append(f"torque[{k}]")
 
         # Slack non-negativity.

@@ -123,6 +123,7 @@ def run_case(
         "solve_time_s": [],
         "slack_position": [],
         "slack_speed": [],
+        "planned_torque_violation_Nm": [],
     }
     last_residual = 0.0
     last_active: list[str] = []
@@ -130,6 +131,7 @@ def run_case(
     last_solve_time = 0.0
     last_slack_position = 0.0
     last_slack_speed = 0.0
+    last_planned_torque_violation = 0.0
     n_infeasible = 0
     n_solves_with_nontrivial_slack = 0
     slack_epsilon = 1e-6  # below this, treat slack as "not used" (solver/rounding noise)
@@ -156,6 +158,9 @@ def run_case(
                     last_solve_time = step.solve_time_s
                     last_slack_position = step.horizon_slack_max_position
                     last_slack_speed = step.horizon_slack_max_speed
+                    last_planned_torque_violation = float(
+                        max(0.0, np.max(np.abs(step.horizon_tau) - cfg.tau_max[None, :]))
+                    )
                     if step.horizon_slack_max > slack_epsilon:
                         n_solves_with_nontrivial_slack += 1
                 except RuntimeError:
@@ -178,6 +183,7 @@ def run_case(
                     last_solve_time = 0.0
                     last_slack_position = 0.0
                     last_slack_speed = 0.0
+                    last_planned_torque_violation = 0.0
                     n_infeasible += 1
                 previous_command = f_cmd_held
             elif controller_kind == "clipped":
@@ -190,6 +196,7 @@ def run_case(
                 last_solve_time = 0.0
                 last_slack_position = 0.0
                 last_slack_speed = 0.0
+                last_planned_torque_violation = 0.0
             else:
                 raise ValueError(controller_kind)
 
@@ -215,6 +222,7 @@ def run_case(
         log["solve_time_s"].append(last_solve_time)
         log["slack_position"].append(last_slack_position)
         log["slack_speed"].append(last_slack_speed)
+        log["planned_torque_violation_Nm"].append(last_planned_torque_violation)
 
         env.apply_torque(tau)
         env.apply_ee_wrench(np.concatenate([force, np.zeros(3)]))
@@ -231,6 +239,7 @@ def run_case(
         "predicted_realization_residual",
         "slack_position",
         "slack_speed",
+        "planned_torque_violation_Nm",
     ):
         log[key] = np.asarray(log[key])
     # Empirical task acceleration from the MuJoCo trajectory. This includes
@@ -251,6 +260,11 @@ def run_case(
     return log
 
 
+def componentwise_rmse(values: np.ndarray) -> float:
+    """Pool all components and samples before taking the RMSE."""
+    return float(np.sqrt(np.mean(np.asarray(values, dtype=float) ** 2)))
+
+
 def metrics(log, cfg: FR3MPCConfig) -> dict:
     position = log["ee_pos"]
     velocity = log["ee_vel"]
@@ -269,22 +283,19 @@ def metrics(log, cfg: FR3MPCConfig) -> dict:
     torque_utilization = max_per_joint / cfg.tau_max
     slack_position = log["slack_position"]
     slack_speed = log["slack_speed"]
-    # These are vector-norm RMSE: the squared per-sample 3-vector residual is
-    # summed across x/y/z, then averaged over time, then sqrt'd. The planar
-    # study's realization_rmse_mps2 (run_experiments.py) is componentwise
-    # RMSE instead: it flattens all components and time samples into one mean
-    # before the sqrt. The two are not the same quantity and are not directly
-    # comparable across studies -- see paper.md's Table 1/2 captions, which
-    # label each one explicitly for this reason.
+    # Use the same component-wise RMSE convention as the planar study:
+    # residual components and time samples are pooled into one mean before
+    # taking the square root. This avoids an automatic sqrt(output dimension)
+    # scaling when the metric is reported for a different task dimension.
     return {
         "realization_rmse_mps2": float(
-            np.sqrt(np.mean(np.sum(residual[valid_empirical] ** 2, axis=1)))
+            componentwise_rmse(residual[valid_empirical])
         ),
         "empirical_realization_rmse_mps2": float(
-            np.sqrt(np.mean(np.sum(residual[valid_empirical] ** 2, axis=1)))
+            componentwise_rmse(residual[valid_empirical])
         ),
         "predicted_realization_rmse_mps2": float(
-            np.sqrt(np.mean(np.sum(predicted_residual**2, axis=1)))
+            componentwise_rmse(predicted_residual)
         ),
         "max_position_slack_m": float(np.max(slack_position)) if len(slack_position) else 0.0,
         "max_speed_slack_mps": float(np.max(slack_speed)) if len(slack_speed) else 0.0,
@@ -302,6 +313,9 @@ def metrics(log, cfg: FR3MPCConfig) -> dict:
             max(0.0, np.max(np.abs(velocity)) - cfg.speed_limit)
         ),
         "torque_violation_Nm": float(max(0.0, np.max(np.abs(tau) - cfg.tau_max[None, :]))),
+        "max_planned_torque_violation_Nm": float(
+            np.max(log["planned_torque_violation_Nm"])
+        ),
         "active_constraint_steps": int(meaningful_active_steps),
         "torque_constraint_active_steps": int(torque_active_steps),
         "mean_solve_time_ms": float(np.mean(solve_times) * 1e3) if solve_times else 0.0,
@@ -349,7 +363,7 @@ def make_figure(cases, cfg: FR3MPCConfig, output: Path) -> None:
     axes[3, 0].set_ylabel(r"$\|a-a^{id}\|$ (m/s²)")
     axes[0, 0].legend(loc="best")
     fig.suptitle(
-        "One predictive realization layer on a real FR3: two interaction dynamics, "
+        "One predictive realization layer on a simulated FR3: two interaction dynamics, "
         "horizon-wide torque feasibility",
         fontsize=13,
     )

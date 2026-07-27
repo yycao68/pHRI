@@ -1,4 +1,88 @@
 {
+  "metadata": {
+    "schema_version": 1,
+    "duration_s": 6.0,
+    "simulation_timestep_s": 0.001,
+    "gain_pairs": [
+      {
+        "k_null": 10.0,
+        "d_null": 2.0
+      },
+      {
+        "k_null": 20.0,
+        "d_null": 4.0
+      },
+      {
+        "k_null": 40.0,
+        "d_null": 8.0
+      },
+      {
+        "k_null": 60.0,
+        "d_null": 12.0
+      },
+      {
+        "k_null": 100.0,
+        "d_null": 20.0
+      }
+    ],
+    "controller_configuration": {
+      "dt": 0.02,
+      "horizon": 15,
+      "tau_max": [
+        87.0,
+        87.0,
+        87.0,
+        87.0,
+        12.0,
+        12.0,
+        12.0
+      ],
+      "force_limit": 150.0,
+      "speed_limit": 0.35,
+      "position_limit": 0.06,
+      "realization_weight": 1.0,
+      "force_weight": 0.01,
+      "force_rate_weight": 0.0001,
+      "force_rate_limit": 2000.0,
+      "slack_weight": 100000000.0,
+      "K_rot": 20.0,
+      "D_rot": 6.0,
+      "lambda_reg": 1e-06,
+      "osqp_eps": 0.0001,
+      "osqp_max_iter": 20000
+    },
+    "force_profile": {
+      "magnitude_N": 20.0,
+      "axis": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "onset_s": 1.0,
+      "ramp_s": 0.25,
+      "hold_s": 2.0,
+      "forecast": "measured force held constant over the horizon"
+    },
+    "generators": {
+      "impedance": {
+        "mass": 2.0,
+        "stiffness": 200.0,
+        "damping": 28.0,
+        "name": "impedance"
+      },
+      "admittance": {
+        "time_constant": 0.3,
+        "force_to_velocity": 0.01,
+        "name": "admittance"
+      }
+    },
+    "metric_definitions": {
+      "max_q_dev_rad": "max over the run of ||q - Q_NEUTRAL||_2",
+      "max_abs_position_m": "max over time and Cartesian components of |p - p_nominal|",
+      "max_tau_over_limit_Nm": "max(0, max over time and joints of |tau|-tau_max)",
+      "n_infeasible_solves": "number of predictive solves that invoked reactive fallback"
+    }
+  },
   "k_null=10_d_null=2": {
     "impedance_mpc": {
       "max_q_dev_rad": 1.3182908026869018,

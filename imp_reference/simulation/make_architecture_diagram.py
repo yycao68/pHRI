@@ -15,8 +15,8 @@ GRAY = "#4D4D4D"
 LIGHT = "#F2F2F2"
 
 fig, ax = plt.subplots(figsize=(10.2, 9.0))
-ax.set_xlim(-0.6, 9.0)
-ax.set_ylim(3.6, 11.0)
+ax.set_xlim(-0.1, 8.5)
+ax.set_ylim(3.6, 10.0)
 ax.set_aspect("equal")
 ax.axis("off")
 
@@ -46,75 +46,77 @@ def arrow(p0, p1, *, color="black", lw=1.8, connectionstyle="arc3,rad=0.0"):
     ax.add_patch(a)
 
 
-ax.text(4.0, 10.95, "One realization layer, any interaction dynamics",
+ax.text(4.2, 9.8, "Behavior specification separated from constrained realization",
         ha="center", va="center", fontsize=15, fontweight="bold")
 
 # --- Main vertical pipeline --------------------------------------------------
 
-box((0.7, 9.5), 4.0, 0.95,
+box_w = 3.4
+box((1.0, 8.6), box_w, 0.8,
     [("Measured interaction state $(e,\\dot e)$", 10.5, "black", "normal", "normal"),
      ("and human force $F_h$", 10.5, "black", "normal", "normal")],
     fc=LIGHT, ec=GRAY)
 
-box((0.7, 7.4), 4.0, 1.35,
-    [("Interaction-Dynamics Generator  $f_\\theta$", 10, "black", "bold", "normal"),
-     ("(pluggable)", 10, "black", "normal", "normal"),
-     ("impedance · admittance · energy-tank passive ·", 8.3, GRAY, "normal", "italic"),
-     ("human model · learned model", 8.3, GRAY, "normal", "italic")],
+box((1.0, 6.8), box_w, 1.2,
+    [("Behavior Layer", 10.5, "black", "bold", "normal"),
+     ("Desired-Acceleration Generator  $f_\\theta$", 9.5, "black", "normal", "normal"),
+     ("validated here:", 8.3, GRAY, "normal", "italic"),
+     ("impedance · admittance", 8.8, GRAY, "normal", "italic")],
     fc="white", ec=GRAY, dashed=True)
 
-box((0.7, 5.4), 4.0, 1.35,
-    [("Predictive Realization", 11, "white", "bold", "normal"),
-     ("$\\min\\;\\|a-a^{\\mathrm{id}}\\|_W^2$", 10, "white", "bold", "normal"),
+box((1.0, 5.1), box_w, 1.1,
+    [("Realization Runtime", 11, "white", "bold", "normal"),
+     ("predictive QP implementation", 8.5, "white", "normal", "normal"),
+     ("$\\min\\;\\|a-a^{\\mathrm{id}}\\|_W^2$", 9.5, "white", "bold", "normal"),
      ("s.t. torque, workspace, speed, rate limits", 8.3, "white", "normal", "italic")],
     fc=BLUE, ec=BLUE)
 
-box((0.7, 4.0), 4.0, 0.75,
+box((1.0, 4.0), box_w, 0.5,
     [("Robot / Plant", 11, "white", "bold", "normal")],
     fc=GRAY, ec=GRAY)
 
-arrow((2.8, 9.5), (2.8, 8.8), color="black")
-arrow((2.8, 7.35), (2.8, 6.7), color="black")
-ax.text(3.15, 7.05, "$a^{\\mathrm{id}}$", fontsize=10, ha="left", va="center")
-arrow((2.8, 5.4), (2.8, 4.75), color="black")
-ax.text(3.15, 5.1, "$F_{\\mathrm{cmd}}/\\tau$", fontsize=10, ha="left", va="center")
+arrow((2.8, 8.6), (2.8, 8.0), color="black")
+arrow((2.8, 6.8), (2.8, 6.2), color="black")
+ax.text(3.15, 6.5, "$a^{\\mathrm{id}}$", fontsize=10, ha="left", va="center")
+arrow((2.8, 5.1), (2.8, 4.5), color="black")
+ax.text(3.15, 4.8, "$F_{\\mathrm{cmd}}/\\tau$", fontsize=10, ha="left", va="center")
 
 # --- Feedback loop: plant -> measured state, routed around the left --------
 
-arrow((0.7, 4.4), (-0.5, 4.4), color=GRAY, lw=1.6)
-arrow((-0.5, 4.4), (-0.5, 10.02), color=GRAY, lw=1.6)
-arrow((-0.5, 10.02), (0.7, 10.02), color=GRAY, lw=1.6)
-ax.text(-0.2, 7.1, "closes the loop every tick", fontsize=8.8, color=GRAY,
+arrow((1.0, 4.25), (0.0, 4.25), color=GRAY, lw=1.6)
+arrow((0.0, 4.25), (0.0, 9.0), color=GRAY, lw=1.6)
+arrow((0.0, 9.0), (1.0, 9.0), color=GRAY, lw=1.6)
+ax.text(0.2, 6.5, "closes the loop every tick", fontsize=8.8, color=GRAY,
         ha="center", va="center", rotation=90)
 
 # --- Residual branch, routed around the right -------------------------------
 
-box((6.1, 9.2), 2.8, 1.2,
+box((5.6, 8.4), 2.8, 1.0,
     [("Realization residual", 11, ORANGE, "bold", "normal"),
      ("$r_k=a-a^{\\mathrm{id}}$", 11, ORANGE, "bold", "normal"),
      ("reported, not hidden", 9., ORANGE, "normal", "normal")],
     fc="white", ec=ORANGE, lw=2.2)
 
-sum_x = 7.5
-sum_xy = (sum_x, 8)
+sum_x = 7.1
+tap_y = 7.4
+sum_xy = (sum_x, tap_y)
 circ = Circle(sum_xy, 0.24, fc="white", ec=ORANGE, lw=2.0, zorder=3, clip_on=False)
 ax.add_patch(circ)
 ax.text(*sum_xy, "$\\Sigma$", ha="center", va="center", fontsize=11, color=ORANGE, zorder=4)
 
 # a^id tap: top-right corner of generator box -> right -> down -> into LEFT side of sum node
-tap_y = 8.0
-arrow((4.7, tap_y), (7.26, tap_y), color=ORANGE, lw=1.4)
+arrow((4.4, tap_y), (sum_x-0.24, tap_y), color=ORANGE, lw=1.4)
 #arrow((6, tap_y), (6, 6.05), color=ORANGE, lw=1.4)
 #arrow((6, 6.05), (9.21, 6.05), color=ORANGE, lw=1.4)
 ax.text(6.3, tap_y + 0.18, "$a^{\\mathrm{id}}$", fontsize=9.5, color=ORANGE, ha="center", va="bottom")
 
 # a tap: plant -> right -> into BOTTOM-right of sum node
-arrow((4.7, 4.4), (sum_x, 4.4), color=ORANGE, lw=1.4)
-arrow((sum_x, 4.44), (sum_x, 7.76), color=ORANGE, lw=1.4)
+arrow((4.4, 4.25), (sum_x, 4.25), color=ORANGE, lw=1.4)
+arrow((sum_x, 4.25), (sum_x, tap_y - 0.24), color=ORANGE, lw=1.4)
 ax.text(6.3, 4.8, "$a$", fontsize=9.5, color=ORANGE, ha="center", va="top")
 
 # summing node -> residual box (single clean output arrow, top of circle)
-arrow((sum_x, 8.24), (sum_x, 9.2), color=ORANGE, lw=1.4)
+arrow((sum_x, tap_y+0.24), (sum_x, 8.4), color=ORANGE, lw=1.4)
 
 output_dir = Path(__file__).resolve().parents[1] / "results"
 output_dir.mkdir(parents=True, exist_ok=True)

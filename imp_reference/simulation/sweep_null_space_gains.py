@@ -41,6 +41,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+from dataclasses import asdict
 
 os.environ.setdefault("MPLCONFIGDIR", "/tmp/phri_imp_reference_mpl")
 
@@ -129,7 +130,40 @@ def run_condition(generator, controller_kind: str, k_null: float, d_null: float)
 
 def main() -> None:
     generators = {"impedance": ImpedanceReference3D(), "admittance": AdmittanceReference3D()}
-    report = {}
+    base_cfg = FR3MPCConfig()
+    report = {
+        "metadata": {
+            "schema_version": 1,
+            "duration_s": DURATION,
+            "simulation_timestep_s": 0.001,
+            "gain_pairs": [
+                {"k_null": k_null, "d_null": d_null}
+                for k_null, d_null in GAIN_SWEEP
+            ],
+            "controller_configuration": {
+                key: (value.tolist() if isinstance(value, np.ndarray) else value)
+                for key, value in asdict(base_cfg).items()
+                if key not in {"k_null", "d_null"}
+            },
+            "force_profile": {
+                "magnitude_N": 20.0,
+                "axis": [0.0, 0.0, -1.0],
+                "onset_s": 1.0,
+                "ramp_s": 0.25,
+                "hold_s": 2.0,
+                "forecast": "measured force held constant over the horizon",
+            },
+            "generators": {
+                name: asdict(generator) for name, generator in generators.items()
+            },
+            "metric_definitions": {
+                "max_q_dev_rad": "max over the run of ||q - Q_NEUTRAL||_2",
+                "max_abs_position_m": "max over time and Cartesian components of |p - p_nominal|",
+                "max_tau_over_limit_Nm": "max(0, max over time and joints of |tau|-tau_max)",
+                "n_infeasible_solves": "number of predictive solves that invoked reactive fallback",
+            },
+        }
+    }
     for k_null, d_null in GAIN_SWEEP:
         key = f"k_null={k_null:g}_d_null={d_null:g}"
         report[key] = {}

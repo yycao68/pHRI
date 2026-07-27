@@ -158,6 +158,34 @@ def test_horizon_wide_torque_feasibility_binding():
     )
 
 
+def test_first_step_only_ablation_leaves_future_torque_infeasible():
+    """The matched ablation constrains i=0 but permits an infeasible future plan."""
+    env = _env()
+    dyn, state = env.get_dynamics_and_state()
+    limits = FR3MPCConfig().tau_max.copy()
+    limits[3] = 5.0
+    cfg = FR3MPCConfig(
+        horizon=10,
+        position_limit=0.08,
+        speed_limit=0.4,
+        tau_max=limits,
+        torque_constraint_steps=1,
+    )
+    controller = FR3RealizationMPC(
+        ImpedanceReference3D(stiffness=400.0, damping=40.0), cfg
+    )
+    forecast = np.tile(np.array([15.0, -10.0, 25.0]), (cfg.horizon, 1))
+    step = controller.control(
+        dyn, state, state.ee_pos.copy(), state.ee_rot.copy(), forecast
+    )
+
+    assert np.all(np.abs(step.horizon_tau[0]) <= limits + 1.0e-3)
+    assert np.any(np.abs(step.horizon_tau[1:, 3]) > limits[3] + 1.0), (
+        "first-step-only ablation unexpectedly produced a feasible future "
+        "joint-4 plan; it no longer isolates horizon-wide enforcement"
+    )
+
+
 def test_invalid_forecast_shape_is_rejected():
     env = _env()
     dyn, state = env.get_dynamics_and_state()

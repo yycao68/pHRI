@@ -13,11 +13,10 @@ This module closes that gap: it runs the real benchmark scenario (the same
 claims directly, so a regression fails a test instead of only showing up as
 a quieter number in a table nobody re-checks.
 
-Physical quantities here (position, torque, violation counts) are exactly
-reproducible -- confirmed empirically by re-running the benchmark twice and
-diffing the JSON output bit-for-bit. Solve times are wall-clock and are NOT
-reproducible run-to-run; this module only ever bounds them, never asserts an
-exact value.
+Physical quantities here (position, torque, violation counts) were
+deterministic across repeated runs in the development environment. Solve
+times are wall-clock and are NOT reproducible run-to-run; this module only
+ever bounds them, never asserts an exact value.
 """
 
 import sys
@@ -35,9 +34,15 @@ from fr3_interaction_dynamics_mpc import (  # noqa: E402
     FR3MPCConfig,
     ImpedanceReference3D,
 )
-from run_fr3_experiments import metrics, run_case  # noqa: E402
+from run_fr3_experiments import componentwise_rmse, metrics, run_case  # noqa: E402
 
 _DURATION = 6.0  # matches paper.md Section 8.2; full scenario, not a shortened smoke test
+
+
+def test_residual_rmse_uses_componentwise_convention():
+    """Table 2 must pool components and samples, matching planar Table 1."""
+    residual = np.array([[3.0, 4.0, 0.0], [0.0, 0.0, 0.0]])
+    assert np.isclose(componentwise_rmse(residual), np.sqrt(25.0 / 6.0))
 
 
 def _all_conditions():
@@ -110,6 +115,22 @@ def test_predictive_realization_respects_workspace_bound():
         )
 
 
+def test_slack_usage_is_logged_small_and_controller_specific():
+    """Section 8.1 reports that predictive solves genuinely use small state
+    slack, while the reactive comparator has no QP slack. Protect the saved
+    evidence itself, not only the resulting physical workspace envelope."""
+    for generator_name in ("impedance", "admittance"):
+        predictive = _all_conditions()[(generator_name, "mpc")]
+        assert predictive["n_solves_with_nontrivial_slack"] > 0
+        assert 0.0 < predictive["max_position_slack_m"] < 1.0e-4
+        assert 0.0 <= predictive["max_speed_slack_mps"] < 1.0e-6
+
+        reactive = _all_conditions()[(generator_name, "clipped")]
+        assert reactive["n_solves_with_nontrivial_slack"] == 0
+        assert reactive["max_position_slack_m"] == 0.0
+        assert reactive["max_speed_slack_mps"] == 0.0
+
+
 def test_reactive_clipping_overshoots_predictive_realization():
     """The paper's central empirical contrast (Table 2, Figure 4): under an
     identical command/rate box and an identical generator, reactive clipping
@@ -147,11 +168,10 @@ def test_admittance_never_recovers_displacement_reactively():
 
 
 def test_solve_times_are_bounded_not_reproduced_exactly():
-    """Solve times are wall-clock and vary run-to-run (confirmed empirically:
-    re-running the benchmark twice gave 41.4-41.7 ms mean / 128-137 ms max for
-    admittance). This only bounds them generously against runaway regression
-    (e.g., a conditioning change that makes OSQP take seconds per solve), it
-    does not assert the exact numbers Table 2 reports."""
+    """Solve times are wall-clock and vary with machine load. This only
+    bounds them generously against runaway regression (e.g., a conditioning
+    change that makes OSQP take seconds per solve); it does not assert the
+    particular values recorded by one benchmark execution."""
     for key, m in _all_conditions().items():
         if m["mean_solve_time_ms"] > 0.0:  # reactive comparator does not solve a QP
             assert m["mean_solve_time_ms"] < 500.0, f"{key}: mean solve time {m['mean_solve_time_ms']:.1f} ms"

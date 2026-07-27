@@ -11,6 +11,7 @@
       12.0,
       12.0
     ],
+    "torque_constraint_steps": null,
     "force_limit": 150.0,
     "speed_limit": 0.35,
     "position_limit": 0.06,
@@ -43,9 +44,9 @@
   },
   "cases": {
     "impedance_mpc": {
-      "realization_rmse_mps2": 2.408273919034847,
-      "empirical_realization_rmse_mps2": 2.408273919034847,
-      "predicted_realization_rmse_mps2": 2.5047367021698124,
+      "realization_rmse_mps2": 1.390417595437124,
+      "empirical_realization_rmse_mps2": 1.390417595437124,
+      "predicted_realization_rmse_mps2": 1.4461104092468768,
       "max_position_slack_m": 5.30980462873755e-05,
       "max_speed_slack_mps": 4.7116831809170004e-07,
       "n_solves_with_nontrivial_slack": 110,
@@ -76,18 +77,19 @@
       "position_violation_m": 0.00018221100060317186,
       "speed_violation_mps": 0.0,
       "torque_violation_Nm": 0.0,
+      "max_planned_torque_violation_Nm": 0.0,
       "active_constraint_steps": 2240,
       "torque_constraint_active_steps": 0,
-      "mean_solve_time_ms": 4.375822670990601,
-      "max_solve_time_ms": 7.200709078460932,
+      "mean_solve_time_ms": 4.178506666794419,
+      "max_solve_time_ms": 14.072000049054623,
       "final_z_m": 0.002419056468664804,
       "peak_z_m": -0.06018221100060317,
       "n_infeasible_solves": 0
     },
     "impedance_clipped": {
-      "realization_rmse_mps2": 0.3869960868541059,
-      "empirical_realization_rmse_mps2": 0.3869960868541059,
-      "predicted_realization_rmse_mps2": 0.10705723571403625,
+      "realization_rmse_mps2": 0.22343229492054986,
+      "empirical_realization_rmse_mps2": 0.22343229492054986,
+      "predicted_realization_rmse_mps2": 0.06180952385819604,
       "max_position_slack_m": 0.0,
       "max_speed_slack_mps": 0.0,
       "n_solves_with_nontrivial_slack": 0,
@@ -118,6 +120,7 @@
       "position_violation_m": 0.044359516166664614,
       "speed_violation_mps": 0.06509326056208448,
       "torque_violation_Nm": 0.0,
+      "max_planned_torque_violation_Nm": 0.0,
       "active_constraint_steps": 0,
       "torque_constraint_active_steps": 0,
       "mean_solve_time_ms": 0.0,
@@ -127,9 +130,9 @@
       "n_infeasible_solves": 0
     },
     "admittance_mpc": {
-      "realization_rmse_mps2": 0.36646933672160964,
-      "empirical_realization_rmse_mps2": 0.36646933672160964,
-      "predicted_realization_rmse_mps2": 0.5018689977981017,
+      "realization_rmse_mps2": 0.21158117020596492,
+      "empirical_realization_rmse_mps2": 0.21158117020596492,
+      "predicted_realization_rmse_mps2": 0.28975420097666166,
       "max_position_slack_m": 2.6457358877618298e-05,
       "max_speed_slack_mps": 7.89859923186976e-07,
       "n_solves_with_nontrivial_slack": 203,
@@ -160,18 +163,19 @@
       "position_violation_m": 8.624189206690724e-05,
       "speed_violation_mps": 0.0,
       "torque_violation_Nm": 0.0,
+      "max_planned_torque_violation_Nm": 0.0,
       "active_constraint_steps": 4140,
       "torque_constraint_active_steps": 0,
-      "mean_solve_time_ms": 11.823098746826872,
-      "max_solve_time_ms": 108.68916707113385,
+      "mean_solve_time_ms": 11.39052332029678,
+      "max_solve_time_ms": 108.57970803044736,
       "final_z_m": -0.060007595938089464,
       "peak_z_m": -0.060086241892066905,
       "n_infeasible_solves": 0
     },
     "admittance_clipped": {
-      "realization_rmse_mps2": 0.34585194677561465,
-      "empirical_realization_rmse_mps2": 0.34585194677561465,
-      "predicted_realization_rmse_mps2": 0.05934996515485266,
+      "realization_rmse_mps2": 0.19967771457065725,
+      "empirical_realization_rmse_mps2": 0.19967771457065725,
+      "predicted_realization_rmse_mps2": 0.034265718358549094,
       "max_position_slack_m": 0.0,
       "max_speed_slack_mps": 0.0,
       "n_solves_with_nontrivial_slack": 0,
@@ -202,6 +206,7 @@
       "position_violation_m": 0.046637073221363734,
       "speed_violation_mps": 0.0,
       "torque_violation_Nm": 0.0,
+      "max_planned_torque_violation_Nm": 0.0,
       "active_constraint_steps": 0,
       "torque_constraint_active_steps": 0,
       "mean_solve_time_ms": 0.0,
@@ -211,5 +216,5 @@
       "n_infeasible_solves": 0
     }
   },
-  "wall_time_s": 13.195807083044201
+  "wall_time_s": 13.359794083982706
 }

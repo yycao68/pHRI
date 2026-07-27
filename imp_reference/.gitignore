@@ -1,2 +1,5 @@
 .pytest_cache/
 simulation/__pycache__/
+*.aux
+*.log
+*.out
