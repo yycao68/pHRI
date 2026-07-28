@@ -190,6 +190,13 @@ class FR3MPCConfig:
     lambda_reg: float = 1.0e-6
     osqp_eps: float = 1.0e-4
     osqp_max_iter: int = 20_000
+    # Default False: every existing benchmark, test, and paper number was
+    # generated without warm-starting, and changing this default would
+    # silently change solve times (though not the physical trajectory --
+    # warm-starting only changes ADMM's initial iterate, not the QP being
+    # solved) for every prior result. See run_fr3_timing_study.py for the
+    # warm-start-on/off comparison this flag exists to support.
+    warm_start: bool = False
 
 
 @dataclass(frozen=True)
@@ -324,9 +331,13 @@ class FR3RealizationMPC:
         self.cfg = config or FR3MPCConfig()
         self.imp_params = make_default_impedance_params(self.cfg)
         self.previous_command = np.zeros(3)
+        self._warm_x: np.ndarray | None = None
+        self._warm_y: np.ndarray | None = None
 
     def reset(self) -> None:
         self.previous_command = np.zeros(3)
+        self._warm_x = None
+        self._warm_y = None
 
     def _condense(
         self,
@@ -552,10 +563,21 @@ class FR3RealizationMPC:
             eps_rel=self.cfg.osqp_eps,
             max_iter=self.cfg.osqp_max_iter,
         )
+        if (
+            self.cfg.warm_start
+            and self._warm_x is not None
+            and self._warm_x.shape == q.shape
+            and self._warm_y is not None
+            and self._warm_y.shape == lower.shape
+        ):
+            solver.warm_start(x=self._warm_x, y=self._warm_y)
         result = solver.solve(raise_error=False)
         solve_time = _time.perf_counter() - t0
         if result.info.status_val not in (1, 2):
             raise RuntimeError(f"OSQP failed: {result.info.status}")
+        if self.cfg.warm_start:
+            self._warm_x = np.asarray(result.x)
+            self._warm_y = np.asarray(result.y)
 
         H = self.cfg.horizon
         n_i = 3 * H

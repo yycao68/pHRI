@@ -82,7 +82,7 @@ Every row above except the last two optimizes a quantity tied to one behavior re
 
 ## 3. Behavior–Realization Formulation
 
-### 3.1 Behavior–Realization Interface
+### 3.1 Behavior–realization interface
 
 Consider a rigid manipulator
 
@@ -206,7 +206,7 @@ This definition is intentionally stronger than commanding a nominal impedance fo
 
 The latter is controller-output tracking: it penalizes deviation from a nominal force command. \(\|r_k\|_W^2\) is tracking too, but of a categorically different target — the *desired behavioral acceleration* the generator specifies, not a prior controller's output — so it compares two physical accelerations directly. In this paper that distinction is demonstrated for impedance and admittance, neither of which requires the QP to track a prior controller output.
 
-### 3.2 Implemented Behavior Layers
+### 3.2 Implemented behavior layers
 
 The two behavior layers implemented below use the same QP template developed in Section 3.3 and differ only in \((C_\theta,G_\theta)\), as formalized by Theorem 1. The first is an impedance generator, whose desired impedance is
 
@@ -242,7 +242,7 @@ a^{\mathrm{id}}=-T_a^{-1}v+T_a^{-1}YF_h.
 
 It has no position-restoring term. After force release, velocity decays and the displaced position is retained. This provides a qualitatively different behavior through the same acceleration interface.
 
-### 3.3 Predictive Realization Runtime
+### 3.3 Predictive realization runtime
 
 Section 3.2 supplies \(a^{\mathrm{id}}\). For a memoryless affine generator it is represented by \(C_\theta,G_\theta\), producing one condensed-QP template whose numerical cost coefficients change with the generator while its decision variable and feasible set do not. At time \(k\), let
 
@@ -492,9 +492,11 @@ The impedance reference has an unconstrained static displacement \(F_h/K_d=20/20
 
 The admittance reference has no equilibrium displacement to compare against, only a steady-state velocity \(Y F_h=0.01\times20=0.2\) m/s while the force is held, with no restoring term to pull it back after release. Reactive clipping accumulates displacement through the hold and continues briefly after force release before the velocity decays (time constant \(T_a=0.3\) s), peaking at 0.1066 m — a 4.7 cm overshoot — and never recovers it, since the generator itself has no position-restoring term (Section 3.2) and the reactive comparator has no lookahead to anticipate the boundary. Predictive realization begins departing from the requested velocity before the bound is reached and stays within 0.0601 m.
 
-In the saved benchmark run (`results/fr3_metrics.json`), the admittance QP's worst solve exceeds the nominal 20 ms outer-loop period, whereas the impedance QP remains faster. Both have identical dimensions and constraints but different objective coefficients; conditioning is plausible but has not been isolated.
+In the saved benchmark run (`results/fr3_metrics.json`), the admittance QP's worst solve exceeds the nominal 20 ms outer-loop period, whereas the impedance QP remains faster. Both have identical dimensions and constraints but different objective coefficients.
 
-These wall-clock measurements come from one simulation-time-paced run, not a controlled timing study. They indicate solver effort on the development machine, not a real-time guarantee or an exactly reproducible hardware-independent value.
+A dedicated timing study (`simulation/run_fr3_timing_study.py`, 5 full 6 s benchmark repetitions per condition, 1500 solves each) isolates this gap along two independent axes rather than reporting one run's mean and max. Warm-starting OSQP from the previous solve's primal/dual solution — previously unused anywhere in this codebase, and off by default (`FR3MPCConfig.warm_start`) so no other reported number is affected by its existence — cuts the admittance mean solve time by 47% (11.7 ms to 6.2 ms) and its 99th percentile by 43% (65.0 ms to 37.1 ms); the impedance improvement is smaller (4.4 ms to 3.8 ms mean). The condensed QP's cost Hessian condition number, computed independently of any solve trajectory, is nearly identical between generators (4.3\(\times10^9\) impedance vs. 3.8\(\times10^9\) admittance) and rules out static Hessian conditioning as the dominant cause; both are severely ill-conditioned in absolute terms. The remaining generator-dependent gap after warm-starting is consistent with how often each condition's constraints are actively engaged: the admittance condition's workspace/speed box binds in 4140 of the main benchmark's logged ticks against impedance's 2240, and active-set changes are known to slow ADMM convergence independent of Hessian conditioning.
+
+These wall-clock measurements are solver effort on the development machine, not a real-time guarantee or an exactly reproducible hardware-independent value.
 
 An earlier version of this benchmark, run before the null-space centering fix described in Section 6.1, showed a second issue: slack chattering over a late-time window as the admittance condition sat near the workspace bound. That was traced to the same slow configuration drift Section 6.1 now describes and controls; it is not present in the results above (Figure 4), and is not reported as a current limitation.
 
@@ -594,8 +596,11 @@ python3 -m pytest simulation/test_torque_activation_experiment.py -q
 # Null-space centering gain sweep backing the drift claim in Section 6.1
 python3 simulation/sweep_null_space_gains.py
 
+# FR3 QP solve-time study (warm-start on/off, Hessian conditioning; Section 6.3)
+python3 simulation/run_fr3_timing_study.py
+
 # Rebuild this manuscript as a PDF using local files only
 python3 simulation/build_paper_pdf.py paper.md
 ```
 
-The driver scripts use fixed deterministic scenarios and record their parameters and metrics in `results/metrics.json`, `results/fr3_metrics.json`, and `results/torque_activation_metrics.json`. The QP unit tests check individual hand-picked states, while the benchmark-verification suites run the scripted scenarios end to end. In particular, `test_torque_activation_experiment.py` verifies that the horizon-wide runtime produces a feasible frozen-model torque plan, that the first-step-only ablation does not, and that the former reduces executed-model mismatch and displacement in the reported stress case. Solve-time claims are bounded rather than reproduced exactly because they are wall-clock quantities; physical metrics should still be regenerated after dependency or model changes. The FR3 studies import shared MuJoCo/operational-space infrastructure from `pHRI/simulation` rather than duplicating it. `sweep_null_space_gains.py` produces `results/null_space_gain_sweep.json`, the saved artifact behind Section 6.1's null-space drift claims.
+The driver scripts use fixed deterministic scenarios and record their parameters and metrics in `results/metrics.json`, `results/fr3_metrics.json`, and `results/torque_activation_metrics.json`. The QP unit tests check individual hand-picked states, while the benchmark-verification suites run the scripted scenarios end to end. In particular, `test_torque_activation_experiment.py` verifies that the horizon-wide runtime produces a feasible frozen-model torque plan, that the first-step-only ablation does not, and that the former reduces executed-model mismatch and displacement in the reported stress case. Solve-time claims are bounded rather than reproduced exactly because they are wall-clock quantities; physical metrics should still be regenerated after dependency or model changes. The FR3 studies import shared MuJoCo/operational-space infrastructure from `pHRI/simulation` rather than duplicating it. `sweep_null_space_gains.py` produces `results/null_space_gain_sweep.json`, the saved artifact behind Section 6.1's null-space drift claims. `run_fr3_timing_study.py` produces `results/fr3_timing_study.json`, the saved artifact behind Section 6.3's warm-start and Hessian-conditioning solve-time diagnosis; `test_fr3_interaction_dynamics_mpc.py` separately checks that warm-starting (`FR3MPCConfig.warm_start`, off by default) converges to the same command as a cold solve and that `reset()` clears the carried warm-start state.

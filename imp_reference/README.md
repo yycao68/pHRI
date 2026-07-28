@@ -26,6 +26,9 @@ python3 -m pytest simulation/test_fr3_interaction_dynamics_mpc.py simulation/tes
 python3 simulation/run_torque_activation_experiment.py
 python3 -m pytest simulation/test_torque_activation_experiment.py -q
 
+# FR3 QP solve-time study (warm-start on/off, Hessian conditioning)
+python3 simulation/run_fr3_timing_study.py
+
 # Paper PDF (local files only; no rendering server)
 python3 simulation/build_paper_pdf.py paper.md
 ```

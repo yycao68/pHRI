@@ -1,0 +1,47 @@
+{
+  "purpose": "isolate the admittance-vs-impedance FR3 QP solve-time gap along the warm-start and Hessian-conditioning axes",
+  "n_repeats_per_condition": 5,
+  "duration_s": 6.0,
+  "conditions": {
+    "impedance_warm_start=False": {
+      "n_solves": 1500,
+      "n_ticks_with_recorded_solve_time": 30000,
+      "mean_ms": 4.425313923507929,
+      "p50_ms": 3.6506460164673626,
+      "p95_ms": 6.801702087977898,
+      "p99_ms": 7.061900340486294,
+      "max_ms": 25.04187496379018
+    },
+    "impedance_warm_start=True": {
+      "n_solves": 1500,
+      "n_ticks_with_recorded_solve_time": 30000,
+      "mean_ms": 3.784397036768496,
+      "p50_ms": 3.574541478883475,
+      "p95_ms": 5.371571209980174,
+      "p99_ms": 5.9586704103275725,
+      "max_ms": 6.455583032220602
+    },
+    "admittance_warm_start=False": {
+      "n_solves": 1500,
+      "n_ticks_with_recorded_solve_time": 30000,
+      "mean_ms": 11.668271605546275,
+      "p50_ms": 5.827271030284464,
+      "p95_ms": 46.77917263470574,
+      "p99_ms": 65.03199646249398,
+      "max_ms": 121.79304100573063
+    },
+    "admittance_warm_start=True": {
+      "n_solves": 1500,
+      "n_ticks_with_recorded_solve_time": 30000,
+      "mean_ms": 6.1503311112367856,
+      "p50_ms": 4.188749531749636,
+      "p95_ms": 19.639983354136316,
+      "p99_ms": 37.08659991272655,
+      "max_ms": 54.21258299611509
+    }
+  },
+  "hessian_condition_number": {
+    "impedance": 4337604993.906192,
+    "admittance": 3770199780.9375954
+  }
+}

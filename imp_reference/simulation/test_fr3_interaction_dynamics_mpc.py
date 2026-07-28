@@ -249,3 +249,49 @@ def test_reactive_baseline_matches_generator_instant_law():
     x = np.concatenate([state.ee_pos - p_nominal, state.ee_vel[:3]])
     a_id = generator.acceleration(x, force)
     np.testing.assert_allclose(a_realized, a_id, atol=1e-6)
+
+
+def test_warm_start_disabled_by_default():
+    """warm_start defaults to False so every benchmark/paper number already
+    reported is unaffected by this feature's existence."""
+    assert FR3MPCConfig().warm_start is False
+
+
+def test_warm_start_converges_to_the_same_command():
+    """Warm-starting changes OSQP's initial ADMM iterate, not the QP being
+    solved -- the converged command should match the cold-start solve to
+    well within OSQP's own eps_abs/eps_rel tolerance, run after run."""
+    env = _env()
+    dyn, state = env.get_dynamics_and_state()
+    p_nominal = state.ee_pos.copy()
+    R_d = state.ee_rot.copy()
+    forecast = np.tile(np.array([0.0, 0.0, -15.0]), (10, 1))
+
+    cold_controller = FR3RealizationMPC(ImpedanceReference3D(), FR3MPCConfig(horizon=10, warm_start=False))
+    warm_controller = FR3RealizationMPC(ImpedanceReference3D(), FR3MPCConfig(horizon=10, warm_start=True))
+
+    cold_command = None
+    warm_command = None
+    for _ in range(5):
+        cold_command = cold_controller.control(dyn, state, p_nominal, R_d, forecast).command
+        warm_command = warm_controller.control(dyn, state, p_nominal, R_d, forecast).command
+
+    np.testing.assert_allclose(cold_command, warm_command, atol=1e-3)
+
+
+def test_warm_start_state_resets():
+    """reset() must clear the carried OSQP warm-start vectors, not only
+    previous_command, or a fresh episode would start from a stale solve."""
+    env = _env()
+    dyn, state = env.get_dynamics_and_state()
+    p_nominal = state.ee_pos.copy()
+    R_d = state.ee_rot.copy()
+    forecast = np.tile(np.array([0.0, 0.0, -15.0]), (10, 1))
+
+    controller = FR3RealizationMPC(ImpedanceReference3D(), FR3MPCConfig(horizon=10, warm_start=True))
+    controller.control(dyn, state, p_nominal, R_d, forecast)
+    assert controller._warm_x is not None
+
+    controller.reset()
+    assert controller._warm_x is None
+    assert controller._warm_y is None

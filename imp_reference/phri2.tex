@@ -45,9 +45,12 @@ within approximately 0.1--0.2~mm, versus 4.4~cm (impedance) and 4.7~cm
 (admittance) overshoot from instantaneous clipping. A derated actuator
 budget then activates the torque constraint: horizon-wide enforcement
 keeps its frozen-model plan feasible to 0.003~N$\cdot$m, whereas a
-first-step-only ablation plans up to 10.739~N$\cdot$m beyond budget.
-These results are a focused proof of behavior--realization separation,
-not a universal behavior runtime or hardware safety guarantee.
+first-step-only ablation plans up to 10.739~N$\cdot$m beyond budget; on
+the executed nonlinear plant, where both share the same local-model
+error, the gap is smaller but still favors horizon-wide enforcement
+(0.164 vs.\ 0.383~N$\cdot$m). These results are a focused proof of
+behavior--realization separation, not a universal behavior runtime or
+hardware safety guarantee.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -57,6 +60,7 @@ control, impedance control, admittance control.
 \end{IEEEkeywords}
 
 \section{Introduction}
+\label{sec:intro}
 
 Interaction behavior should specify only desired interaction dynamics;
 physical feasibility should be realized independently by the robot.
@@ -155,20 +159,18 @@ unavoidable intervention be exposed?}
 \end{quote}
 
 The contributions are:
-
-a behavior--realization architecture that assigns behavior
+\begin{itemize}
+\item a behavior--realization architecture that assigns behavior
 semantics and physical command feasibility to separate software layers;
-
-a precise desired-acceleration interface and realization residual
+\item a precise desired-acceleration interface and realization residual
 that make constraint-induced behavior modification observable;
-
-one predictive realization runtime for the memoryless affine
+\item one predictive realization runtime for the memoryless affine
 subclass, with a fixed robot-command variable and feasible set across
 impedance and admittance behavior layers;
-
-reproducible planar and FR3 simulations showing online
+\item reproducible planar and FR3 simulations showing online
 behavior-layer replacement, anticipatory state-constraint handling, and
 manipulator-level realization under command and torque limits.
+\end{itemize}
 
 We do \textbf{not} claim that architectural separation in the abstract,
 impedance behavior in MPC, or constrained interaction control is new.
@@ -278,6 +280,33 @@ Explicit discrepancy & Original versus governed reference & Desired versus reali
 \bottomrule
 \end{tabular}
 \end{table*}
+
+Control barrier function (CBF) quadratic programs are a related
+architectural pattern from a different literature: a CBF-QP takes a
+nominal control input and projects it, at each tick, onto the
+minimal-deviation admissible set defined by a safety
+constraint~\cite{ref10}. The realization layer here is structurally
+similar --- a minimal-deviation projection of a requested behavior onto
+a robot-feasible set --- but the projected object is a full behavior
+law evaluated over a receding horizon rather than a single nominal
+input, and the deviation itself (the realization residual) is reported
+as a first-class output rather than discarded solver information. We do
+not compare against a CBF-QP filter or a reference-governor instance in
+this paper; Section~\ref{sec:scope} lists a matched comparison against
+the closest alternative architecture as open.
+
+Theorem~\ref{thm:invariance} is a structural statement about a
+parametric quadratic program: for the affine generator class, the QP's
+decision variable, feasible set, and constraint structure are fixed
+while only its cost coefficients vary with the generator parameter
+$\theta$. This is the object studied by the explicit MPC / multi-parametric
+QP literature~\cite{ref11,ref12}, which characterizes the solution map
+$\theta\mapsto U_k^\star(\theta)$ as piecewise affine. The present paper
+does not use that machinery --- the QP is solved online at every tick,
+not precomputed offline --- but Theorem~\ref{thm:invariance} is best
+read as an instance of that established parametric-QP structure applied
+to the behavior--realization interface, not as a new structural fact
+about quadratic programs.
 
 Every row above except the last two optimizes a quantity tied to one
 behavior representation: impedance parameters, adaptive impedance gains,
@@ -930,8 +959,14 @@ because the frozen-Jacobian model cannot guarantee recursive feasibility
 for the nonlinear plant. Nontrivial slack occurs in 110 impedance and
 203 admittance solves, with peak position slack of 0.053~mm (impedance)
 and 0.026~mm (admittance) and peak speed slack below $10^{-6}$~m/s in
-both conditions. The separate reactive fallback for solver infeasibility
-is implemented but is not exercised: every reported solve is feasible.
+both conditions. This slack is smaller than Table~\ref{tab:fr3}'s
+executed peak $|e_z|$ violation (0.0002~m impedance, 0.0001~m
+admittance) because the two measure different objects: slack is the
+QP's own relaxation of its frozen-model prediction, while the executed
+violation is measured against the real nonlinear MuJoCo trajectory,
+which the frozen model only approximates. The separate reactive
+fallback for solver infeasibility is implemented but is not exercised:
+every reported solve is feasible.
 
 The fast control loop recomputes $\tau_{\mathrm{base}}$, the orientation
 term, and the null-space term from the current $(q,\dot q)$ at 1~kHz;
@@ -1063,13 +1098,32 @@ bound is reached and stays within 0.0601~m.
 In the saved benchmark run, the admittance QP's worst solve exceeds the
 nominal 20~ms outer-loop period, whereas the impedance QP remains
 faster. Both have identical dimensions and constraints but different
-objective coefficients; conditioning is plausible but has not been
-isolated.
+objective coefficients.
 
-These wall-clock measurements come from one simulation-time-paced run,
-not a controlled timing study. They indicate solver effort on the
-development machine, not a real-time guarantee or an exactly
-reproducible hardware-independent value.
+A dedicated timing study (\texttt{run\_fr3\_timing\_study.py}, 5 full
+6~s benchmark repetitions per condition, 1500 solves each) isolates
+this gap along two independent axes rather than reporting one run's
+mean and max. Warm-starting OSQP from the previous solve's
+primal/dual solution --- previously unused anywhere in this codebase,
+and off by default so no other reported number is affected by its
+existence --- cuts the admittance mean solve time by 47\% (11.7~ms to
+6.2~ms) and its 99th percentile by 43\% (65.0~ms to 37.1~ms); the
+impedance improvement is smaller (4.4~ms to 3.8~ms mean). The
+condensed QP's cost Hessian condition number, computed independently
+of any solve trajectory, is nearly identical between generators
+($4.3\times10^9$ impedance vs.\ $3.8\times10^9$ admittance) and rules
+out static Hessian conditioning as the dominant cause; both are
+severely ill-conditioned in absolute terms. The remaining
+generator-dependent gap after warm-starting is consistent with how
+often each condition's constraints are actively engaged: the
+admittance condition's workspace/speed box binds in 4140 of the main
+benchmark's logged ticks against impedance's 2240, and active-set
+changes are known to slow ADMM convergence independent of Hessian
+conditioning.
+
+These wall-clock measurements are solver effort on the development
+machine, not a real-time guarantee or an exactly reproducible
+hardware-independent value.
 
 An earlier version of this benchmark, run before the null-space
 centering fix described in Section~\ref{sec:fr3-architecture}, showed a
@@ -1145,6 +1199,7 @@ behavioral deviation, and avoids relying on an actuator-infeasible
 internal plan. The behavior layer itself is unchanged.
 
 \subsection{Scope and What Remains}
+\label{sec:scope}
 
 This is a focused architecture validation, not a complete manipulator
 evaluation. The implemented behavior layers are impedance and admittance
@@ -1164,7 +1219,7 @@ the admittance solve-time gap identified in Section~\ref{sec:fr3-results}.
 
 Interaction behavior should specify only desired interaction dynamics;
 physical feasibility should be realized independently by the robot.
-Section~I argued this from the different variables each side depends on;
+Section~\ref{sec:intro} argued this from the different variables each side depends on;
 Sections~\ref{sec:generators}--\ref{sec:fr3} tested it through one affine
 executable instance. This section defends the separation directly,
 against three natural alternatives.
@@ -1200,16 +1255,7 @@ the realization object and its carried state, and
 Section~\ref{sec:torque-activation} changes the actuator budget while
 preserving the behavior --- complementary tests of the same boundary, in
 which semantics can change without rebuilding feasibility logic, and
-feasibility can intervene without rewriting parameters.
-
-The same pattern applies to model-based physical AI: an upstream
-learned or language-conditioned component could propose behavior while a
-realization runtime evaluates feasibility and exposes any intervention.
-This paper validates only the downstream interface for the affine
-subclass; a future physics-based, optimization-based, or learned layer
-needs only to expose a compatible realization contract, while stateful
-or uncertain interfaces remain a research direction, not a validated
-instance of the present QP.
+feasibility can intervene without rewriting parameters. 
 
 \section{Limitations and Open Theory}
 \label{sec:limitations}
@@ -1286,8 +1332,14 @@ Section~\ref{sec:torque-activation}), rather than relying on inspection
 of a saved figure. Physical quantities (position, torque, and violation
 counts) are bit-for-bit reproducible from the fixed scenarios; solve
 times are wall-clock and are only ever bounded, never asserted exactly.
-Code, configuration, and saved numerical artifacts backing every figure
-and table in this paper are available in the project repository.
+The warm-start/Hessian-conditioning solve-time diagnosis of
+Section~\ref{sec:fr3-results} is produced by a dedicated script
+(\texttt{run\_fr3\_timing\_study.py}) separate from the main benchmark,
+with its own unit tests confirming that warm-starting converges to the
+same command as a cold solve and that resetting a controller clears its
+carried warm-start state. Code, configuration, and saved numerical
+artifacts backing every figure and table in this paper are available in
+the project repository.
 
 \begin{thebibliography}{9}
 
@@ -1334,6 +1386,21 @@ applications,'' \emph{Automatica}, vol.~75, pp.~306--328, 2017.
 O. Khatib, ``A Unified Approach for Motion and Force Control of Robot
 Manipulators: The Operational Space Formulation,'' \emph{IEEE J.
 Robotics and Automation}, vol.~3, no.~1, pp.~43--53, 1987.
+
+\bibitem{ref10}
+A. D. Ames, S. Coogan, M. Egerstedt, G. Notomista, K. Sreenath, and
+P. Tabuada, ``Control Barrier Functions: Theory and Applications,'' in
+\emph{Proc. European Control Conference (ECC)}, 2019.
+
+\bibitem{ref11}
+A. Bemporad, M. Morari, V. Dua, and E. N. Pistikopoulos, ``The explicit
+linear quadratic regulator for constrained systems,'' \emph{Automatica},
+vol.~38, no.~1, pp.~3--20, 2002.
+
+\bibitem{ref12}
+P. Tondel, T. A. Johansen, and A. Bemporad, ``An algorithm for
+multi-parametric quadratic programming and explicit MPC solutions,''
+\emph{Automatica}, vol.~39, no.~3, pp.~489--497, 2003.
 
 \end{thebibliography}
 
