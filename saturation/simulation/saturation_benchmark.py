@@ -1244,7 +1244,7 @@ def summarize(log: dict, cfg: BenchmarkConfig) -> dict:
             np.max(log["tightening_bound"])
         ),
         "torque_error_bound_satisfied": torque_bound_satisfied,
-        "sampled_refinement_checks_satisfied": bool(
+        "sampled_interface_audit_passed": bool(
             defect_satisfied
             and state_satisfied
             and torque_bound_satisfied

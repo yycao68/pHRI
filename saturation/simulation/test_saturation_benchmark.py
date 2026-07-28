@@ -53,7 +53,7 @@ def test_no_saturation_case_leaves_nominal_behavior_unchanged():
     metrics = summarize(log, cfg)
     assert metrics["correction_rmse_mps2"] < 0.01
     assert metrics["peak_preclip_torque_violation_Nm"] == 0.0
-    assert metrics["sampled_refinement_checks_satisfied"]
+    assert metrics["sampled_interface_audit_passed"]
 
 
 def test_horizon_wide_rows_prevent_infeasible_future_plan():
@@ -121,7 +121,7 @@ def test_final_projection_is_required_for_impulsive_case():
     assert unprotected["peak_applied_torque_violation_Nm"] > 1.0
 
 
-def test_same_sampled_refinement_checks_hold_across_robots():
+def test_same_sampled_interface_audit_holds_across_robots():
     robots, controllers, scenarios, cfg = _objects()
     for robot in robots.values():
         log = run_case(
@@ -133,7 +133,7 @@ def test_same_sampled_refinement_checks_hold_across_robots():
         )
         metrics = summarize(log, cfg)
         assert metrics["torque_error_bound_satisfied"]
-        assert metrics["sampled_refinement_checks_satisfied"]
+        assert metrics["sampled_interface_audit_passed"]
 
 
 def test_saved_report_covers_every_required_experiment_family():
@@ -144,10 +144,10 @@ def test_saved_report_covers_every_required_experiment_family():
     assert len(report["controller_transfer"]) == 30
     assert len(report["robot_transfer"]) == 24
     assert len(report["ablations"]) == 14
-    assert len(report["sampled_refinement_audit"]) == 3
+    assert len(report["sampled_interface_audit"]) == 3
     assert len(
         {
             row["shared_audit_config_hash"]
-            for row in report["sampled_refinement_audit"].values()
+            for row in report["sampled_interface_audit"].values()
         }
     ) == 1

@@ -59,19 +59,19 @@ It writes:
 - `results/scenario_summary.png`;
 - `results/controller_transfer.png`;
 - `results/near_boundary_braking_results.png`;
-- `results/sampled_refinement_audit.png`; and
+- `results/sampled_interface_audit.png`; and
 - `results/ablation_summary.png`.
 
 ## Headline results
 
 - Horizon-wide constraints reduce the planned future torque excess from
   \(3.594~\mathrm{Nm}\) to zero in the dedicated horizon-ramp case.
-- The same \(0.03~\mathrm{m/s}\) empirical defect budget contains the sampled
-  successor defects for all three realization maps; their maximum observed
+- The same \(0.03~\mathrm{m/s}\) empirical audit threshold contains the
+  observed successor defects for all three realization maps; their maximum observed
   defects are \(0.00746\), \(0.00759\), and \(0.00759~\mathrm{m/s}\). This
   audit is not a robust-invariance certificate.
 - The slow, directional-collapse, and near-boundary braking cases satisfy
-  every sampled refinement check under the proposed manager.
+  every sampled interface-audit check under the proposed manager.
 - Sudden disturbance and severe model/preview mismatch do not satisfy the
   transfer premises. The final projection still enforces applied actuator
   limits, but cannot restore the requested behavior.
@@ -90,4 +90,4 @@ pytest -q simulation
 ```
 
 The tests rerun the headline horizon, tightening, final-projection, inactive
-manager, controller-interface, and cross-realization sampled refinement checks.
+manager, controller-interface, and cross-realization sampled interface checks.

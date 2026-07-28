@@ -177,12 +177,12 @@
       "torque_error_bound_min_Nm": 0.03004229647914314,
       "torque_error_bound_max_Nm": 0.036216,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 120.18746929243207,
-        "p95": 157.89857716299588,
-        "p99": 235.62829126603899,
-        "max": 708.000035956502
+        "median": 119.52058412134647,
+        "p95": 132.91901559568942,
+        "p99": 151.34564135223627,
+        "max": 329.04092222452164
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -216,12 +216,12 @@
       "torque_error_bound_min_Nm": 0.03004229647914314,
       "torque_error_bound_max_Nm": 0.036216,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 121.8749675899744,
-        "p95": 169.62504014372826,
-        "p99": 248.30449488945305,
-        "max": 399.166950955987
+        "median": 119.99998241662979,
+        "p95": 134.08507802523673,
+        "p99": 165.01289675943553,
+        "max": 295.1250644400716
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -255,12 +255,12 @@
       "torque_error_bound_min_Nm": 0.03004229647914314,
       "torque_error_bound_max_Nm": 0.036216,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 158.56249956414104,
-        "p95": 208.73719477094707,
-        "p99": 290.0408266577869,
-        "max": 396.9999961555004
+        "median": 151.29096573218703,
+        "p95": 165.37494957447052,
+        "p99": 174.6274612378329,
+        "max": 351.2910334393382
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -294,18 +294,18 @@
       "torque_error_bound_min_Nm": 0.03005163282094971,
       "torque_error_bound_max_Nm": 0.036388442992532265,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 161.35454643517733,
-        "p95": 219.64785992167887,
-        "p99": 300.9449341334402,
-        "max": 433.91610961407423
+        "median": 158.0415409989655,
+        "p95": 168.04811311885715,
+        "p99": 178.62541251815856,
+        "max": 272.95807376503944
       },
       "manager_time_ms": {
-        "median": 0.40733348578214645,
-        "p95": 0.5163309338968247,
-        "p99": 0.5509862257167691,
-        "max": 0.6210000719875097
+        "median": 0.40779152186587453,
+        "p95": 0.41892644367180765,
+        "p99": 0.43463239795528347,
+        "max": 0.44249999336898327
       }
     },
     "scenario__no_saturation__proposed": {
@@ -333,18 +333,18 @@
       "torque_error_bound_min_Nm": 0.030042311852518593,
       "torque_error_bound_max_Nm": 0.03605225585753878,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 121.29097012802958,
-        "p95": 199.55348689109087,
-        "p99": 266.606475925073,
-        "max": 395.4170970246196
+        "median": 120.25004252791405,
+        "p95": 170.6855953671038,
+        "p99": 193.66951659321785,
+        "max": 313.2499987259507
       },
       "manager_time_ms": {
-        "median": 1.576416485477239,
-        "p95": 1.9171785854268817,
-        "p99": 3.393658689456057,
-        "max": 3.8789170794188976
+        "median": 1.3278330443426967,
+        "p95": 1.5146850200835615,
+        "p99": 1.8701969087123869,
+        "max": 1.903541968204081
       }
     },
     "scenario__slow_saturation__nominal_unbounded": {
@@ -372,12 +372,12 @@
       "torque_error_bound_min_Nm": 0.0300181205888669,
       "torque_error_bound_max_Nm": 0.07510441771506811,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 118.33396274596453,
-        "p95": 160.71217833086845,
-        "p99": 223.33884611725804,
-        "max": 359.4999434426427
+        "median": 120.41651643812656,
+        "p95": 128.1711331102997,
+        "p99": 140.3799920808524,
+        "max": 261.3749820739031
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -411,12 +411,12 @@
       "torque_error_bound_min_Nm": 0.0300181205888669,
       "torque_error_bound_max_Nm": 0.07510441771506811,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 119.91593055427074,
-        "p95": 164.58154423162338,
-        "p99": 266.46948186680675,
-        "max": 387.9999276250601
+        "median": 118.4794818982482,
+        "p95": 133.72154789976773,
+        "p99": 145.80077840946615,
+        "max": 272.874953225255
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -450,12 +450,12 @@
       "torque_error_bound_min_Nm": 0.03000915007925935,
       "torque_error_bound_max_Nm": 0.07510441771506811,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 2523.64604966715,
-        "p95": 2923.1770371552557,
-        "p99": 3090.295073343441,
-        "max": 3394.540981389582
+        "median": 2440.4165451414883,
+        "p95": 2714.4295047037303,
+        "p99": 2786.3553259521723,
+        "max": 3313.999972306192
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -489,18 +489,18 @@
       "torque_error_bound_min_Nm": 0.030012272328228572,
       "torque_error_bound_max_Nm": 0.07909691914989711,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 2545.1669935137033,
-        "p95": 2926.6754165291786,
-        "p99": 3084.2391029000282,
-        "max": 3385.0829349830747
+        "median": 2451.791486237198,
+        "p95": 2900.8210869505997,
+        "p99": 3093.1889615021646,
+        "max": 3641.3330817595124
       },
       "manager_time_ms": {
-        "median": 6.712604488711804,
-        "p95": 8.369719015900044,
-        "p99": 8.747460516169665,
-        "max": 8.855624939315021
+        "median": 6.45785394590348,
+        "p95": 8.327363134594634,
+        "p99": 8.60507884412072,
+        "max": 9.307125001214445
       }
     },
     "scenario__slow_saturation__proposed": {
@@ -528,18 +528,18 @@
       "torque_error_bound_min_Nm": 0.030008099827483464,
       "torque_error_bound_max_Nm": 0.07506495385401472,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 121.95802992209792,
-        "p95": 196.59133395180106,
-        "p99": 271.30496338941157,
-        "max": 353.08406222611666
+        "median": 120.91593816876411,
+        "p95": 173.3750570565462,
+        "p99": 219.75342999212444,
+        "max": 291.7499514296651
       },
       "manager_time_ms": {
-        "median": 2.2715204977430403,
-        "p95": 3.810423129471019,
-        "p99": 4.899820545688271,
-        "max": 5.000875098630786
+        "median": 2.386958454735577,
+        "p95": 3.4694812551606433,
+        "p99": 4.381063518812875,
+        "max": 5.041832919232547
       }
     },
     "scenario__sudden_disturbance__nominal_unbounded": {
@@ -567,12 +567,12 @@
       "torque_error_bound_min_Nm": 0.03,
       "torque_error_bound_max_Nm": 0.12135493757137267,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 118.91650501638651,
-        "p95": 159.5462264958769,
-        "p99": 229.6032116282731,
-        "max": 392.54105649888515
+        "median": 124.27102774381638,
+        "p95": 164.2101036850363,
+        "p99": 203.13714165240526,
+        "max": 326.832989230752
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -606,12 +606,12 @@
       "torque_error_bound_min_Nm": 0.03,
       "torque_error_bound_max_Nm": 0.12717599747622652,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 121.16704601794481,
-        "p95": 158.49540941417214,
-        "p99": 235.10763770900664,
-        "max": 358.08305256068707
+        "median": 123.79197869449854,
+        "p95": 183.13752370886502,
+        "p99": 457.4856720864773,
+        "max": 1965.1250913739204
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -645,12 +645,12 @@
       "torque_error_bound_min_Nm": 0.03,
       "torque_error_bound_max_Nm": 0.14946666666666666,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 161.16700135171413,
-        "p95": 2781.0564497485757,
-        "p99": 2954.555384349078,
-        "max": 3189.458977431059
+        "median": 157.54200285300612,
+        "p95": 2618.2879286352545,
+        "p99": 2826.1787618976086,
+        "max": 3020.8330135792494
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -684,18 +684,18 @@
       "torque_error_bound_min_Nm": 0.03,
       "torque_error_bound_max_Nm": 0.14946666666666666,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 167.16698883101344,
-        "p95": 2789.6976505871858,
-        "p99": 2954.1204450652003,
-        "max": 3208.2919497042894
+        "median": 164.6250020712614,
+        "p95": 2690.7705818302925,
+        "p99": 2902.600391535088,
+        "max": 3280.5829541757703
       },
       "manager_time_ms": {
-        "median": 0.40183350211009383,
-        "p95": 0.45976492110639805,
-        "p99": 0.5032861058134585,
-        "max": 0.5107918987050653
+        "median": 0.4004169604741037,
+        "p95": 0.467514875344932,
+        "p99": 0.5193180567584931,
+        "max": 0.5352500593289733
       }
     },
     "scenario__sudden_disturbance__proposed": {
@@ -723,18 +723,18 @@
       "torque_error_bound_min_Nm": 0.03,
       "torque_error_bound_max_Nm": 0.16276458971068467,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 121.39551108703017,
-        "p95": 192.54586077295238,
-        "p99": 262.71898532286286,
-        "max": 364.9579593911767
+        "median": 121.79149780422449,
+        "p95": 197.49198690988115,
+        "p99": 270.673482446,
+        "max": 373.1660544872284
       },
       "manager_time_ms": {
-        "median": 1.6455829609185457,
-        "p95": 4.161885619396344,
-        "p99": 4.533810890279708,
-        "max": 4.844709066674113
+        "median": 1.5681040240451694,
+        "p95": 4.167716670781373,
+        "p99": 4.433991815894841,
+        "max": 4.5215829741209745
       }
     },
     "scenario__directional_collapse__nominal_unbounded": {
@@ -762,12 +762,12 @@
       "torque_error_bound_min_Nm": 0.03003535870115268,
       "torque_error_bound_max_Nm": 0.06156979787301816,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 119.18751988559961,
-        "p95": 152.43747038766736,
-        "p99": 243.79446171224117,
-        "max": 323.2910530641675
+        "median": 119.45795267820358,
+        "p95": 154.5523235108703,
+        "p99": 209.42633389495313,
+        "max": 289.9999963119626
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -801,12 +801,12 @@
       "torque_error_bound_min_Nm": 0.03003535870115268,
       "torque_error_bound_max_Nm": 0.06280382478956344,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 120.58299034833908,
-        "p95": 150.40841535665092,
-        "p99": 236.89241264946756,
-        "max": 324.83297400176525
+        "median": 119.89602353423834,
+        "p95": 158.39365660212934,
+        "p99": 229.51708175241947,
+        "max": 309.0419340878725
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -840,12 +840,12 @@
       "torque_error_bound_min_Nm": 0.03003535870115268,
       "torque_error_bound_max_Nm": 0.05533446464750491,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 2522.0000534318388,
-        "p95": 2921.0086562670767,
-        "p99": 3097.1791711635888,
-        "max": 3265.541046857834
+        "median": 2456.520975101739,
+        "p95": 2862.5710925552994,
+        "p99": 2970.91786400415,
+        "max": 3267.1670196577907
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -879,18 +879,18 @@
       "torque_error_bound_min_Nm": 0.03003535870115268,
       "torque_error_bound_max_Nm": 0.05727523353808851,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 2524.8124729841948,
-        "p95": 2932.593727018684,
-        "p99": 3090.304957004264,
-        "max": 3402.041969820857
+        "median": 2456.1869795434177,
+        "p95": 2878.301515011117,
+        "p99": 3034.119369694963,
+        "max": 3462.583990767598
       },
       "manager_time_ms": {
-        "median": 0.39631250547245145,
-        "p95": 8.001535781659186,
-        "p99": 8.152653087163342,
-        "max": 8.351040887646377
+        "median": 0.3940000315196812,
+        "p95": 7.71141272271052,
+        "p99": 8.038009469164535,
+        "max": 8.069708943367004
       }
     },
     "scenario__directional_collapse__proposed": {
@@ -918,18 +918,18 @@
       "torque_error_bound_min_Nm": 0.03002466779792934,
       "torque_error_bound_max_Nm": 0.06750260658277431,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 123.70897457003593,
-        "p95": 216.8496139347553,
-        "p99": 298.67122415453196,
-        "max": 440.125004388392
+        "median": 123.06246208027005,
+        "p95": 203.9145561866462,
+        "p99": 276.12534118816257,
+        "max": 361.708109267056
       },
       "manager_time_ms": {
-        "median": 2.0918959635309875,
-        "p95": 10.628688923316075,
-        "p99": 13.25414786930196,
-        "max": 13.291540904901922
+        "median": 2.0171039504930377,
+        "p95": 10.487076884601265,
+        "p99": 13.309494953136891,
+        "max": 13.31637508701533
       }
     },
     "scenario__point_of_no_return__nominal_unbounded": {
@@ -957,12 +957,12 @@
       "torque_error_bound_min_Nm": 0.030025849581020374,
       "torque_error_bound_max_Nm": 0.05688,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 121.2914939969778,
-        "p95": 163.96629507653415,
-        "p99": 225.4604117479175,
-        "max": 426.1250142008066
+        "median": 117.54198931157589,
+        "p95": 146.88128721900284,
+        "p99": 205.26457228697836,
+        "max": 297.33299743384123
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -996,12 +996,12 @@
       "torque_error_bound_min_Nm": 0.030025849581020374,
       "torque_error_bound_max_Nm": 0.05688,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 121.24993372708559,
-        "p95": 162.4702184926718,
-        "p99": 245.91357214376325,
-        "max": 330.87492920458317
+        "median": 118.62500105053186,
+        "p95": 144.5103378500789,
+        "p99": 211.91673004068429,
+        "max": 375.83394441753626
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -1035,12 +1035,12 @@
       "torque_error_bound_min_Nm": 0.030026033289919787,
       "torque_error_bound_max_Nm": 0.04494648242041019,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 2652.291499543935,
-        "p95": 2947.5440504029393,
-        "p99": 3059.1731087770313,
-        "max": 3300.083102658391
+        "median": 2579.8334390856326,
+        "p95": 2819.397917483002,
+        "p99": 2910.7784328516573,
+        "max": 3135.667066089809
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -1074,18 +1074,18 @@
       "torque_error_bound_min_Nm": 0.03001261344063609,
       "torque_error_bound_max_Nm": 0.04494560237495235,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 2546.6459919698536,
-        "p95": 2974.3917344603688,
-        "p99": 3246.9343033153564,
-        "max": 11961.832991801202
+        "median": 2473.2715100981295,
+        "p95": 2845.5963998567313,
+        "p99": 3007.857712218538,
+        "max": 3167.000017128885
       },
       "manager_time_ms": {
-        "median": 6.312062556389719,
-        "p95": 8.107841631863266,
-        "p99": 8.467183308675883,
-        "max": 8.752209017984569
+        "median": 6.0736670275218785,
+        "p95": 8.132958289934322,
+        "p99": 8.325141289969904,
+        "max": 8.481791941449046
       }
     },
     "scenario__point_of_no_return__proposed": {
@@ -1113,18 +1113,18 @@
       "torque_error_bound_min_Nm": 0.030002503811026506,
       "torque_error_bound_max_Nm": 0.05168106833254386,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 122.16705363243818,
-        "p95": 203.66040989756578,
-        "p99": 284.36301625333726,
-        "max": 374.0420797839761
+        "median": 122.04144150018692,
+        "p95": 194.0082642249763,
+        "p99": 261.9827864691615,
+        "max": 367.5828920677304
       },
       "manager_time_ms": {
-        "median": 2.4324789992533624,
-        "p95": 4.188477114075793,
-        "p99": 7.075191749026991,
-        "max": 8.047582930885255
+        "median": 2.3895209887996316,
+        "p95": 4.493956873193382,
+        "p99": 6.92375369253568,
+        "max": 7.3624999495223165
       }
     },
     "scenario__model_mismatch__nominal_unbounded": {
@@ -1152,12 +1152,12 @@
       "torque_error_bound_min_Nm": 0.0720419934361887,
       "torque_error_bound_max_Nm": 0.22670043036368853,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 119.16697258129716,
-        "p95": 168.2993897702545,
-        "p99": 267.4132422544062,
-        "max": 342.2920126467943
+        "median": 118.12499724328518,
+        "p95": 142.51458924263716,
+        "p99": 208.4574289619922,
+        "max": 327.4159971624613
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -1191,12 +1191,12 @@
       "torque_error_bound_min_Nm": 0.0720419934361887,
       "torque_error_bound_max_Nm": 0.4109464709456636,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 119.58298273384571,
-        "p95": 156.75428439863026,
-        "p99": 274.4582400191575,
-        "max": 397.5830040872097
+        "median": 120.87495997548103,
+        "p95": 154.29822960868478,
+        "p99": 212.1786994393915,
+        "max": 292.4170112237334
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -1230,12 +1230,12 @@
       "torque_error_bound_min_Nm": 0.0720715046070007,
       "torque_error_bound_max_Nm": 0.16399999999999998,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 2585.041511338204,
-        "p95": 2968.3556989766657,
-        "p99": 3130.988370394334,
-        "max": 3397.4170219153166
+        "median": 2519.0209853462875,
+        "p95": 2820.152067579329,
+        "p99": 2928.8049426395446,
+        "max": 3111.7500038817525
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -1269,18 +1269,18 @@
       "torque_error_bound_min_Nm": 0.07225431177112779,
       "torque_error_bound_max_Nm": 0.16399999999999998,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 2492.354018613696,
-        "p95": 2923.985017696395,
-        "p99": 3068.0008558556437,
-        "max": 3298.0419928207994
+        "median": 2411.812951322645,
+        "p95": 2773.739886470139,
+        "p99": 2887.835851870477,
+        "max": 3125.7079681381583
       },
       "manager_time_ms": {
-        "median": 0.0820419518277049,
-        "p95": 8.061341394204646,
-        "p99": 8.465537488227708,
-        "max": 8.541540941223502
+        "median": 0.07114594336599112,
+        "p95": 7.7979496272746465,
+        "p99": 8.193675642833112,
+        "max": 8.407042012549937
       }
     },
     "scenario__model_mismatch__proposed": {
@@ -1308,18 +1308,18 @@
       "torque_error_bound_min_Nm": 0.07208988128362692,
       "torque_error_bound_max_Nm": 0.18726067786888187,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 122.16647155582905,
-        "p95": 199.13316355086857,
-        "p99": 280.63861187547445,
-        "max": 445.54099440574646
+        "median": 122.4579755216837,
+        "p95": 193.67914064787325,
+        "p99": 252.5613363832235,
+        "max": 316.1249915137887
       },
       "manager_time_ms": {
-        "median": 3.822853963356465,
-        "p95": 4.396706604165956,
-        "p99": 4.613982611335813,
-        "max": 4.719875054433942
+        "median": 3.6800834932364523,
+        "p95": 4.265487432712689,
+        "p99": 4.415567551041021,
+        "max": 4.505167016759515
       }
     },
     "scenario__preview_mismatch__nominal_unbounded": {
@@ -1347,12 +1347,12 @@
       "torque_error_bound_min_Nm": 0.030003341857724134,
       "torque_error_bound_max_Nm": 0.1403033157276874,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 119.70906052738428,
-        "p95": 158.15200749784705,
-        "p99": 236.90836736932394,
-        "max": 368.3749819174409
+        "median": 119.10451576113701,
+        "p95": 153.67076848633582,
+        "p99": 208.9200471527874,
+        "max": 332.6250007376075
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -1386,12 +1386,12 @@
       "torque_error_bound_min_Nm": 0.030003341857724134,
       "torque_error_bound_max_Nm": 0.22126116206481572,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 120.41645823046565,
-        "p95": 161.63295367732638,
-        "p99": 242.47712804935873,
-        "max": 481.7500011995435
+        "median": 120.0829865410924,
+        "p95": 143.61430075950918,
+        "p99": 201.6374352388084,
+        "max": 344.4589674472809
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -1425,12 +1425,12 @@
       "torque_error_bound_min_Nm": 0.03,
       "torque_error_bound_max_Nm": 0.08973333333333333,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 2507.7504687942564,
-        "p95": 2913.843758869916,
-        "p99": 3055.432725232094,
-        "max": 3335.6660278514028
+        "median": 2430.6874838657677,
+        "p95": 2803.922293242067,
+        "p99": 2904.0474945213646,
+        "max": 3195.4579753801227
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -1464,18 +1464,18 @@
       "torque_error_bound_min_Nm": 0.03,
       "torque_error_bound_max_Nm": 0.08973333333333333,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 2507.9789920710027,
-        "p95": 2934.5524148084223,
-        "p99": 3097.3243259359147,
-        "max": 3339.666989631951
+        "median": 2438.958559650928,
+        "p95": 2787.1813101228327,
+        "p99": 2907.3765024077147,
+        "max": 3005.1670037209988
       },
       "manager_time_ms": {
-        "median": 0.11020846432074904,
-        "p95": 0.4824184929020703,
-        "p99": 0.5492631671950221,
-        "max": 0.559499952942133
+        "median": 0.09879149729385972,
+        "p95": 0.46824023593217134,
+        "p99": 0.5047848948743192,
+        "max": 0.5339169874787331
       }
     },
     "scenario__preview_mismatch__proposed": {
@@ -1503,18 +1503,18 @@
       "torque_error_bound_min_Nm": 0.03,
       "torque_error_bound_max_Nm": 0.0989831203223665,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 121.35447468608618,
-        "p95": 195.55953913368285,
-        "p99": 286.18930373340845,
-        "max": 424.66609738767147
+        "median": 121.49999383836985,
+        "p95": 195.15210296958682,
+        "p99": 261.3107173237949,
+        "max": 380.45807741582394
       },
       "manager_time_ms": {
-        "median": 3.777624515350908,
-        "p95": 4.400644317502156,
-        "p99": 4.76140631129965,
-        "max": 5.004166974686086
+        "median": 3.7393749807961285,
+        "p95": 4.369754553772509,
+        "p99": 4.578338123392312,
+        "max": 4.8539170529693365
       }
     },
     "scenario__horizon_ramp__nominal_unbounded": {
@@ -1542,12 +1542,12 @@
       "torque_error_bound_min_Nm": 0.03,
       "torque_error_bound_max_Nm": 0.09227275936806698,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 119.37494855374098,
-        "p95": 162.58925898000595,
-        "p99": 230.55483005009592,
-        "max": 313.08294273912907
+        "median": 117.95852333307266,
+        "p95": 146.07317862100896,
+        "p99": 199.96642949990928,
+        "max": 327.9170487076044
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -1581,12 +1581,12 @@
       "torque_error_bound_min_Nm": 0.03,
       "torque_error_bound_max_Nm": 0.09227275936806698,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 120.87501818314195,
-        "p95": 157.7100541908294,
-        "p99": 227.03914204612371,
-        "max": 339.832971803844
+        "median": 119.83298463746905,
+        "p95": 148.54439068585629,
+        "p99": 206.56249485909936,
+        "max": 329.8330120742321
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -1620,12 +1620,12 @@
       "torque_error_bound_min_Nm": 0.03,
       "torque_error_bound_max_Nm": 0.09227275936806698,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 196.81203411892056,
-        "p95": 2944.9000430759043,
-        "p99": 3193.313622614369,
-        "max": 11997.041990980506
+        "median": 186.49996491149068,
+        "p95": 2765.464992262423,
+        "p99": 2923.2309758663177,
+        "max": 3266.0409342497587
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -1659,18 +1659,18 @@
       "torque_error_bound_min_Nm": 0.03,
       "torque_error_bound_max_Nm": 0.09227275936806698,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 164.20846804976463,
-        "p95": 2723.36631314829,
-        "p99": 2892.7612164989114,
-        "max": 3227.2079261019826
+        "median": 160.4584977030754,
+        "p95": 2632.5104176066816,
+        "p99": 2812.8032153472304,
+        "max": 3005.2500078454614
       },
       "manager_time_ms": {
-        "median": 0.4052084987051785,
-        "p95": 5.2284809353295705,
-        "p99": 5.656810709042473,
-        "max": 5.882125115022063
+        "median": 0.40339550469070673,
+        "p95": 5.239200254436582,
+        "p99": 5.663978812517591,
+        "max": 6.548417033627629
       }
     },
     "scenario__horizon_ramp__proposed": {
@@ -1698,18 +1698,18 @@
       "torque_error_bound_min_Nm": 0.03,
       "torque_error_bound_max_Nm": 0.08769619592639524,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 121.62502389401197,
-        "p95": 196.76038064062593,
-        "p99": 268.4520499315113,
-        "max": 368.00000816583633
+        "median": 122.20855569466949,
+        "p95": 196.3065005838871,
+        "p99": 270.44909424148494,
+        "max": 396.83410432189703
       },
       "manager_time_ms": {
-        "median": 1.8068960052914917,
-        "p95": 5.6978814594913265,
-        "p99": 8.475970542058311,
-        "max": 13.33279104437679
+        "median": 1.7343750223517418,
+        "p95": 5.222798482282085,
+        "p99": 8.634588124696128,
+        "max": 13.259083032608032
       }
     }
   },
@@ -1739,12 +1739,12 @@
       "torque_error_bound_min_Nm": 0.03000538003792538,
       "torque_error_bound_max_Nm": 0.034884,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 122.25005775690079,
-        "p95": 197.55351822823283,
-        "p99": 809.8646125290543,
-        "max": 3529.4999834150076
+        "median": 120.39544526487589,
+        "p95": 213.5273942258208,
+        "p99": 533.4757338277994,
+        "max": 2314.5830491557717
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -1778,18 +1778,18 @@
       "torque_error_bound_min_Nm": 0.030005399633828728,
       "torque_error_bound_max_Nm": 0.03475086587919734,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 120.04101881757379,
-        "p95": 184.220535447821,
-        "p99": 254.66864113695917,
-        "max": 385.91702468693256
+        "median": 120.99999003112316,
+        "p95": 187.08513234741986,
+        "p99": 243.62216587178406,
+        "max": 388.24998773634434
       },
       "manager_time_ms": {
-        "median": 1.532625057734549,
-        "p95": 1.960389479063451,
-        "p99": 2.042186773614957,
-        "max": 2.170166000723839
+        "median": 1.4801039942540228,
+        "p95": 1.7240086279343811,
+        "p99": 1.876986266579478,
+        "max": 1.9766250625252724
       }
     },
     "controller__pd__slow_saturation__clipping": {
@@ -1817,12 +1817,12 @@
       "torque_error_bound_min_Nm": 0.03001696713298009,
       "torque_error_bound_max_Nm": 0.0616671489284444,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 118.83396655321121,
-        "p95": 157.27718709968028,
-        "p99": 221.11880243755866,
-        "max": 356.79200664162636
+        "median": 119.99998241662979,
+        "p95": 153.54580245912072,
+        "p99": 209.13082174956796,
+        "max": 342.50004682689905
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -1856,18 +1856,18 @@
       "torque_error_bound_min_Nm": 0.030012170438983,
       "torque_error_bound_max_Nm": 0.06164482471205538,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 120.89603114873171,
-        "p95": 192.61520355939862,
-        "p99": 265.2254467830062,
-        "max": 415.54204653948545
+        "median": 121.18753511458635,
+        "p95": 191.8434049002826,
+        "p99": 257.3477232363075,
+        "max": 344.33393739163876
       },
       "manager_time_ms": {
-        "median": 2.0852084853686392,
-        "p95": 4.271267284639179,
-        "p99": 5.687352383974928,
-        "max": 7.129332982003689
+        "median": 1.8649999401532114,
+        "p95": 4.398038127692416,
+        "p99": 5.440380701329547,
+        "max": 7.047833991236985
       }
     },
     "controller__pd__sudden_disturbance__clipping": {
@@ -1895,12 +1895,12 @@
       "torque_error_bound_min_Nm": 0.03,
       "torque_error_bound_max_Nm": 0.2326178208388107,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 119.12500485777855,
-        "p95": 153.28539302572605,
-        "p99": 222.4381943233311,
-        "max": 344.79203168302774
+        "median": 117.08296369761229,
+        "p95": 145.28540195897216,
+        "p99": 230.3959347773343,
+        "max": 362.417078576982
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -1934,18 +1934,18 @@
       "torque_error_bound_min_Nm": 0.03,
       "torque_error_bound_max_Nm": 0.16445417907916512,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 121.27053923904896,
-        "p95": 193.66138731129465,
-        "p99": 276.4203352853656,
-        "max": 434.3329928815365
+        "median": 120.49998622387648,
+        "p95": 196.0628025699407,
+        "p99": 268.91786605119705,
+        "max": 354.33401353657246
       },
       "manager_time_ms": {
-        "median": 1.611770538147539,
-        "p95": 3.878981614252552,
-        "p99": 4.4573574664536855,
-        "max": 4.631750052794814
+        "median": 1.5506454510614276,
+        "p95": 3.885183326201513,
+        "p99": 4.24417211790569,
+        "max": 4.309084033593535
       }
     },
     "controller__impedance__no_saturation__clipping": {
@@ -1973,12 +1973,12 @@
       "torque_error_bound_min_Nm": 0.03004229647914314,
       "torque_error_bound_max_Nm": 0.036216,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 120.91599637642503,
-        "p95": 164.47464586235583,
-        "p99": 218.93917815759772,
-        "max": 334.08403396606445
+        "median": 119.58298273384571,
+        "p95": 171.21839337050912,
+        "p99": 230.3633734118193,
+        "max": 334.9169855937362
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -2012,18 +2012,18 @@
       "torque_error_bound_min_Nm": 0.030042311852518593,
       "torque_error_bound_max_Nm": 0.03605225585753878,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 122.2920254804194,
-        "p95": 192.81488494016227,
-        "p99": 261.25370408408344,
-        "max": 348.3740147203207
+        "median": 120.3955034725368,
+        "p95": 182.10539710707957,
+        "p99": 224.2870989721268,
+        "max": 386.04100700467825
       },
       "manager_time_ms": {
-        "median": 1.6118540079332888,
-        "p95": 1.8685206538066268,
-        "p99": 1.9322737073525786,
-        "max": 1.942708040587604
+        "median": 1.5111874672584236,
+        "p95": 1.7440274881664664,
+        "p99": 1.800128743052482,
+        "max": 1.8702080706134439
       }
     },
     "controller__impedance__slow_saturation__clipping": {
@@ -2051,12 +2051,12 @@
       "torque_error_bound_min_Nm": 0.0300181205888669,
       "torque_error_bound_max_Nm": 0.07510441771506811,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 120.70802040398121,
-        "p95": 149.52718629501757,
-        "p99": 237.17877338640392,
-        "max": 436.3330081105232
+        "median": 119.62500866502523,
+        "p95": 139.90413863211867,
+        "p99": 212.74865022860465,
+        "max": 292.6670713350177
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -2090,18 +2090,18 @@
       "torque_error_bound_min_Nm": 0.030008099827483464,
       "torque_error_bound_max_Nm": 0.07506495385401472,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 122.9585031978786,
-        "p95": 204.4722437858581,
-        "p99": 278.28069054521615,
-        "max": 354.62493542581797
+        "median": 123.25000716373324,
+        "p95": 196.0935420356691,
+        "p99": 255.24350930936632,
+        "max": 371.50003481656313
       },
       "manager_time_ms": {
-        "median": 2.309521019924432,
-        "p95": 3.861710167257115,
-        "p99": 4.272094990592445,
-        "max": 4.949124995619059
+        "median": 2.291124954354018,
+        "p95": 3.687400242779404,
+        "p99": 4.530016342177983,
+        "max": 5.1343339728191495
       }
     },
     "controller__impedance__sudden_disturbance__clipping": {
@@ -2129,12 +2129,12 @@
       "torque_error_bound_min_Nm": 0.03,
       "torque_error_bound_max_Nm": 0.12717599747622652,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 121.49999383836985,
-        "p95": 155.6354516651481,
-        "p99": 232.46049880981445,
-        "max": 348.54200202971697
+        "median": 119.24991849809885,
+        "p95": 145.42225399054587,
+        "p99": 215.8664143644273,
+        "max": 277.95799542218447
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -2168,18 +2168,18 @@
       "torque_error_bound_min_Nm": 0.03,
       "torque_error_bound_max_Nm": 0.16276458971068467,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 121.97950854897499,
-        "p95": 197.71631923504174,
-        "p99": 271.19660400785506,
-        "max": 420.5420846119523
+        "median": 120.91698590666056,
+        "p95": 183.15837369300422,
+        "p99": 237.46042046695948,
+        "max": 295.00003438442945
       },
       "manager_time_ms": {
-        "median": 1.64079200476408,
-        "p95": 4.209781886311248,
-        "p99": 4.542480017989874,
-        "max": 4.562625079415739
+        "median": 1.5570420073345304,
+        "p95": 4.082089307485148,
+        "p99": 4.597269222140311,
+        "max": 4.732457920908928
       }
     },
     "controller__rl_policy__no_saturation__clipping": {
@@ -2207,12 +2207,12 @@
       "torque_error_bound_min_Nm": 0.030168236647386815,
       "torque_error_bound_max_Nm": 0.09737638088618009,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 123.25006537139416,
-        "p95": 151.9777171779424,
-        "p99": 234.7591530997306,
-        "max": 385.4170208796859
+        "median": 122.4579755216837,
+        "p95": 162.01040125451982,
+        "p99": 225.26418673805892,
+        "max": 363.0829742178321
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -2246,18 +2246,18 @@
       "torque_error_bound_min_Nm": 0.03000641535258676,
       "torque_error_bound_max_Nm": 0.09052472549590154,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 124.83395403251052,
-        "p95": 215.62509355135262,
-        "p99": 307.8719181939959,
-        "max": 373.3329940587282
+        "median": 123.271020129323,
+        "p95": 212.7625455614179,
+        "p99": 289.79604016058147,
+        "max": 451.6660701483488
       },
       "manager_time_ms": {
-        "median": 3.9848960004746914,
-        "p95": 9.549293480813503,
-        "p99": 10.316581008955817,
-        "max": 12.86354090552777
+        "median": 3.926687524653971,
+        "p95": 9.48765627690591,
+        "p99": 10.383133767172675,
+        "max": 12.680750107392669
       }
     },
     "controller__rl_policy__slow_saturation__clipping": {
@@ -2285,12 +2285,12 @@
       "torque_error_bound_min_Nm": 0.030170640817351577,
       "torque_error_bound_max_Nm": 0.09830690085704982,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 122.54202738404274,
-        "p95": 174.63547410443422,
-        "p99": 238.3075095713138,
-        "max": 401.749974116683
+        "median": 120.04101881757379,
+        "p95": 162.96423855237663,
+        "p99": 232.9645783174782,
+        "max": 348.8329239189625
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -2324,18 +2324,18 @@
       "torque_error_bound_min_Nm": 0.030015877406435906,
       "torque_error_bound_max_Nm": 0.09166786547686787,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 124.50001668184996,
-        "p95": 201.23089198023078,
-        "p99": 285.41160281747574,
-        "max": 373.625080101192
+        "median": 123.35448991507292,
+        "p95": 205.35877556540066,
+        "p99": 282.34050958417356,
+        "max": 393.6671419069171
       },
       "manager_time_ms": {
-        "median": 1.7971250344999135,
-        "p95": 4.887447203509509,
-        "p99": 6.085631939349693,
-        "max": 6.377834011800587
+        "median": 1.761937455739826,
+        "p95": 5.416762846289203,
+        "p99": 6.561810645507648,
+        "max": 6.708125001750886
       }
     },
     "controller__rl_policy__sudden_disturbance__clipping": {
@@ -2363,12 +2363,12 @@
       "torque_error_bound_min_Nm": 0.030429005716925455,
       "torque_error_bound_max_Nm": 0.18701615442329694,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 124.58348646759987,
-        "p95": 161.4274573512375,
-        "p99": 229.876225348562,
-        "max": 324.08302649855614
+        "median": 120.75004633516073,
+        "p95": 170.74996721930802,
+        "p99": 251.75749557092786,
+        "max": 363.79205994307995
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -2402,18 +2402,18 @@
       "torque_error_bound_min_Nm": 0.030303886088532718,
       "torque_error_bound_max_Nm": 0.16483732028200707,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 123.29197488725185,
-        "p95": 201.849965378642,
-        "p99": 281.4529708120972,
-        "max": 367.9160727187991
+        "median": 124.62493032217026,
+        "p95": 191.47950806654984,
+        "p99": 257.41143268533045,
+        "max": 356.20806738734245
       },
       "manager_time_ms": {
-        "median": 1.998895953875035,
-        "p95": 4.511939809890463,
-        "p99": 8.032923063728955,
-        "max": 8.454125025309622
+        "median": 1.9239579560235143,
+        "p95": 4.546860454138368,
+        "p99": 8.329964423319325,
+        "max": 8.3738750545308
       }
     },
     "controller__neural_policy__no_saturation__clipping": {
@@ -2441,12 +2441,12 @@
       "torque_error_bound_min_Nm": 0.030001913293843996,
       "torque_error_bound_max_Nm": 0.04373466950569824,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 122.16699542477727,
-        "p95": 150.68158973008394,
-        "p99": 231.39302153140306,
-        "max": 386.50003261864185
+        "median": 121.33299605920911,
+        "p95": 171.8003419227898,
+        "p99": 222.7267331909388,
+        "max": 332.1249969303608
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -2480,18 +2480,18 @@
       "torque_error_bound_min_Nm": 0.030002035006925516,
       "torque_error_bound_max_Nm": 0.043314568006944595,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 123.93749784678221,
-        "p95": 197.15179223567242,
-        "p99": 259.2918707523495,
-        "max": 358.04102662950754
+        "median": 124.29198250174522,
+        "p95": 197.9725726414472,
+        "p99": 251.38543220236897,
+        "max": 390.1669988408685
       },
       "manager_time_ms": {
-        "median": 1.6457080491818488,
-        "p95": 1.8700630927924067,
-        "p99": 1.9850199320353563,
-        "max": 2.0702079636976123
+        "median": 1.5205000527203083,
+        "p95": 1.8164228182286024,
+        "p99": 1.8530330737121399,
+        "max": 1.9089579582214355
       }
     },
     "controller__neural_policy__slow_saturation__clipping": {
@@ -2519,12 +2519,12 @@
       "torque_error_bound_min_Nm": 0.030005673595705933,
       "torque_error_bound_max_Nm": 0.06569545428167145,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
         "median": 122.4579755216837,
-        "p95": 164.01103930547828,
-        "p99": 235.54046638309953,
-        "max": 307.00000934302807
+        "p95": 151.16908471100032,
+        "p99": 218.6749479733407,
+        "max": 370.7919968292117
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -2558,18 +2558,18 @@
       "torque_error_bound_min_Nm": 0.030004929267535934,
       "torque_error_bound_max_Nm": 0.06567380035806605,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 124.60444122552872,
-        "p95": 195.5145737156272,
-        "p99": 298.84599265642464,
-        "max": 371.9580126926303
+        "median": 122.95797932893038,
+        "p95": 200.11221058666703,
+        "p99": 269.3759370595216,
+        "max": 436.58295180648565
       },
       "manager_time_ms": {
-        "median": 2.0421664812602103,
-        "p95": 5.355660727946088,
-        "p99": 5.848986875498667,
-        "max": 5.875583039596677
+        "median": 1.8272915040142834,
+        "p95": 5.09235659847036,
+        "p99": 5.758327475050464,
+        "max": 5.770375020802021
       }
     },
     "controller__neural_policy__sudden_disturbance__clipping": {
@@ -2597,12 +2597,12 @@
       "torque_error_bound_min_Nm": 0.03002035831642995,
       "torque_error_bound_max_Nm": 0.1821644792765323,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 125.3334921784699,
-        "p95": 164.53152056783426,
-        "p99": 227.37704683095217,
-        "max": 310.9169192612171
+        "median": 123.89547191560268,
+        "p95": 171.39789415523407,
+        "p99": 232.67963319085533,
+        "max": 320.3330561518669
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -2636,18 +2636,18 @@
       "torque_error_bound_min_Nm": 0.030020229018206158,
       "torque_error_bound_max_Nm": 0.1568332565620451,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 123.91700875014067,
-        "p95": 203.07435770519075,
-        "p99": 275.0477730296552,
-        "max": 348.8330403342843
+        "median": 125.66696386784315,
+        "p95": 189.02072915807366,
+        "p99": 245.8861388731748,
+        "max": 346.16596531122923
       },
       "manager_time_ms": {
-        "median": 1.7108124447986484,
-        "p95": 4.25875568180345,
-        "p99": 4.772842392558231,
-        "max": 4.847957985475659
+        "median": 1.5821880078874528,
+        "p95": 4.1540649428498,
+        "p99": 4.567249283427371,
+        "max": 4.781833034940064
       }
     },
     "controller__ai_conditioned_proxy__no_saturation__clipping": {
@@ -2675,12 +2675,12 @@
       "torque_error_bound_min_Nm": 0.03000601435148616,
       "torque_error_bound_max_Nm": 0.03555,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 119.91697829216719,
-        "p95": 161.90197784453628,
-        "p99": 227.3054618854075,
-        "max": 381.58404640853405
+        "median": 120.20801659673452,
+        "p95": 149.80870764702556,
+        "p99": 196.37251738458866,
+        "max": 291.20908584445715
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -2714,18 +2714,18 @@
       "torque_error_bound_min_Nm": 0.03000611724025783,
       "torque_error_bound_max_Nm": 0.035397316755750405,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 122.16600589454174,
-        "p95": 193.26251931488514,
-        "p99": 252.09681014530358,
-        "max": 413.0000015720725
+        "median": 120.83305045962334,
+        "p95": 183.47479053772986,
+        "p99": 242.33429227024317,
+        "max": 318.49998049438
       },
       "manager_time_ms": {
-        "median": 1.6219374956563115,
-        "p95": 1.889998180558905,
-        "p99": 1.9234175945166494,
-        "max": 1.971542020328343
+        "median": 1.4932704507373273,
+        "p95": 1.776268717367202,
+        "p99": 1.8553425569552926,
+        "max": 1.8751249881461263
       }
     },
     "controller__ai_conditioned_proxy__slow_saturation__clipping": {
@@ -2753,12 +2753,12 @@
       "torque_error_bound_min_Nm": 0.030017522479909634,
       "torque_error_bound_max_Nm": 0.06425278494239521,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 120.18752750009298,
-        "p95": 162.99201524816445,
-        "p99": 239.5623968914151,
-        "max": 356.62506707012653
+        "median": 119.75003872066736,
+        "p95": 145.13747300952673,
+        "p99": 203.12292035669083,
+        "max": 334.4169817864895
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -2792,18 +2792,18 @@
       "torque_error_bound_min_Nm": 0.030016340909647398,
       "torque_error_bound_max_Nm": 0.06422791601797773,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 121.29201786592603,
-        "p95": 207.55658042617142,
-        "p99": 297.46564221568406,
-        "max": 421.08295019716024
+        "median": 120.12501247227192,
+        "p95": 188.4580182377249,
+        "p99": 259.9058009218424,
+        "max": 314.9579279124737
       },
       "manager_time_ms": {
-        "median": 2.3000415530987084,
-        "p95": 3.8917641853913656,
-        "p99": 4.937271272065115,
-        "max": 5.224666907452047
+        "median": 2.2336665424518287,
+        "p95": 3.686344454763457,
+        "p99": 4.949476871406659,
+        "max": 5.152374971657991
       }
     },
     "controller__ai_conditioned_proxy__sudden_disturbance__clipping": {
@@ -2831,12 +2831,12 @@
       "torque_error_bound_min_Nm": 0.03,
       "torque_error_bound_max_Nm": 0.2386250886500159,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 119.70900231972337,
-        "p95": 156.96702757850284,
-        "p99": 242.17198486439878,
-        "max": 359.79098174721
+        "median": 120.41651643812656,
+        "p95": 148.60066585242745,
+        "p99": 220.2208829112351,
+        "max": 317.4160374328494
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -2870,18 +2870,18 @@
       "torque_error_bound_min_Nm": 0.03,
       "torque_error_bound_max_Nm": 0.16565284220533535,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 121.06250505894423,
-        "p95": 182.4642182327807,
-        "p99": 255.3590130992233,
-        "max": 317.7488688379526
+        "median": 120.9789770655334,
+        "p95": 183.07327409274873,
+        "p99": 230.41247855871913,
+        "max": 328.7500003352761
       },
       "manager_time_ms": {
-        "median": 1.5171045088209212,
-        "p95": 3.8575023703742772,
-        "p99": 4.441203635651617,
-        "max": 4.529749974608421
+        "median": 1.4719999744556844,
+        "p95": 3.728763159597292,
+        "p99": 4.184403208782895,
+        "max": 4.458500072360039
       }
     }
   },
@@ -2911,12 +2911,12 @@
       "torque_error_bound_min_Nm": 0.030069697402050344,
       "torque_error_bound_max_Nm": 0.0361488,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 111.2079480662942,
-        "p95": 146.47264033555984,
-        "p99": 211.14417701028287,
-        "max": 354.62493542581797
+        "median": 110.83297431468964,
+        "p95": 137.55021500401196,
+        "p99": 200.11940971016878,
+        "max": 347.4580589681864
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -2950,18 +2950,18 @@
       "torque_error_bound_min_Nm": 0.0300697927869365,
       "torque_error_bound_max_Nm": 0.03598627313552572,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 112.54200944676995,
-        "p95": 177.13449778966606,
-        "p99": 239.8783806711435,
-        "max": 340.2919974178076
+        "median": 111.49991769343615,
+        "p95": 178.7193294148892,
+        "p99": 250.41808374226093,
+        "max": 401.5419399365783
       },
       "manager_time_ms": {
-        "median": 1.4857505448162556,
-        "p95": 1.7881395295262337,
-        "p99": 1.8902161566074933,
-        "max": 1.9441660260781646
+        "median": 1.3137499918229878,
+        "p95": 1.755977002903819,
+        "p99": 1.7768618348054588,
+        "max": 1.7962499987334013
       }
     },
     "robot__planar_2r__impedance__slow_saturation__clipping": {
@@ -2989,12 +2989,12 @@
       "torque_error_bound_min_Nm": 0.03002835791426904,
       "torque_error_bound_max_Nm": 0.06410708475042255,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 111.58298002555966,
-        "p95": 144.3527406081557,
-        "p99": 219.94058392010626,
-        "max": 316.707999445498
+        "median": 112.25009802728891,
+        "p95": 144.1711385268718,
+        "p99": 203.84465344250202,
+        "max": 287.95795515179634
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -3028,18 +3028,18 @@
       "torque_error_bound_min_Nm": 0.030009233300383725,
       "torque_error_bound_max_Nm": 0.06407769007927133,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 112.7920113503933,
-        "p95": 188.43904836103317,
-        "p99": 264.01639566756785,
-        "max": 380.9999907389283
+        "median": 113.89597784727812,
+        "p95": 171.31709610112011,
+        "p99": 249.39001770690084,
+        "max": 310.5839714407921
       },
       "manager_time_ms": {
-        "median": 2.0528335589915514,
-        "p95": 3.243543260032311,
-        "p99": 3.4019206161610773,
-        "max": 3.5108750453218818
+        "median": 1.9528959528543055,
+        "p95": 3.0717749847099185,
+        "p99": 3.4794211760163294,
+        "max": 3.6272499710321426
       }
     },
     "robot__planar_2r__rl_policy__no_saturation__clipping": {
@@ -3067,12 +3067,12 @@
       "torque_error_bound_min_Nm": 0.030281783564586436,
       "torque_error_bound_max_Nm": 0.09617917930760271,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 113.12495917081833,
-        "p95": 158.86424225755033,
-        "p99": 235.6528816744685,
-        "max": 404.9590788781643
+        "median": 113.4169870056212,
+        "p95": 140.96077065914864,
+        "p99": 223.89545454643664,
+        "max": 293.41597110033035
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -3106,18 +3106,18 @@
       "torque_error_bound_min_Nm": 0.030009518381241145,
       "torque_error_bound_max_Nm": 0.08860273739582589,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 113.33299335092306,
-        "p95": 179.49549364857373,
-        "p99": 288.67817483842373,
-        "max": 381.2090726569295
+        "median": 114.06250996515155,
+        "p95": 178.83994732983408,
+        "p99": 241.63346155546606,
+        "max": 350.58287903666496
       },
       "manager_time_ms": {
-        "median": 2.761812473181635,
-        "p95": 4.900883638765663,
-        "p99": 7.625917413970435,
-        "max": 10.15204202849418
+        "median": 2.7560829767026007,
+        "p95": 4.824609711067751,
+        "p99": 7.65788817428982,
+        "max": 9.97166708111763
       }
     },
     "robot__planar_2r__rl_policy__slow_saturation__clipping": {
@@ -3145,12 +3145,12 @@
       "torque_error_bound_min_Nm": 0.030191968821861235,
       "torque_error_bound_max_Nm": 0.09709420707828956,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 112.8750154748559,
-        "p95": 137.63957540504634,
-        "p99": 231.20338213630015,
-        "max": 346.8750510364771
+        "median": 113.74999303370714,
+        "p95": 141.05244772508738,
+        "p99": 183.70928359217942,
+        "max": 280.16697615385056
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -3184,18 +3184,18 @@
       "torque_error_bound_min_Nm": 0.03002226139317478,
       "torque_error_bound_max_Nm": 0.08880161005748029,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 113.79201896488667,
-        "p95": 187.2120948974043,
-        "p99": 242.086531361565,
-        "max": 328.2909747213125
+        "median": 113.04148938506842,
+        "p95": 171.1710705421865,
+        "p99": 235.547797055915,
+        "max": 396.54201827943325
       },
       "manager_time_ms": {
-        "median": 1.6349164652638137,
-        "p95": 3.7394103943370283,
-        "p99": 4.057682576822114,
-        "max": 4.399291938170791
+        "median": 1.4902289840392768,
+        "p95": 3.595885774120688,
+        "p99": 4.084023552713914,
+        "max": 4.367665969766676
       }
     },
     "robot__fr3_surrogate__impedance__no_saturation__clipping": {
@@ -3223,12 +3223,12 @@
       "torque_error_bound_min_Nm": 0.03004229647914314,
       "torque_error_bound_max_Nm": 0.036216,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 120.20906433463097,
-        "p95": 156.07553068548432,
-        "p99": 233.17820741795,
-        "max": 378.12499795109034
+        "median": 120.2294952236116,
+        "p95": 142.37710274755955,
+        "p99": 210.7143215835094,
+        "max": 320.33410388976336
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -3262,18 +3262,18 @@
       "torque_error_bound_min_Nm": 0.030042311852518593,
       "torque_error_bound_max_Nm": 0.03605225585753878,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 122.18748452141881,
-        "p95": 194.49975225143132,
-        "p99": 273.626676062122,
-        "max": 435.24999637156725
+        "median": 122.77101632207632,
+        "p95": 184.19105908833444,
+        "p99": 237.12914204224944,
+        "max": 340.3750015422702
       },
       "manager_time_ms": {
-        "median": 1.651874976232648,
-        "p95": 1.9048544927500186,
-        "p99": 1.988150113029405,
-        "max": 2.0631669322028756
+        "median": 1.4913954655639827,
+        "p95": 1.748725277138874,
+        "p99": 1.8078755540773273,
+        "max": 1.8204159568995237
       }
     },
     "robot__fr3_surrogate__impedance__slow_saturation__clipping": {
@@ -3301,12 +3301,12 @@
       "torque_error_bound_min_Nm": 0.0300181205888669,
       "torque_error_bound_max_Nm": 0.07510441771506811,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 121.54201976954937,
-        "p95": 160.51034908741713,
-        "p99": 233.75622578896582,
-        "max": 316.9579431414604
+        "median": 119.31249173358083,
+        "p95": 143.787486013025,
+        "p99": 192.66764051280916,
+        "max": 341.70900471508503
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -3340,18 +3340,18 @@
       "torque_error_bound_min_Nm": 0.030008099827483464,
       "torque_error_bound_max_Nm": 0.07506495385401472,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 123.47951997071505,
-        "p95": 200.76518412679428,
-        "p99": 275.06264741532505,
-        "max": 452.4160176515579
+        "median": 121.95901945233345,
+        "p95": 188.64957964979106,
+        "p99": 243.9997321926057,
+        "max": 349.0840317681432
       },
       "manager_time_ms": {
-        "median": 2.210500475484878,
-        "p95": 3.9094232895877203,
-        "p99": 4.4791273539885825,
-        "max": 5.12650003656745
+        "median": 2.1831875201314688,
+        "p95": 3.6630982707720245,
+        "p99": 4.398624170571557,
+        "max": 5.449290969409049
       }
     },
     "robot__fr3_surrogate__rl_policy__no_saturation__clipping": {
@@ -3379,12 +3379,12 @@
       "torque_error_bound_min_Nm": 0.030168236647386815,
       "torque_error_bound_max_Nm": 0.09737638088618009,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 120.97950093448162,
-        "p95": 161.46844136528668,
-        "p99": 233.12511155381796,
-        "max": 303.83397825062275
+        "median": 121.74999574199319,
+        "p95": 149.23162525519723,
+        "p99": 213.43115251511335,
+        "max": 297.0000496134162
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -3418,18 +3418,18 @@
       "torque_error_bound_min_Nm": 0.03000641535258676,
       "torque_error_bound_max_Nm": 0.09052472549590154,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 122.79103975743055,
-        "p95": 215.21407179534435,
-        "p99": 320.75505470857024,
-        "max": 455.58298006653786
+        "median": 123.24994895607233,
+        "p95": 193.47264315001664,
+        "p99": 265.9371064510196,
+        "max": 346.79193049669266
       },
       "manager_time_ms": {
-        "median": 4.053041513543576,
-        "p95": 9.518081462010741,
-        "p99": 11.04053818504324,
-        "max": 13.899417011998594
+        "median": 3.806604538112879,
+        "p95": 9.356666792882606,
+        "p99": 10.332639939151687,
+        "max": 12.696582940407097
       }
     },
     "robot__fr3_surrogate__rl_policy__slow_saturation__clipping": {
@@ -3457,12 +3457,12 @@
       "torque_error_bound_min_Nm": 0.030170640817351577,
       "torque_error_bound_max_Nm": 0.09830690085704982,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 122.58347123861313,
-        "p95": 160.002097254619,
-        "p99": 253.42102511785922,
-        "max": 355.2919952198863
+        "median": 120.75004633516073,
+        "p95": 137.55657128058374,
+        "p99": 184.9269156809896,
+        "max": 343.4580285102129
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -3496,18 +3496,18 @@
       "torque_error_bound_min_Nm": 0.030015877406435906,
       "torque_error_bound_max_Nm": 0.09166786547686787,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 123.37497901171446,
-        "p95": 203.5518118645995,
-        "p99": 297.13454307056963,
-        "max": 445.29105070978403
+        "median": 122.97951616346836,
+        "p95": 201.41038694418964,
+        "p99": 272.81878865323955,
+        "max": 337.500125169754
       },
       "manager_time_ms": {
-        "median": 1.808375003747642,
-        "p95": 4.965554241789504,
-        "p99": 6.4240194321610025,
-        "max": 6.470334017649293
+        "median": 1.704457972664386,
+        "p95": 4.8227627587039015,
+        "p99": 6.097268796293061,
+        "max": 6.592500023543835
       }
     },
     "robot__arm6_surrogate__impedance__no_saturation__clipping": {
@@ -3535,12 +3535,12 @@
       "torque_error_bound_min_Nm": 0.030058028914807307,
       "torque_error_bound_max_Nm": 0.0354432,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 119.87495236098766,
-        "p95": 158.28333562240002,
-        "p99": 243.14460810273883,
-        "max": 336.62491478025913
+        "median": 118.08297131210566,
+        "p95": 143.60173372551796,
+        "p99": 191.42111181281507,
+        "max": 310.958013869822
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -3574,18 +3574,18 @@
       "torque_error_bound_min_Nm": 0.030058109652900716,
       "torque_error_bound_max_Nm": 0.03530443526589959,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 120.37495616823435,
-        "p95": 199.44820087403056,
-        "p99": 260.55536000058055,
-        "max": 360.6249811127782
+        "median": 117.72953439503908,
+        "p95": 172.21535672433674,
+        "p99": 243.91163489781317,
+        "max": 398.20896927267313
       },
       "manager_time_ms": {
-        "median": 1.627166522666812,
-        "p95": 1.8610569706652313,
-        "p99": 1.9071519188582895,
-        "max": 1.9191669998690486
+        "median": 1.4535834779962897,
+        "p95": 1.705018337816,
+        "p99": 1.7732517630793143,
+        "max": 1.902415999211371
       }
     },
     "robot__arm6_surrogate__impedance__slow_saturation__clipping": {
@@ -3613,12 +3613,12 @@
       "torque_error_bound_min_Nm": 0.030022998464315703,
       "torque_error_bound_max_Nm": 0.06582715300729858,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 118.20800136774778,
-        "p95": 157.69381425343445,
-        "p99": 232.75580839253962,
-        "max": 319.7089536115527
+        "median": 119.54095680266619,
+        "p95": 147.55443553440273,
+        "p99": 194.0906746312976,
+        "max": 289.08299282193184
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -3652,18 +3652,18 @@
       "torque_error_bound_min_Nm": 0.030010016131024754,
       "torque_error_bound_max_Nm": 0.06579642813643663,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 120.81244494765997,
-        "p95": 204.42468812689177,
-        "p99": 287.42661699652666,
-        "max": 479.6660505235195
+        "median": 119.95848035439849,
+        "p95": 180.50103681162,
+        "p99": 236.98220145888624,
+        "max": 351.8749726936221
       },
       "manager_time_ms": {
-        "median": 2.2586045088246465,
-        "p95": 4.023760365089402,
-        "p99": 4.436893626116215,
-        "max": 4.585874965414405
+        "median": 2.210457983892411,
+        "p95": 3.744708356680348,
+        "p99": 4.104132560314606,
+        "max": 4.613582976162434
       }
     },
     "robot__arm6_surrogate__rl_policy__no_saturation__clipping": {
@@ -3691,12 +3691,12 @@
       "torque_error_bound_min_Nm": 0.03023492715463403,
       "torque_error_bound_max_Nm": 0.09291871230786725,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 119.12500485777855,
-        "p95": 162.46184241026626,
-        "p99": 229.44032680243254,
-        "max": 348.0830928310752
+        "median": 120.79207226634026,
+        "p95": 150.58265998959538,
+        "p99": 213.05659785866737,
+        "max": 304.37507666647434
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -3730,18 +3730,18 @@
       "torque_error_bound_min_Nm": 0.030008169075908038,
       "torque_error_bound_max_Nm": 0.08543288615344066,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 120.66704221069813,
-        "p95": 203.63031653687355,
-        "p99": 282.2110045235604,
-        "max": 389.1249652951956
+        "median": 121.74999574199319,
+        "p95": 188.00070392899212,
+        "p99": 269.4854408036917,
+        "max": 322.75007106363773
       },
       "manager_time_ms": {
-        "median": 3.530895512085408,
-        "p95": 6.809019279899076,
-        "p99": 8.986855562543472,
-        "max": 11.962291086092591
+        "median": 3.5847084945999086,
+        "p95": 6.713658728403969,
+        "p99": 9.637498130323339,
+        "max": 13.040291960351169
       }
     },
     "robot__arm6_surrogate__rl_policy__slow_saturation__clipping": {
@@ -3769,12 +3769,12 @@
       "torque_error_bound_min_Nm": 0.030211695437601303,
       "torque_error_bound_max_Nm": 0.09377895748488728,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 118.4794818982482,
-        "p95": 146.0871018934995,
-        "p99": 226.80341149680316,
-        "max": 344.0419677644968
+        "median": 120.49998622387648,
+        "p95": 149.8035620898008,
+        "p99": 186.97124673053614,
+        "max": 269.08295694738626
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -3808,18 +3808,18 @@
       "torque_error_bound_min_Nm": 0.03002266714238831,
       "torque_error_bound_max_Nm": 0.0865869139025097,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 122.16600589454174,
-        "p95": 202.2327331360429,
-        "p99": 278.92201440408826,
-        "max": 356.3750069588423
+        "median": 121.58352183178067,
+        "p95": 183.89372271485624,
+        "p99": 247.39166256040332,
+        "max": 323.2909366488457
       },
       "manager_time_ms": {
-        "median": 1.7514789360575378,
-        "p95": 4.826565302209928,
-        "p99": 6.230796041199934,
-        "max": 6.779583054594696
+        "median": 1.5689999563619494,
+        "p95": 4.394560650689527,
+        "p99": 6.136591690592465,
+        "max": 6.409832974895835
       }
     }
   },
@@ -3849,18 +3849,18 @@
       "torque_error_bound_min_Nm": 0.03,
       "torque_error_bound_max_Nm": 0.08769619592639524,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 123.41595720499754,
-        "p95": 205.2952186204493,
-        "p99": 296.5030190534889,
-        "max": 379.2078932747245
+        "median": 123.04197298362851,
+        "p95": 203.65620730444786,
+        "p99": 270.8351088222116,
+        "max": 371.12494464963675
       },
       "manager_time_ms": {
-        "median": 1.8761245300993323,
-        "p95": 5.536912858951836,
-        "p99": 8.579920757329052,
-        "max": 13.472291990183294
+        "median": 1.7539164400659502,
+        "p95": 5.500352097442374,
+        "p99": 8.628064987715296,
+        "max": 13.408750062808394
       }
     },
     "ablation__horizon_ramp__first_step_torque": {
@@ -3888,18 +3888,18 @@
       "torque_error_bound_min_Nm": 0.03,
       "torque_error_bound_max_Nm": 0.08769737826316046,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 121.43759522587061,
-        "p95": 190.26470836251974,
-        "p99": 268.25299020856613,
-        "max": 397.41594810038805
+        "median": 121.74993753433228,
+        "p95": 180.70894293487072,
+        "p99": 241.10880680382252,
+        "max": 307.00000934302807
       },
       "manager_time_ms": {
-        "median": 1.3746460317634046,
-        "p95": 3.962966374820098,
-        "p99": 4.3050099594984195,
-        "max": 4.418375086970627
+        "median": 1.2881875154562294,
+        "p95": 3.6735750210937113,
+        "p99": 3.941461715148762,
+        "max": 3.9819160010665655
       }
     },
     "ablation__slow_saturation__cached_full_torque": {
@@ -3927,18 +3927,18 @@
       "torque_error_bound_min_Nm": 0.030010621724726065,
       "torque_error_bound_max_Nm": 0.07715049892878896,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 123.6660173162818,
-        "p95": 212.91698794811964,
-        "p99": 301.92362726666033,
-        "max": 583.6678901687264
+        "median": 122.35401663929224,
+        "p95": 197.34648521989584,
+        "p99": 242.87484236992896,
+        "max": 334.87402833998203
       },
       "manager_time_ms": {
-        "median": 2.2763750166632235,
-        "p95": 4.067372245481238,
-        "p99": 5.6701656850054825,
-        "max": 6.162500008940697
+        "median": 2.1796879591420293,
+        "p95": 3.920812497381121,
+        "p99": 5.616666865535077,
+        "max": 6.037374958395958
       }
     },
     "ablation__sudden_disturbance__full": {
@@ -3966,18 +3966,18 @@
       "torque_error_bound_min_Nm": 0.03,
       "torque_error_bound_max_Nm": 0.16276458971068467,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 121.54143769294024,
-        "p95": 195.88437862694252,
-        "p99": 274.21646984294057,
-        "max": 407.49995969235897
+        "median": 122.29196727275848,
+        "p95": 190.27466769330198,
+        "p99": 260.3298798203468,
+        "max": 374.3750276044011
       },
       "manager_time_ms": {
-        "median": 1.5866459580138326,
-        "p95": 4.23335800296627,
-        "p99": 4.665422571124509,
-        "max": 4.76529193110764
+        "median": 1.5362915000878274,
+        "p95": 3.8706829946022476,
+        "p99": 4.430328763555732,
+        "max": 4.92437498178333
       }
     },
     "ablation__sudden_disturbance__no_final_projection": {
@@ -4005,18 +4005,18 @@
       "torque_error_bound_min_Nm": 0.03,
       "torque_error_bound_max_Nm": 0.15135501344477226,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 120.33293023705482,
-        "p95": 201.29198674112558,
-        "p99": 283.8559949304908,
-        "max": 393.79193913191557
+        "median": 119.22948760911822,
+        "p95": 182.46631952933967,
+        "p99": 241.085592424497,
+        "max": 336.62503119558096
       },
       "manager_time_ms": {
-        "median": 1.5914789983071387,
-        "p95": 4.380585713079199,
-        "p99": 4.550888938829302,
-        "max": 4.645459004677832
+        "median": 1.456771045923233,
+        "p95": 3.9924145385157317,
+        "p99": 4.124891953542829,
+        "max": 4.152541980147362
       }
     },
     "ablation__model_mismatch__full": {
@@ -4044,18 +4044,18 @@
       "torque_error_bound_min_Nm": 0.07208988128362692,
       "torque_error_bound_max_Nm": 0.18726067786888187,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 122.16647155582905,
-        "p95": 204.9878414254635,
-        "p99": 302.84904874861235,
-        "max": 405.62497451901436
+        "median": 120.66599447280169,
+        "p95": 189.18183050118378,
+        "p99": 259.853983297944,
+        "max": 357.6260060071945
       },
       "manager_time_ms": {
-        "median": 3.743624547496438,
-        "p95": 4.55626449547708,
-        "p99": 4.840488648042081,
-        "max": 5.0022079376503825
+        "median": 3.6758334608748555,
+        "p95": 4.2724463739432395,
+        "p99": 4.418362034484744,
+        "max": 4.4317919528111815
       }
     },
     "ablation__directional_collapse__full": {
@@ -4083,18 +4083,18 @@
       "torque_error_bound_min_Nm": 0.03002466779792934,
       "torque_error_bound_max_Nm": 0.06750260658277431,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": true,
+      "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 122.20803182572126,
-        "p95": 213.21095991879702,
-        "p99": 311.5131601225585,
-        "max": 489.45797607302666
+        "median": 121.8749675899744,
+        "p95": 184.7905514296144,
+        "p99": 278.5841620061546,
+        "max": 358.24987571686506
       },
       "manager_time_ms": {
-        "median": 2.1146670333109796,
-        "p95": 10.64256426761858,
-        "p99": 13.230454734293742,
-        "max": 13.313832925632596
+        "median": 2.048625494353473,
+        "p95": 10.233698552474378,
+        "p99": 13.371526256669311,
+        "max": 13.54341593105346
       }
     },
     "ablation__directional_collapse__no_tightening": {
@@ -4122,18 +4122,18 @@
       "torque_error_bound_min_Nm": 0.03002466779792934,
       "torque_error_bound_max_Nm": 0.0681756636284695,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 120.95802230760455,
-        "p95": 213.50226015783846,
-        "p99": 307.58599168621004,
-        "max": 389.2090171575546
+        "median": 117.87499533966184,
+        "p95": 190.38741593249142,
+        "p99": 250.96573983319104,
+        "max": 352.16601099818945
       },
       "manager_time_ms": {
-        "median": 2.68060399685055,
-        "p95": 7.1269103849772355,
-        "p99": 9.86008310457691,
-        "max": 10.542083065956831
+        "median": 2.1434579393826425,
+        "p95": 7.418100285576656,
+        "p99": 9.72767561906948,
+        "max": 10.54074999410659
       }
     },
     "ablation__model_mismatch__frozen_realization_map": {
@@ -4161,18 +4161,18 @@
       "torque_error_bound_min_Nm": 0.07208987774524263,
       "torque_error_bound_max_Nm": 0.18726270529386568,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 122.62503150850534,
-        "p95": 205.77720715664324,
-        "p99": 280.92150459997356,
-        "max": 385.20805537700653
+        "median": 121.29201786592603,
+        "p95": 187.84558633342382,
+        "p99": 257.9290606081486,
+        "max": 372.4999260157347
       },
       "manager_time_ms": {
-        "median": 3.8268749485723674,
-        "p95": 4.487985069863497,
-        "p99": 4.620004366151988,
-        "max": 4.6894579427316785
+        "median": 3.6008545430377126,
+        "p95": 4.253281594719737,
+        "p99": 4.369910055538639,
+        "max": 4.4391670962795615
       }
     },
     "ablation__model_mismatch__updated_realization_map": {
@@ -4200,18 +4200,18 @@
       "torque_error_bound_min_Nm": 0.07208988128362692,
       "torque_error_bound_max_Nm": 0.18726067786888187,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 121.2084898725152,
-        "p95": 192.91033386252818,
-        "p99": 283.00213860347867,
-        "max": 358.4160003811121
+        "median": 122.58300557732582,
+        "p95": 193.5545937158167,
+        "p99": 264.9738430045545,
+        "max": 331.4169589430094
       },
       "manager_time_ms": {
-        "median": 3.737958031706512,
-        "p95": 4.432102042483166,
-        "p99": 4.5877295499667525,
-        "max": 4.605834023095667
+        "median": 3.6282705259509385,
+        "p95": 4.285825655097142,
+        "p99": 4.371858794474973,
+        "max": 4.392958944663405
       }
     },
     "ablation__preview_mismatch__full": {
@@ -4239,18 +4239,18 @@
       "torque_error_bound_min_Nm": 0.03,
       "torque_error_bound_max_Nm": 0.0989831203223665,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 122.0210106112063,
-        "p95": 198.50624375976622,
-        "p99": 294.17738667689264,
-        "max": 550.1670530065894
+        "median": 121.06250505894423,
+        "p95": 189.94166748598212,
+        "p99": 263.91833089292044,
+        "max": 361.70799285173416
       },
       "manager_time_ms": {
-        "median": 3.9073540247045457,
-        "p95": 4.528972908155993,
-        "p99": 4.707077428465708,
-        "max": 4.810666898265481
+        "median": 3.773709002416581,
+        "p95": 4.369951842818409,
+        "p99": 4.562461897730823,
+        "max": 5.067041958682239
       }
     },
     "ablation__preview_mismatch__preview_zoh": {
@@ -4278,18 +4278,18 @@
       "torque_error_bound_min_Nm": 0.03,
       "torque_error_bound_max_Nm": 0.09896908991548342,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 123.0000052601099,
-        "p95": 208.50687869824466,
-        "p99": 303.3817291725427,
-        "max": 467.000063508749
+        "median": 121.70791160315275,
+        "p95": 191.41606171615422,
+        "p99": 249.47218247689307,
+        "max": 336.37508749961853
       },
       "manager_time_ms": {
-        "median": 3.8579580141231418,
-        "p95": 4.444733570562676,
-        "p99": 5.439693592488761,
-        "max": 6.001416011713445
+        "median": 3.677416534628719,
+        "p95": 4.313266684766859,
+        "p99": 4.956428880104795,
+        "max": 4.968541907146573
       }
     },
     "ablation__preview_mismatch__preview_zero_force": {
@@ -4317,18 +4317,18 @@
       "torque_error_bound_min_Nm": 0.03,
       "torque_error_bound_max_Nm": 0.06742117163603095,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 124.27050387486815,
-        "p95": 235.94409576617178,
-        "p99": 444.84950019977975,
-        "max": 1465.66703915596
+        "median": 122.91653547435999,
+        "p95": 197.42235308513042,
+        "p99": 258.07482888922095,
+        "max": 405.7919140905142
       },
       "manager_time_ms": {
-        "median": 3.777583478949964,
-        "p95": 4.638510500080883,
-        "p99": 5.343731335597111,
-        "max": 5.622041993774474
+        "median": 3.5933330073021352,
+        "p95": 4.21753159025684,
+        "p99": 4.357107529649511,
+        "max": 4.393249982967973
       }
     },
     "ablation__preview_mismatch__preview_oracle_force": {
@@ -4356,22 +4356,22 @@
       "torque_error_bound_min_Nm": 0.03,
       "torque_error_bound_max_Nm": 0.09897283438377859,
       "torque_error_bound_satisfied": true,
-      "sampled_refinement_checks_satisfied": false,
+      "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 122.20803182572126,
-        "p95": 197.69099890254435,
-        "p99": 297.39626217633486,
-        "max": 367.6669439300895
+        "median": 121.81245256215334,
+        "p95": 201.68062765151262,
+        "p99": 287.2550336178392,
+        "max": 430.83401396870613
       },
       "manager_time_ms": {
-        "median": 3.7889169761911035,
-        "p95": 4.453312489204109,
-        "p99": 4.784266309579826,
-        "max": 5.701291956938803
+        "median": 3.679125045891851,
+        "p95": 4.2972857132554045,
+        "p99": 4.6483073243871305,
+        "max": 4.953083000145853
       }
     }
   },
-  "sampled_refinement_audit": {
+  "sampled_interface_audit": {
     "planar_2r": {
       "shared_audit_config_hash": "07dad6cc1b49",
       "shared_successor_defect_budget_mps": 0.03,
@@ -4385,7 +4385,7 @@
       ],
       "minimum_planned_actuator_margin_Nm": 0.2325572012776096,
       "all_torque_errors_contained": true,
-      "all_sampled_refinement_checks_satisfied": true,
+      "all_sampled_interface_audits_passed": true,
       "robot_specific_objects": [
         "Pi_r",
         "tau_hat_r",
@@ -4407,7 +4407,7 @@
       ],
       "minimum_planned_actuator_margin_Nm": 0.6787242103783426,
       "all_torque_errors_contained": true,
-      "all_sampled_refinement_checks_satisfied": true,
+      "all_sampled_interface_audits_passed": true,
       "robot_specific_objects": [
         "Pi_r",
         "tau_hat_r",
@@ -4429,7 +4429,7 @@
       ],
       "minimum_planned_actuator_margin_Nm": 0.7407376539072326,
       "all_torque_errors_contained": true,
-      "all_sampled_refinement_checks_satisfied": true,
+      "all_sampled_interface_audits_passed": true,
       "robot_specific_objects": [
         "Pi_r",
         "tau_hat_r",
@@ -4441,17 +4441,17 @@
   },
   "timing": {
     "manager_ms_across_cases": {
-      "median_of_medians": 1.9375102419871837,
-      "worst_p95": 10.64256426761858,
-      "worst_p99": 13.25414786930196,
-      "worst_max": 13.899417011998594,
+      "median_of_medians": 1.7946144798770547,
+      "worst_p95": 10.487076884601265,
+      "worst_p99": 13.371526256669311,
+      "worst_max": 13.54341593105346,
       "nominal_deadline_ms": 20.0
     },
     "fast_path_us_across_cases": {
-      "median_of_medians": 122.09350825287402,
-      "worst_p95": 216.8496139347553,
-      "worst_p99": 320.75505470857024,
-      "worst_max": 550.1670530065894,
+      "median_of_medians": 121.66675878688693,
+      "worst_p95": 212.7625455614179,
+      "worst_p99": 289.79604016058147,
+      "worst_max": 451.6660701483488,
       "nominal_deadline_us": 1000.0
     }
   },

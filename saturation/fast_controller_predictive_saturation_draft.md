@@ -1036,7 +1036,7 @@ These results support interface substitution in the implemented operating region
 
 ## 9.3 Cross-realization sampled refinement audit
 
-![Observed successor defects and the common empirical budget for three realization maps.](results/sampled_refinement_audit.png)
+![Observed successor defects and the common empirical budget for three realization maps.](results/sampled_interface_audit.png)
 
 The behavior model, predictive objective, and \(0.03~\mathrm{m/s}\) empirical successor-defect budget were kept unchanged. Only the realization map, torque box, and sampled robot-specific error bounds changed.
 
@@ -1060,7 +1060,7 @@ The remaining ablations are informative negative results. Zero-force preview inc
 
 ## 9.5 Timing
 
-In the regenerated run, the manager's median-of-run-medians was \(1.938~\mathrm{ms}\), with a worst observed maximum of \(13.899~\mathrm{ms}\), below the \(20~\mathrm{ms}\) manager period. The fast-path median-of-run-medians was \(122.1~\mu\mathrm{s}\), with a worst observed maximum of \(550.2~\mu\mathrm{s}\). All recorded calls met their nominal periods on this run, but non-real-time Python measurements establish typical throughput, not hard real-time execution.
+In the regenerated run, the manager's median-of-run-medians was \(1.795~\mathrm{ms}\), with a worst observed maximum of \(13.543~\mathrm{ms}\), below the \(20~\mathrm{ms}\) manager period. The fast-path median-of-run-medians was \(121.7~\mu\mathrm{s}\), with a worst observed maximum of \(451.7~\mu\mathrm{s}\). All recorded calls met their nominal periods on this run, but non-real-time Python measurements establish typical throughput, not hard real-time execution.
 
 ---
 

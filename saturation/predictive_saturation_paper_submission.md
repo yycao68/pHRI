@@ -53,7 +53,7 @@ The contributions are:
 1. a two-rate architecture that retains an existing \(1~\mathrm{kHz}\) controller and uses slower MPC only to anticipate and correct loss of actuator realizability;
 2. a robot-dependent acceleration-zonotope representation and a directional-authority indicator logged at every predictive update, exposing failures hidden by scalar torque utilization;
 3. a conditional certificate-transfer theorem that separates a reusable abstract certificate from robot-specific actuator and successor-error tests; and
-4. a reproducible 108-case simulation study evaluating controller substitution, sampled cross-realization refinement, horizon-wide constraints, uncertainty tightening, final high-rate projection, and failure outside the tested operating region.
+4. a reproducible 108-case simulation study evaluating controller substitution, a sampled cross-realization interface audit, horizon-wide constraints, uncertainty tightening, final high-rate projection, and failure outside the tested operating region.
 
 The experiments are reduced-order and intentionally include negative cases. They establish the mechanism and its logical limits rather than hardware-level universality.
 
@@ -519,42 +519,37 @@ Fig. 1 shows the directional-authority stress case. Direct clipping exceeds the 
 
 ![Near-boundary braking stress case; no viability kernel is inferred from this trajectory.](results/near_boundary_braking_results.png){width=70%}
 
-Fig. 2 shows the near-boundary braking case, which starts with an outward velocity close to the position boundary under a shrinking torque budget. Direct clipping lets the position overshoot the boundary and settle outside it. The reactive projection, reference governor plus projection, and proposed manager all arrest the position at the boundary. Because the experiment does not compute a viability kernel or terminal invariant set, it supports only finite-horizon constraint handling in this stress case.
+Fig. 2 shows the near-boundary braking case, which starts with an outward velocity close to the position boundary under a shrinking torque budget. Direct clipping lets the position overshoot the boundary and settle outside it. The reactive projection, scalar reference governor plus projection, and proposed manager all arrest the position at the boundary. Because the experiment does not compute a viability kernel or terminal invariant set, it supports only finite-horizon constraint handling in this stress case.
 
 ![Scenario-level comparison of the four realization architectures.](results/scenario_summary.png){width=95%}
 
-Fig. 3 summarizes the method-level trends, while Table I reports the clipping and proposed results. The proposed manager preserves the no-saturation behavior and prevents workspace violations in the slow-saturation, directional-collapse, and near-boundary braking scenarios. Warning precedes the limiting event by \(0.912\), \(0.939\), and \(0.566~\mathrm{s}\), respectively. The reactive projection and reference governor plus projection also satisfy the sampled constraints in these three cases. For slow saturation their warning leads are \(0.419\) and \(0.395~\mathrm{s}\), and for directional collapse they are \(0.340\) and \(0.306~\mathrm{s}\); the proposed vector-horizon manager therefore provides earlier intervention in those two scenarios, but not in the near-boundary braking case, where all three methods warn at approximately \(0.57~\mathrm{s}\).
+Fig. 3 summarizes the method-level trends, while Table I reports the clipping and proposed results. The proposed manager preserves the no-saturation behavior and prevents workspace violations in the slow-saturation, directional-collapse, and near-boundary braking scenarios. Warning precedes the limiting event by \(0.912\), \(0.939\), and \(0.566~\mathrm{s}\), respectively. The reactive projection and scalar reference governor plus projection also satisfy the sampled constraints in these three cases. For slow saturation their warning leads are \(0.419\) and \(0.395~\mathrm{s}\), and for directional collapse they are \(0.340\) and \(0.306~\mathrm{s}\). These lead-time differences are descriptive results against the implemented scalar governor, not evidence of superiority over directional or vector reference governors. In the near-boundary braking case, all three methods warn at approximately \(0.57~\mathrm{s}\).
 
-| Scenario | Method | Pre-proj. excess (Nm) | Workspace excess (mm) | Lead (s) | Refinement |
-|---|---|---:|---:|---:|---:|
-| No saturation | Clipping | 0.000 | 0.000 | -- | Yes |
-|  | Proposed | 0.000 | 0.000 | -- | Yes |
-| Slow saturation | Clipping | 0.000 | 78.970 | -- | No |
-|  | Proposed | 0.000 | 0.001 | 0.912 | Yes |
-| Sudden disturbance | Clipping | 7.208 | 0.000 | -- | No |
-|  | Proposed | 11.976 | 0.000 | 0.084 | No |
-| Directional collapse | Clipping | 0.693 | 103.914 | -- | No |
-|  | Proposed | 0.000 | 0.003 | 0.939 | Yes |
-| Near-boundary braking | Clipping | 0.000 | 52.537 | -- | No |
-|  | Proposed | 0.000 | 0.011 | 0.566 | Yes |
-| Model mismatch | Clipping | 12.665 | 190.434 | -- | No |
-|  | Proposed | 1.981 | 193.599 | 0.558 | No |
-| Preview mismatch | Clipping | 19.917 | 190.191 | -- | No |
-|  | Proposed | 4.409 | 344.246 | 0.790 | No |
+| Scenario | Pre-proj. C/P (Nm) | Workspace C/P (mm) | Lead (s) | QP feasible | Audit |
+|---|---:|---:|---:|---:|---:|
+| No saturation | 0.000 / 0.000 | 0.000 / 0.000 | -- | 100% | Yes |
+| Slow saturation | 0.000 / 0.000 | 78.970 / 0.001 | 0.912 | 100% | Yes |
+| Sudden disturbance | 7.208 / 11.976 | 0.000 / 0.000 | 0.084 | 92.5% | No |
+| Directional collapse | 0.693 / 0.000 | 103.914 / 0.003 | 0.939 | 100% | Yes |
+| Near-boundary braking | 0.000 / 0.000 | 52.537 / 0.011 | 0.566 | 100% | Yes |
+| Model mismatch | 12.665 / 1.981 | 190.434 / 193.599 | 0.558 | 45.0% | No |
+| Preview mismatch | 19.917 / 4.409 | 190.191 / 344.246 | 0.790 | 40.0% | No |
 
 : Scenario results.
 
-The negative cases are not merely inconclusive. Under preview mismatch, the proposed correction acts on a force forecast that misses the sign change inside the horizon, increasing workspace excess from \(190.191~\mathrm{mm}\) with clipping to \(344.246~\mathrm{mm}\). Under model mismatch it is also slightly worse, \(193.599\) versus \(190.434~\mathrm{mm}\). The sampled refinement checks reject both cases, correctly indicating that the anticipatory correction is not trustworthy there.
+In Table I, C/P denotes clipping/proposed, QP feasibility is the fraction of \(50~\mathrm{Hz}\) updates whose horizon problem is feasible, and Audit denotes whether all sampled realization checks pass. The QP is feasible at every update in the four successful stress cases, but only \(74/80\), \(36/80\), and \(32/80\) updates in sudden disturbance, model mismatch, and preview mismatch, respectively. Infeasible updates use the reactive fallback defined in Section IV, so the reported “proposed” trajectory includes that fallback and must not be interpreted as horizon-MPC behavior throughout.
 
-The sudden-disturbance result illustrates why the slow manager cannot be the only protection layer. The wrench changes without advance information, while the implemented preview holds the measured wrench constant over the horizon; the resulting correction can therefore be misaligned with the short impulse and raises pre-projection excess from \(7.208\) to \(11.976~\mathrm{Nm}\). The final projection keeps the applied actuator command inside its box, but the pre-projection request is infeasible and the sampled successor defect exceeds \(\mathcal E_\star\). These results identify operating conditions for which Theorem 1 cannot be invoked.
+The negative cases are not merely inconclusive. Under preview mismatch, the proposed correction acts on a force forecast that misses the sign change inside the horizon, increasing workspace excess from \(190.191~\mathrm{mm}\) with clipping to \(344.246~\mathrm{mm}\). Under model mismatch it is also slightly worse, \(193.599\) versus \(190.434~\mathrm{mm}\). The sampled interface audit rejects both cases, correctly indicating that the anticipatory correction is not trustworthy there.
+
+The sudden-disturbance result illustrates why the slow manager cannot be the only protection layer. The wrench changes without advance information, while the implemented preview holds the measured wrench constant over the horizon; the resulting correction can therefore be misaligned with the short impulse and raises pre-projection excess from \(7.208\) to \(11.976~\mathrm{Nm}\). The final projection keeps the applied actuator command inside its box, but the pre-projection request is infeasible and the observed successor defect exceeds \(\epsilon_{\mathrm{audit}}\). These results identify operating conditions for which Theorem 1 cannot be invoked.
 
 ## C. Controller-interface substitution
 
 ![Behavior-realization residuals for the five nominal-controller interfaces.](results/controller_transfer.png){width=95%}
 
-As illustrated in Fig. 4, the manager formulation and weights are unchanged across controller interfaces. Under no saturation, correction RMSE is below \(0.01~\mathrm{m/s^2}\) for four of the five controllers. The small evolution-strategy policy is the exception, with correction RMSE \(\approx1.01~\mathrm{m/s^2}\). Its limited training set does not cover the test trajectory symmetrically, and the learned policy retains a positive-\(y\) command bias. This is an observed generalization error rather than evidence of a specific failure of the evolution-strategy algorithm. The manager holds the state inside the workspace box, but is compensating for a biased interface rather than remaining inactive.
+As illustrated in Fig. 4, the manager formulation and weights are unchanged across controller interfaces. Under no saturation, correction RMSE is below \(0.01~\mathrm{m/s^2}\) for four of the five controllers. The small evolution-strategy policy is the exception, with correction RMSE \(\approx1.01~\mathrm{m/s^2}\). Its limited training set does not cover the test trajectory symmetrically, and the learned policy retains a positive-\(y\) command bias. This is an observed generalization error rather than evidence of a specific failure of the evolution-strategy algorithm. The manager holds the state inside the workspace box, but is compensating for a biased interface rather than remaining inactive. This case is retained as an interface stress test: the architecture is not intended to repair behavior-policy quality, although its running constraints may incidentally reject a biased request.
 
-Under slow saturation, realization RMSE is nearly equal to correction RMSE for every proposed-controller case (for example, \(0.732\) versus \(0.726~\mathrm{m/s^2}\) for PD). The reported residual is therefore almost entirely the manager's deliberate intervention, not unmodeled tracking error. Clipping appears to have a smaller realization RMSE because it follows the nominal request instead of enforcing the workspace constraint; in the impedance case that apparent fidelity accompanies \(78.970~\mathrm{mm}\) of workspace violation, whereas the proposed manager leaves \(0.001~\mathrm{mm}\). All five proposed cases satisfy the sampled refinement checks (Table II). The results demonstrate substitution at the command/preview interface; they do not certify an arbitrary learned policy whose preview error is unbounded.
+Under slow saturation, realization RMSE is nearly equal to correction RMSE for every proposed-controller case (for example, \(0.732\) versus \(0.726~\mathrm{m/s^2}\) for PD). The reported residual is therefore almost entirely the manager's deliberate intervention, not unmodeled tracking error. Clipping appears to have a smaller realization RMSE because it follows the nominal request instead of enforcing the workspace constraint; in the impedance case that apparent fidelity accompanies \(78.970~\mathrm{mm}\) of workspace violation, whereas the proposed manager leaves \(0.001~\mathrm{mm}\). All five proposed cases pass the sampled interface audit (Table II). The results demonstrate substitution at the command/preview interface; they do not certify an arbitrary learned policy whose preview error is unbounded.
 
 | Interface | Realization RMSE (\(\mathrm{m/s^2}\)) | Correction RMSE (\(\mathrm{m/s^2}\)) | Lead (s) | Excess (mm) |
 |---|---:|---:|---:|---:|
@@ -566,19 +561,19 @@ Under slow saturation, realization RMSE is nearly equal to correction RMSE for e
 
 : Controller substitution under slow saturation.
 
-## D. Sampled refinement audit across realization maps
+## D. Sampled interface audit across realization maps
 
-![Observed successor defects versus the common sampled-defect budget.](results/sampled_refinement_audit.png){width=88%}
+![Observed successor defects versus the common audit threshold.](results/sampled_interface_audit.png){width=88%}
 
-The behavior model, predictive objective, and \(0.03~\mathrm{m/s}\) empirical defect budget remain unchanged across the three realization maps. Only \(\hat\tau_r\), the actuator box, and the sampled \(\mathcal D_{\tau,r}\) and \(\mathcal D_{z,r}\) checks change. As shown in Fig. 5 and Table III, every observed successor defect is below \(0.00759~\mathrm{m/s}\), leaving more than \(0.0224~\mathrm{m/s}\) of the common budget unused.
+The behavior model, predictive objective, and \(0.03~\mathrm{m/s}\) audit threshold remain unchanged across the three realization maps. Only \(\hat\tau_r\), the actuator box, and the observed torque- and successor-error checks change. As shown in Fig. 5 and Table III, every observed successor defect is below \(0.00759~\mathrm{m/s}\), leaving more than \(0.0224~\mathrm{m/s}\) of the audit allowance unused.
 
-| Realization map | Max. defect (m/s) | Unused budget (m/s) | Min. bound slack (Nm) |
+| Realization map | Max. observed (m/s) | Unused audit (m/s) | Min. bound slack (Nm) |
 |---|---:|---:|---:|
 | Planar 2R | 0.007456 | 0.022544 | 0.002525 |
 | FR3-inspired surrogate | 0.007586 | 0.022414 | \(8.82\times10^{-6}\) |
 | Six-axis-arm surrogate | 0.007586 | 0.022414 | \(9.97\times10^{-5}\) |
 
-: Sampled cross-realization refinement audit.
+: Sampled cross-realization interface audit.
 
 The last column is not remaining actuator authority. It is the smallest sampled containment residual \(\bar\delta_{\tau,j}-|\tau_j^{\mathrm{pre}}-\hat\tau_j|\). For the cross-realization cases, the componentwise bounds use
 
@@ -592,7 +587,7 @@ The last column is not remaining actuator authority. It is the smallest sampled 
 
 where the maximum is elementwise. These bounds range from \(0.0300\) to \(0.0917~\mathrm{Nm}\) over the sampled audit. The near-zero FR3 and six-axis residuals mean that the deterministic injected errors nearly attain their envelopes; they do not mean that the tightening is zero. The minimum planned actuator margins are \(0.233\), \(0.679\), and \(0.741~\mathrm{Nm}\) for the planar, FR3-inspired, and six-axis maps, respectively. Thus error-bound containment is the tight numerical check, while actuator authority is not binding on these sampled trajectories. Because the injected errors are constructed from the same envelopes, this is a consistency audit rather than independent validation of \(\mathcal D_{\tau,r}\).
 
-This is a sampled-trajectory audit, not an analytic whole-workspace proof or an experimental proof of robust invariance. It demonstrates that the same numerical defect budget can be checked against multiple robot-specific realization maps. A full certificate-transfer experiment would additionally require an independently verified \((F,\kappa,\mathcal S,\mathcal E_\star)\).
+This is a sampled-trajectory interface audit, not independent uncertainty validation, an analytic whole-workspace proof, or an experimental proof of robust invariance. It demonstrates only that the same numerical audit threshold and checking mechanism can be applied to multiple robot-specific realization maps. A full certificate-transfer experiment would additionally require independently identified uncertainty sets and a verified \((F,\kappa,\mathcal S,\mathcal E_\star)\).
 
 ## E. Ablations and computation
 
@@ -604,21 +599,23 @@ Removing uncertainty tightening creates \(0.0848~\mathrm{Nm}\) pre-projection ex
 
 The preview and implementation ablations also identify non-results. Zero-force preview increases workspace excess from \(344.25\) to \(874.06~\mathrm{mm}\), but no preview option restores viability in the severe mismatch case. In this reduced-order model, recomputing the fast realization map does not outperform cached torque, and updating the realization map is numerically indistinguishable from freezing it. Benefits from these mechanisms therefore remain to be demonstrated on nonlinear rigid-body systems.
 
-In the final regenerated run, the manager's median-of-run-medians is \(1.938~\mathrm{ms}\), and its worst observed maximum is \(13.899~\mathrm{ms}\), below its \(20~\mathrm{ms}\) period. The fast path has a median-of-run-medians of \(122.1~\mu\mathrm{s}\) and a worst observed maximum of \(550.2~\mu\mathrm{s}\). All recorded calls met their nominal periods on this run, but non-real-time Python measurements establish typical throughput, not hard real-time execution.
+Increasing the manager rate from \(50\) to \(100~\mathrm{Hz}\) could shorten the interval over which an obsolete correction is held, but it would not predict an unannounced wrench change or repair an incorrect force model. Addressing the sudden-disturbance limitation therefore requires both timing and information improvements—for example, event-triggered re-solving, bounded disturbance observers, or preview uncertainty propagated into the horizon—while retaining the \(1~\mathrm{kHz}\) final projection.
+
+In the final regenerated run, the manager's median-of-run-medians is \(1.795~\mathrm{ms}\), and its worst observed maximum is \(13.543~\mathrm{ms}\), below its \(20~\mathrm{ms}\) period. The fast path has a median-of-run-medians of \(121.7~\mu\mathrm{s}\) and a worst observed maximum of \(451.7~\mu\mathrm{s}\). All recorded calls met their nominal periods on this run, but non-real-time Python measurements establish typical throughput, not hard real-time execution.
 
 ---
 
 # VII. Discussion
 
-The experiments support a narrower conclusion than “one safety controller works for every robot.” The predictive optimization statement and empirical defect budget remain unchanged across the implemented controller interfaces and realization maps. Physical feasibility does not transfer automatically: each robot must reconstruct and verify its actuator-feasible set and its refinement-error bounds.
+The experiments support a narrower conclusion than “one safety controller works for every robot.” The predictive optimization statement and empirical audit threshold remain unchanged across the implemented controller interfaces and realization maps. Physical feasibility does not transfer automatically: each robot must reconstruct and verify its actuator-feasible set and its refinement-error bounds.
 
-This distinction also clarifies the relation to a reference governor or predictive safety filter. Those architectures can adopt the same behavior coordinates. What separation adds is an explicit proof boundary: a reusable behavior certificate on one side and a checkable robot-specific realization contract on the other. In the present study only the realization side is sampled. If the torque uncertainty exceeds the available margin, or the successor defect exceeds \(\mathcal E_\star\), transfer is rejected rather than implicitly assumed.
+This distinction also clarifies the relation to a reference governor or predictive safety filter. Those architectures can adopt the same behavior coordinates. What separation adds is an explicit proof boundary: a reusable behavior certificate on one side and a checkable robot-specific realization contract on the other. In the present study only an interface mechanism is sampled; the abstract certificate and independent uncertainty identification are absent. If the torque uncertainty exceeds the available margin, or an observed successor defect exceeds \(\epsilon_{\mathrm{audit}}\), the experimental audit rejects the case. This rejection is evidence of a failed sampled check, not proof about the theoretical set \(\mathcal E_\star\).
 
 The final high-rate projection is essential but should not be confused with behavior preservation. It enforces the actuator box after an unexpected disturbance, while Theorem 1 states when projection remains inactive and the requested closed-loop behavior is actually realized. The mismatch experiments show that these two properties can diverge.
 
 For model-based physical AI, the architecture provides a runtime boundary between behavior generation and physical realization. Learned, diffusion-based, or language-conditioned modules may propose behavior, while the realization model evaluates what the current robot can execute. This contract does not certify the semantics or intent of an AI-generated command; it certifies only the modeled physical refinement inside the verified operating region.
 
-Several limitations remain. First, the robot substitutions are reduced-order actuator-geometry surrogates rather than full rigid-body or hardware systems. Second, the reported error sets are sampled along experiment trajectories rather than certified over a continuous workspace. Third, the benchmark does not instantiate the robust-invariance premise of Theorem 1; the terms “refinement check” and “defect budget” are therefore used for the experimental results. Fourth, the benchmark omits orientation, redundant null-space tasks, sensor delay, contact transitions, state-estimation uncertainty, human-participant validation, and a passivity or dissipativity certificate. Fifth, the reference-governor baseline includes a reactive projection and is an architecture-level comparator, not a reproduction of every established governor design. Its scalar command parameterization is especially restrictive in the directional-collapse case; a directional or vector reference governor would be expected to narrow the reported lead-time difference. Finally, the theorem's region-persistence clause and recursive feasibility are the same unresolved gap at different levels: discharging that assumption and defining a certified point of no return require a formally constructed terminal invariant set or backup policy. Finite-horizon running constraints alone do not imply global recoverability.
+Several limitations remain. First, the robot substitutions are reduced-order actuator-geometry surrogates rather than full rigid-body or hardware systems. Second, the reported errors are observations along experiment trajectories rather than certified bounds over a continuous workspace. Third, the benchmark does not instantiate the robust-invariance premise of Theorem 1; “audit threshold” and “observed defect” are therefore kept distinct from the theoretical certificate set. Fourth, the benchmark omits orientation, redundant null-space tasks, sensor delay, contact transitions, state-estimation uncertainty, human-participant validation, and a passivity or dissipativity certificate. Fifth, the reference-governor baseline includes a reactive projection and is an architecture-level comparator, not a reproduction of every established governor design. Its scalar command parameterization is especially restrictive in the directional-collapse case; a directional or vector reference governor would be expected to narrow the reported lead-time difference. Finally, the theorem's region-persistence clause and recursive feasibility are the same unresolved gap at different levels: discharging that assumption and defining a certified point of no return require a formally constructed terminal invariant set or backup policy. Finite-horizon running constraints alone do not imply global recoverability.
 
 ---
 
@@ -626,13 +623,17 @@ Several limitations remain. First, the robot substitutions are reduced-order act
 
 This paper introduced a predictive realization architecture for actuator-limited fast robot controllers. The nominal controller remains at \(1~\mathrm{kHz}\), while a slower MPC layer forecasts robot-specific loss of realizability and modifies the requested acceleration before clipping. The proposed separation does not make actuator feasibility universal. It identifies which theoretical object may be reused—an independently established abstract behavior certificate—and which objects must be verified again—the realization map, actuator margin, uncertainty bounds, and operating region.
 
-Across 108 deterministic reduced-order cases, full-horizon correction detects a future violation missed by a first-step constraint and accepts five nominal-controller interfaces. A sampled refinement audit applies the same successor-defect budget across three realization maps. Slow saturation, directional authority collapse, and near-boundary braking violations are prevented within the tested region. Abrupt disturbance and severe mismatch expose cases where the sampled transfer conditions fail and only the final actuator projection remains available.
+Across 108 deterministic reduced-order cases, full-horizon correction detects a future violation missed by a first-step constraint and accepts five nominal-controller interfaces. A sampled interface audit applies the same successor-defect threshold across three realization maps. Slow saturation, directional authority collapse, and near-boundary braking violations are prevented within the tested region. Abrupt disturbance and severe mismatch expose cases where the sampled audit fails, the QP frequently becomes infeasible, and the reactive fallback plus final actuator projection remain available.
 
 Future work will replace the surrogate maps with full rigid-body systems, certify uncertainty sets over continuous workspaces, construct terminal invariant sets, and evaluate the architecture in a real-time hardware loop. These steps are necessary before claiming hardware-level certificate transfer or interaction safety.
 
 ---
 
 # References
+
+\begingroup
+\small
+\setlength{\parskip}{0.35em}
 
 [1] N. Hogan, “Impedance Control: An Approach to Manipulation—Part I: Theory,” *Journal of Dynamic Systems, Measurement, and Control*, vol. 107, no. 1, pp. 1--7, 1985, doi: 10.1115/1.3140702.
 
@@ -665,3 +666,5 @@ Future work will replace the surrogate maps with full rigid-body systems, certif
 [15] T. Xue, N. Tsagarakis, and G. Xin, “Model Predictive Variable Impedance Control Towards Safe Robotic Interaction in Unknown Disturbance-Rich Environments,” *Robotics and Autonomous Systems*, vol. 189, art. 104961, 2025, doi: 10.1016/j.robot.2025.104961.
 
 [16] K. P. Wabersich and M. N. Zeilinger, “A Predictive Safety Filter for Learning-Based Control of Constrained Nonlinear Dynamical Systems,” *Automatica*, vol. 129, art. 109597, 2021, doi: 10.1016/j.automatica.2021.109597.
+
+\endgroup

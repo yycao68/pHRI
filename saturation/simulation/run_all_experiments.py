@@ -45,7 +45,7 @@ METHOD_LABELS = {
     "nominal_unbounded": "nominal diagnostic (no torque projection)",
     "clipping": "clipping",
     "reactive_filter": "reactive projection",
-    "reference_governor": "reference governor + projection",
+    "reference_governor": "scalar reference governor + projection",
     "proposed": "proposed",
 }
 
@@ -224,7 +224,7 @@ def ablation_matrix(cfg, robots, controllers, scenarios):
     return metrics
 
 
-def sampled_refinement_audit(cfg, robot_metrics, robots):
+def sampled_interface_audit(cfg, robot_metrics, robots):
     rows = {}
     for robot_name in robots:
         selected = [
@@ -263,8 +263,8 @@ def sampled_refinement_audit(cfg, robot_metrics, robots):
             "all_torque_errors_contained": all(
                 v["torque_error_bound_satisfied"] for v in selected
             ),
-            "all_sampled_refinement_checks_satisfied": all(
-                v["sampled_refinement_checks_satisfied"]
+            "all_sampled_interface_audits_passed": all(
+                v["sampled_interface_audit_passed"]
                 for v in selected
             ),
             "robot_specific_objects": [
@@ -455,7 +455,7 @@ def make_robot_transfer_figure(audit: dict, output: Path):
     x = np.arange(len(names))
     fig, ax = plt.subplots(figsize=(7.3, 4.3))
     ax.bar(x, required, color="#2563eb", label="observed successor defect")
-    ax.plot(x, shared, "ko--", label="common sampled-defect budget")
+    ax.plot(x, shared, "ko--", label="common audit threshold")
     ax.set_xticks(x, [n.replace("_", "\n") for n in names])
     ax.set_ylabel("velocity-successor defect (m/s)")
     ax.grid(axis="y", alpha=0.25)
@@ -623,7 +623,7 @@ def main() -> None:
     print(f"completed robot transfer: {len(robot_metrics)}", flush=True)
     ablation_metrics = ablation_matrix(cfg, robots, controllers, scenarios)
     print(f"completed ablations: {len(ablation_metrics)}", flush=True)
-    audit = sampled_refinement_audit(cfg, robot_metrics, robots)
+    audit = sampled_interface_audit(cfg, robot_metrics, robots)
     timing = timing_summary(
         scenario_metrics, controller_metrics, robot_metrics, ablation_metrics
     )
@@ -659,7 +659,7 @@ def main() -> None:
         "controller_transfer": controller_metrics,
         "robot_transfer": robot_metrics,
         "ablations": ablation_metrics,
-        "sampled_refinement_audit": audit,
+        "sampled_interface_audit": audit,
         "timing": timing,
         "policy_training": {
             "rl_policy": (
@@ -697,7 +697,7 @@ def main() -> None:
         args.output_dir / "controller_transfer.png",
     )
     make_robot_transfer_figure(
-        audit, args.output_dir / "sampled_refinement_audit.png"
+        audit, args.output_dir / "sampled_interface_audit.png"
     )
     make_ablation_figure(
         ablation_metrics,
@@ -712,7 +712,7 @@ def main() -> None:
                 "controller_cases": len(controller_metrics),
                 "robot_cases": len(robot_metrics),
                 "ablation_cases": len(ablation_metrics),
-                "sampled_refinement_audit": audit,
+                "sampled_interface_audit": audit,
                 "timing": timing,
             },
             indent=2,
