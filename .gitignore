@@ -17,6 +17,7 @@ simulation_results/
 # Python
 __pycache__/
 *.pyc
+.pytest_cache/
 
 # LaTeX build artifacts
 *.aux
