@@ -16,7 +16,7 @@ Robot control software increasingly combines high-rate feedback with lower-rate 
 
 These fast controllers can approach saturation through different channels. Before command limiting, a fixed-gain PD law \(\tau\propto k_p(q_{\mathrm{goal}}-q)-k_d\dot q\) maps a sufficiently large tracking error to a large actuator request. An impedance law introduces interaction force through \(M_d\ddot e=-K_de-D_d\dot e+F_h\), so contact can increase the requested acceleration even when tracking error is modest. The implementation studied here imposes a common acceleration bound on every nominal interface, but this does not guarantee torque feasibility after configuration-dependent realization.
 
-The same distinction applies to bounded learned policies. The \(\tanh\)-squashed policy used in Section VI bounds its requested acceleration, but the required torque is \(\tau=\tau_{\mathrm{base}}(x)+H_r(x)v\); a fixed bound on \(v\) does not imply a configuration-independent bound on \(\tau\). A neural policy fitted to impedance demonstrations can reproduce the same force-dependent requests without exposing interpretable stiffness and damping parameters. An upstream learned or language-conditioned module may likewise propose a motion primitive without representing the actuator geometry of the executing robot. These observations motivate a common realization interface, not a claim that every learned behavior is certifiable.
+The same distinction applies to bounded learned policies. The \(\tanh\)-squashed policy used in Section VI bounds its requested acceleration, but the required torque is \(\tau=\tau_{\mathrm{base}}(x)+H_r(x)a_{\mathrm{req}}\); a fixed bound on \(a_{\mathrm{req}}\) does not imply a configuration-independent bound on \(\tau\). A neural policy fitted to impedance demonstrations can reproduce the same force-dependent requests without exposing interpretable stiffness and damping parameters. An upstream learned or language-conditioned module may likewise propose a motion primitive without representing the actuator geometry of the executing robot. These observations motivate a common realization interface, not a claim that every learned behavior is certifiable.
 
 The shared consequence is an acceleration request that the current robot cannot realize in its current configuration. We therefore treat saturation management as an interface problem. Controller-specific measures remain useful, but the robot-aware realization layer developed here anticipates the common physical failure without requiring its predictive optimization to be reformulated for each upstream controller.
 
@@ -121,39 +121,37 @@ e^\top & \dot e^\top
 denote a task-error state. Over a local operating region, the requested behavior can be written
 
 \[
-\ddot e=v+d_r,
+\ddot e=a_{\mathrm{req}}+d_r,
 \]
 
-where \(v\in\mathbb R^d\) is the requested task acceleration and \(d_r\) contains matched interaction and modeling effects. Unmatched discretization, coupling, and force errors will be retained later as a set-valued successor defect.
+where \(a_{\mathrm{req}}\in\mathbb R^d\) is the requested task acceleration and \(d_r\) contains matched interaction and modeling effects. Unmatched discretization, coupling, and force errors will be retained later as a set-valued successor defect.
 
-At the manager period \(T_s\), the abstract predictor is
+At the manager period \(\Delta t\), the abstract predictor is
 
 \[
-z_{\ell+1}=Az_\ell+B(v_\ell+d_\ell),
+z_{\ell+1}=Az_\ell+B(a_{\mathrm{req},\ell}+d_\ell),
 \]
 
 \[
 A=
 \begin{bmatrix}
-I&T_sI\\
+I&\Delta t I\\
 0&I
 \end{bmatrix},
 \qquad
 B=
 \begin{bmatrix}
-\frac{1}{2}T_s^2I\\
-T_sI
+\frac{1}{2}(\Delta t)^2I\\
+\Delta t I
 \end{bmatrix}.
 \]
 
-This model is a common interface, not the claimed novelty.
-
-Let \(\tau_{\mathrm{base},r}(x)\) include bias compensation and every secondary command that consumes actuator authority, including orientation and null-space torque. A local realization map is
+This model is a common interface. Let \(\tau_{\mathrm{base},r}(x)\) include bias compensation and every secondary command that consumes actuator authority, including orientation and null-space torque. A local realization map is
 
 \[
 \tau
 =
-\tau_{\mathrm{base},r}(x)+H_r(x)v,
+\tau_{\mathrm{base},r}(x)+H_r(x)a_{\mathrm{req}},
 \]
 
 with, for example,
@@ -167,13 +165,13 @@ H_r(x)=J_r(q)^\top\Lambda_r(q),
 The acceleration request is realizable only if
 
 \[
-v\in\mathcal A_r(x)
+a_{\mathrm{req}}\in\mathcal A_r(x)
 =
 \left\{
-v:
+a_{\mathrm{req}}:
 \tau_{\min,r}
 \le
-\tau_{\mathrm{base},r}(x)+H_r(x)v
+\tau_{\mathrm{base},r}(x)+H_r(x)a_{\mathrm{req}}
 \le
 \tau_{\max,r}
 \right\}.
@@ -200,9 +198,9 @@ For a full-dimensional \(d\)-dimensional zonotope with \(n_r\) generators in gen
 
 Thus the behavior dynamics can share coordinates, but their feasible set cannot be robot-independent.
 
-Given an arbitrary nominal controller that supplies \(v^0\) or an equivalent torque command, determine a correction \(\Delta v\) such that:
+Given an arbitrary nominal controller that supplies \(a_{\mathrm{req}}^0\) or an equivalent torque command, determine a correction \(\Delta a_{\mathrm{req}}\) such that:
 
-1. \(v=v^0+\Delta v\) remains close to the nominal requested behavior;
+1. \(a_{\mathrm{req}}=a_{\mathrm{req}}^0+\Delta a_{\mathrm{req}}\) remains close to the nominal requested behavior;
 2. the uncertain physical realization remains inside \(\mathcal T_r\) over the prediction horizon;
 3. the predicted state satisfies the running workspace and speed constraints; and
 4. the robot-specific realization can be tested against sufficient conditions for transferring an independently established abstract certificate.
@@ -211,26 +209,26 @@ Given an arbitrary nominal controller that supplies \(v^0\) or an equivalent tor
 
 # IV. Predictive Realization Manager
 
-The nominal controller, state-dependent realization map, command-rate limiter, and final actuator projection execute every \(T_f=1~\mathrm{ms}\). The predictive manager executes every \(T_s=20~\mathrm{ms}\). Let \(v_{i|\ell}\) be the complete acceleration request, rather than a correction variable. The implemented manager rolls out the nominal controller, evaluates the realization map along that nominal rollout, and solves
+The nominal controller, state-dependent realization map, command-rate limiter, and final actuator projection execute every \(T_f=1~\mathrm{ms}\). The predictive manager executes every \(\Delta t=20~\mathrm{ms}\). Let \(a_{\mathrm{req},i|\ell}\) be the complete acceleration request, rather than a correction variable. The implemented manager rolls out the nominal controller, evaluates the realization map along that nominal rollout, and solves
 
 \[
 \begin{aligned}
-\min_{v_{0:N-1}}
+\min_{a_{\mathrm{req},0:N-1}}
 \quad&
 \sum_{i=0}^{N-1}
 \Big(
-\|v_{i|\ell}-v^0_{i|\ell}\|_{W_v}^2
-+\|v_{i|\ell}-v_{i-1|\ell}\|_{W_\Delta}^2
+\|a_{\mathrm{req},i|\ell}-a_{\mathrm{req},i|\ell}^0\|_{W_{a_{\mathrm{req}}}}^2
++\|a_{\mathrm{req},i|\ell}-a_{\mathrm{req},i-1|\ell}\|_{W_\Delta}^2
 \Big)
 \\
 \mathrm{s.t.}\quad&
 z_{i+1|\ell}
 =
 Az_{i|\ell}
-+Bv_{i|\ell},
++Ba_{\mathrm{req},i|\ell},
 \\
 &
-v_{i|\ell}
+a_{\mathrm{req},i|\ell}
 \in
 \mathcal A_r^{\mathrm{tight}}(\hat x^0_{i|\ell}),
 \quad i=0,\ldots,N-1,
@@ -239,17 +237,17 @@ v_{i|\ell}
 z_{i+1|\ell}\in\mathcal X,
 \\
 &
-\|v_{i|\ell}\|_\infty\le a_{\max},
+\|a_{\mathrm{req},i|\ell}\|_\infty\le a_{\max},
 \qquad
-\|v_{i|\ell}-v_{i-1|\ell}\|_\infty
-\le \dot a_{\max}T_s .
+\|a_{\mathrm{req},i|\ell}-a_{\mathrm{req},i-1|\ell}\|_\infty
+\le \dot a_{\max}\Delta t .
 \end{aligned}
 \]
 
 Here \(\hat x^0_{i|\ell}\) is the state on the fixed nominal rollout used to assemble the QP. The state and acceleration bounds are hard; the implementation contains neither slack variables nor a separately constructed terminal invariant set. The objective trades nominal-command fidelity against acceleration variation, so it may make a small intervention even when the nominal sequence is feasible. Define the first correction as
 
 \[
-\Delta v_\ell=v_{0|\ell}-v^0_{0|\ell}.
+\Delta a_{\mathrm{req},\ell}=a_{\mathrm{req},0|\ell}-a_{\mathrm{req},0|\ell}^0.
 \]
 
 If the QP solver reports infeasibility, the implementation projects the first nominal acceleration onto the current tightened torque and one-step state polytope and tiles that reactive command over the stored sequence. If this instantaneous polytope is itself empty, it returns zero acceleration. The final high-rate torque projection remains active in either case. This fallback supplies a deterministic bounded command but does not recover horizon feasibility or satisfy the transfer conditions.
@@ -260,26 +258,26 @@ The fast loop applies
 \tau_k
 =
 \tau_k^0
-+H_r(x_k)\Delta v_k
++H_r(x_k)\Delta a_{\mathrm{req},k}
 +\tau_k^{\mathrm{final}},
 \]
 
 where \(H_r(x_k)\) is recomputed from the current state. The slow loop therefore publishes a behavior correction, not a cached full torque.
 
-Let \(\hat\tau_r(x,v)\) be the manager's predicted pre-projection torque. Suppose a verified componentwise error bound satisfies
+Let \(\hat\tau_r(x,a_{\mathrm{req}})\) be the manager's predicted pre-projection torque. Suppose a verified componentwise error bound satisfies
 
 \[
-\tau_r^{\mathrm{pre}}(x,v)
+\tau_r^{\mathrm{pre}}(x,a_{\mathrm{req}})
 \in
-\hat\tau_r(x,v)
+\hat\tau_r(x,a_{\mathrm{req}})
 \oplus
-\mathcal D_{\tau,r}(x,v),
+\mathcal D_{\tau,r}(x,a_{\mathrm{req}}),
 \]
 
 \[
-\mathcal D_{\tau,r}(x,v)
+\mathcal D_{\tau,r}(x,a_{\mathrm{req}})
 \subseteq
-\{\delta\tau:|\delta\tau|\le\bar\delta_{\tau,r}(x,v)\}.
+\{\delta\tau:|\delta\tau|\le\bar\delta_{\tau,r}(x,a_{\mathrm{req}})\}.
 \]
 
 The tightened request set is
@@ -288,8 +286,8 @@ The tightened request set is
 \mathcal A_r^{\mathrm{tight}}(x)
 =
 \left\{
-v:
-\hat\tau_r(x,v)\oplus\mathcal D_{\tau,r}(x,v)
+a_{\mathrm{req}}:
+\hat\tau_r(x,a_{\mathrm{req}})\oplus\mathcal D_{\tau,r}(x,a_{\mathrm{req}})
 \subseteq\mathcal T_r
 \right\},
 \]
@@ -299,7 +297,7 @@ or, componentwise,
 \[
 \tau_{\min,r}+\bar\delta_{\tau,r}
 \le
-\hat\tau_r(x,v)
+\hat\tau_r(x,a_{\mathrm{req}})
 \le
 \tau_{\max,r}-\bar\delta_{\tau,r}.
 \]
@@ -373,31 +371,31 @@ For robot \(r\), let \(\Pi_r(x)=z\) be the abstraction map and \(f_r^d\) its sam
 
 \[
 \Pi_r\!\left(f_r^d(x,\tau_r^{\mathrm{pre}},F_h)\right)
--F\!\left(\Pi_r(x),v\right)
+-F\!\left(\Pi_r(x),a_{\mathrm{req}}\right)
 \in
-\mathcal D_{z,r}(x,v,F_h).
+\mathcal D_{z,r}(x,a_{\mathrm{req}},F_h).
 \]
 
 The set \(\mathcal D_{z,r}\) may include discretization, interaction-force, state-estimation, interpolation, and secondary-channel errors.
 
 **Theorem 1 (Conditional realizability-margin certificate transfer).**  
-Let \(\mathcal S\) satisfy the robust invariance condition above. For robot \(r\), consider an operating region \(\mathcal X_r\) with \(\Pi_r(\mathcal X_r)\subseteq\mathcal S\). Suppose that for every \(x\in\mathcal X_r\), every admissible interaction wrench, and \(v=\kappa(\Pi_r(x))\):
+Let \(\mathcal S\) satisfy the robust invariance condition above. For robot \(r\), consider an operating region \(\mathcal X_r\) with \(\Pi_r(\mathcal X_r)\subseteq\mathcal S\). Suppose that for every \(x\in\mathcal X_r\), every admissible interaction wrench, and \(a_{\mathrm{req}}=\kappa(\Pi_r(x))\):
 
 \[
-\tau_r^{\mathrm{pre}}(x,v)
+\tau_r^{\mathrm{pre}}(x,a_{\mathrm{req}})
 \in
-\hat\tau_r(x,v)\oplus\mathcal D_{\tau,r}(x,v),
+\hat\tau_r(x,a_{\mathrm{req}})\oplus\mathcal D_{\tau,r}(x,a_{\mathrm{req}}),
 \tag{1}
 \]
 
 \[
-\hat\tau_r(x,v)\oplus\mathcal D_{\tau,r}(x,v)
+\hat\tau_r(x,a_{\mathrm{req}})\oplus\mathcal D_{\tau,r}(x,a_{\mathrm{req}})
 \subseteq\mathcal T_r,
 \tag{2}
 \]
 
 \[
-\mathcal D_{z,r}(x,v,F_h)
+\mathcal D_{z,r}(x,a_{\mathrm{req}},F_h)
 \subseteq\mathcal E_\star.
 \tag{3}
 \]
@@ -407,7 +405,7 @@ Assume all implementation effects are included in (1)--(3), \(x_0\in\mathcal X_r
 \[
 \Pi_r\!\left(f_r^d(x,\tau_r^{\mathrm{app}},F_h)\right)
 \in
-F\!\left(\Pi_r(x),v\right)\oplus\mathcal E_\star.
+F\!\left(\Pi_r(x),a_{\mathrm{req}}\right)\oplus\mathcal E_\star.
 \]
 
 Consequently,
@@ -459,11 +457,11 @@ The first inequality requires the certificate radius to dominate the successor d
 If clipping becomes active, let
 
 \[
-\mathcal C_{\tau,r}(x,v)
+\mathcal C_{\tau,r}(x,a_{\mathrm{req}})
 =
 \left\{
 \operatorname{proj}_{\mathcal T_r}(\tau)-\tau:
-\tau\in\hat\tau_r(x,v)\oplus\mathcal D_{\tau,r}(x,v)
+\tau\in\hat\tau_r(x,a_{\mathrm{req}})\oplus\mathcal D_{\tau,r}(x,a_{\mathrm{req}})
 \right\}.
 \]
 
@@ -582,7 +580,7 @@ The last column is not remaining actuator authority. It is the smallest sampled 
 =
 0.03\,\mathbf 1_{n_r}
 +0.008\max\!\left(|H_r(0,0)|,0.25\right)
-\left|v-\frac{F_h}{m_r}\right|,
+\left|a_{\mathrm{req}}-\frac{F_h}{m_r}\right|,
 \]
 
 where the maximum is elementwise. These bounds range from \(0.0300\) to \(0.0917~\mathrm{Nm}\) over the sampled audit. The near-zero FR3 and six-axis residuals mean that the deterministic injected errors nearly attain their envelopes; they do not mean that the tightening is zero. The minimum planned actuator margins are \(0.233\), \(0.679\), and \(0.741~\mathrm{Nm}\) for the planar, FR3-inspired, and six-axis maps, respectively. Thus error-bound containment is the tight numerical check, while actuator authority is not binding on these sampled trajectories. Because the injected errors are constructed from the same envelopes, this is a consistency audit rather than independent validation of \(\mathcal D_{\tau,r}\).
@@ -615,7 +613,7 @@ The final high-rate projection is essential but should not be confused with beha
 
 For model-based physical AI, the architecture provides a runtime boundary between behavior generation and physical realization. Learned, diffusion-based, or language-conditioned modules may propose behavior, while the realization model evaluates what the current robot can execute. This contract does not certify the semantics or intent of an AI-generated command; it certifies only the modeled physical refinement inside the verified operating region.
 
-Several limitations remain. First, the robot substitutions are reduced-order actuator-geometry surrogates rather than full rigid-body or hardware systems. Second, the reported errors are observations along experiment trajectories rather than certified bounds over a continuous workspace. Third, the benchmark does not instantiate the robust-invariance premise of Theorem 1; “audit threshold” and “observed defect” are therefore kept distinct from the theoretical certificate set. Fourth, the benchmark omits orientation, redundant null-space tasks, sensor delay, contact transitions, state-estimation uncertainty, human-participant validation, and a passivity or dissipativity certificate. Fifth, the reference-governor baseline includes a reactive projection and is an architecture-level comparator, not a reproduction of every established governor design. Its scalar command parameterization is especially restrictive in the directional-collapse case; a directional or vector reference governor would be expected to narrow the reported lead-time difference. Finally, the theorem's region-persistence clause and recursive feasibility are the same unresolved gap at different levels: discharging that assumption and defining a certified point of no return require a formally constructed terminal invariant set or backup policy. Finite-horizon running constraints alone do not imply global recoverability.
+Several limitations remain. First, the robot substitutions are reduced-order actuator-geometry surrogates rather than full rigid-body or hardware systems. Second, the reported errors are observations along experiment trajectories rather than certified bounds over a continuous workspace. Third, the benchmark does not instantiate the robust-invariance premise of Theorem 1; “audit threshold” and “observed defect” are therefore kept distinct from the theoretical certificate set. Fourth, the benchmark omits orientation, redundant null-space tasks, sensor delay, contact transitions, state-estimation uncertainty, human-participant validation, and a passivity or dissipativity certificate. Fifth, the reference-governor baseline includes a reactive projection and is an architecture-level comparator, not a reproduction of every established governor design. Its scalar command parameterization is especially restrictive in the directional-collapse case; a directional or vector reference governor would be expected to narrow the reported lead-time difference. Sixth, every reported case is a single deterministic trajectory per scenario, controller, and realization map; the study does not sweep disturbance magnitude, timing, or sensor noise to characterize how close a successful case is to its failure boundary, so the reported margins are point estimates rather than statistically characterized safety margins. Finally, the theorem's region-persistence clause and recursive feasibility are the same unresolved gap at different levels: discharging that assumption and defining a certified point of no return require a formally constructed terminal invariant set or backup policy. Finite-horizon running constraints alone do not imply global recoverability.
 
 ---
 

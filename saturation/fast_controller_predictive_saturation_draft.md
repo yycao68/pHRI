@@ -290,32 +290,32 @@ e\\
 Over a local operating region, feedback linearization gives
 
 \[
-\ddot e = v+d_r(x),
+\ddot e = a_{\mathrm{req}}+d_r(x),
 \]
 
-where \(v\in\mathbb R^{d}\) is the requested task acceleration and \(d_r\) collects interaction forces, residual coupling, and model error.
+where \(a_{\mathrm{req}}\in\mathbb R^{d}\) is the requested task acceleration and \(d_r\) collects interaction forces, residual coupling, and model error.
 
-Writing \(d_r\) in the same channel as \(v\) is a matched-disturbance specialization, not a property of arbitrary model error or contact. Unmatched discretization, coupling, and interaction-force errors are retained below as a set-valued successor defect rather than being silently absorbed into \(d_r\).
+Writing \(d_r\) in the same channel as \(a_{\mathrm{req}}\) is a matched-disturbance specialization, not a property of arbitrary model error or contact. Unmatched discretization, coupling, and interaction-force errors are retained below as a set-valued successor defect rather than being silently absorbed into \(d_r\).
 
-With slow sample time \(T_s=mT_f\), the abstract predictor is
+With slow sample time \(\Delta t=mT_f\), the abstract predictor is
 
 \[
 z_{\ell+1}
 =
-Az_\ell+B\left(v_\ell+d_\ell\right),
+Az_\ell+B\left(a_{\mathrm{req},\ell}+d_\ell\right),
 \]
 
 \[
 A=
 \begin{bmatrix}
-I&T_sI\\
+I&\Delta t I\\
 0&I
 \end{bmatrix},
 \qquad
 B=
 \begin{bmatrix}
-\frac{1}{2}T_s^2I\\
-T_sI
+\frac{1}{2}(\Delta t)^2I\\
+\Delta t I
 \end{bmatrix}.
 \]
 
@@ -323,13 +323,13 @@ This prediction backbone is intentionally not presented as the novelty.
 
 ## 4.2 Robot-dependent realization map
 
-Let \(\tau_{\mathrm{base},r}(x)\) contain bias compensation and fast secondary terms. A task-acceleration request \(v\) is realized locally through
+Let \(\tau_{\mathrm{base},r}(x)\) contain bias compensation and fast secondary terms. A task-acceleration request \(a_{\mathrm{req}}\) is realized locally through
 
 \[
 \tau
 =
 \tau_{\mathrm{base},r}(x)
-+H_r(x)v,
++H_r(x)a_{\mathrm{req}},
 \]
 
 where, for a conventional operational-space realization,
@@ -346,7 +346,7 @@ All actuator-consuming secondary commands, including orientation and
 null-space torques, must be included in
 \(\tau_{\mathrm{base},r}(x)\). Omitting them makes
 \(\mathcal A_r(x)\) optimistic because those channels consume the same actuator
-margin available to \(H_r(x)v\).
+margin available to \(H_r(x)a_{\mathrm{req}}\).
 
 The admissible behavior request set is therefore
 
@@ -354,11 +354,11 @@ The admissible behavior request set is therefore
 \mathcal A_r(x)
 =
 \left\{
-v\in\mathbb R^d
+a_{\mathrm{req}}\in\mathbb R^d
 \;\middle|\;
 \tau_{\min,r}
 \le
-\tau_{\mathrm{base},r}(x)+H_r(x)v
+\tau_{\mathrm{base},r}(x)+H_r(x)a_{\mathrm{req}}
 \le
 \tau_{\max,r}
 \right\}.
@@ -490,7 +490,7 @@ The fast loop runs every \(T_f=1~\mathrm{ms}\):
 5. apply torque-rate limiting and a final emergency projection; and
 6. send the resulting torque to the actuators.
 
-The predictive manager runs every \(T_s\in[5,20]~\mathrm{ms}\):
+The predictive manager runs every \(\Delta t\in[5,20]~\mathrm{ms}\):
 
 1. roll out the nominal controller or its bounded preview;
 2. predict actuator and state margins;
@@ -500,29 +500,29 @@ The predictive manager runs every \(T_s\in[5,20]~\mathrm{ms}\):
 
 ## 6.2 Optimization problem
 
-Let \(v^0_{i|\ell}\) be the behavior acceleration induced by the fixed nominal rollout. The implemented manager selects the full acceleration sequence \(v_{i|\ell}\):
+Let \(a_{\mathrm{req},i|\ell}^0\) be the behavior acceleration induced by the fixed nominal rollout. The implemented manager selects the full acceleration sequence \(a_{\mathrm{req},i|\ell}\):
 
 \[
 \begin{aligned}
-\min_{v_{0:N-1}}
+\min_{a_{\mathrm{req},0:N-1}}
 \quad&
 \sum_{i=0}^{N-1}
 \left(
-\|v_{i|\ell}-v^0_{i|\ell}\|_{W_v}^2
-+\|v_{i|\ell}-v_{i-1|\ell}\|_{W_{\Delta}}^2
+\|a_{\mathrm{req},i|\ell}-a_{\mathrm{req},i|\ell}^0\|_{W_{a_{\mathrm{req}}}}^2
++\|a_{\mathrm{req},i|\ell}-a_{\mathrm{req},i-1|\ell}\|_{W_{\Delta}}^2
 \right)
 \\
 \text{s.t.}\quad&
 z_{i+1|\ell}
 =
 Az_{i|\ell}
-+B\left(v_{i|\ell}+\hat d_{i|\ell}\right),
++B\left(a_{\mathrm{req},i|\ell}+\hat d_{i|\ell}\right),
 \\
 &
 \tau_{i|\ell}
 =
 \hat\tau_{\mathrm{base},r}(\hat x^0_{i|\ell})
-+\hat H_r(\hat x^0_{i|\ell})v_{i|\ell},
++\hat H_r(\hat x^0_{i|\ell})a_{\mathrm{req},i|\ell},
 \\
 &
 \tau_{\min,r}+\varepsilon_\tau
@@ -534,44 +534,44 @@ Az_{i|\ell}
 &
 z_{i|\ell}\in\mathcal X,
 \qquad
-v_{\min}\le v_{i|\ell}\le v_{\max},
+a_{\mathrm{req},\min}\le a_{\mathrm{req},i|\ell}\le a_{\mathrm{req},\max},
 \\
 &
--\Delta v_{\max}
-\le v_{i|\ell}-v_{i-1|\ell}
-\le \Delta v_{\max}.
+-\Delta a_{\mathrm{req},\max}
+\le a_{\mathrm{req},i|\ell}-a_{\mathrm{req},i-1|\ell}
+\le \Delta a_{\mathrm{req},\max}.
 \end{aligned}
 \]
 
-Here \(\hat x^0_{i|\ell}\) is fixed from the nominal rollout when the QP matrices are assembled. The state, acceleration, rate, and tightened torque bounds are hard. The implementation contains neither slack variables nor a separately constructed terminal invariant set. Because acceleration variation is penalized, a small intervention may occur even when the nominal sequence is feasible. The applied first correction is \(\Delta v_\ell=v_{0|\ell}-v^0_{0|\ell}\).
+Here \(\hat x^0_{i|\ell}\) is fixed from the nominal rollout when the QP matrices are assembled. The state, acceleration, rate, and tightened torque bounds are hard. The implementation contains neither slack variables nor a separately constructed terminal invariant set. Because acceleration variation is penalized, a small intervention may occur even when the nominal sequence is feasible. The applied first correction is \(\Delta a_{\mathrm{req},\ell}=a_{\mathrm{req},0|\ell}-a_{\mathrm{req},0|\ell}^0\).
 
 ## 6.3 Robust tightening
 
 Let the manager's predicted pre-saturation torque be
 
 \[
-\hat\tau_r(x,v)
+\hat\tau_r(x,a_{\mathrm{req}})
 =
-\hat\tau_{\mathrm{base},r}(x)+\hat H_r(x)v.
+\hat\tau_{\mathrm{base},r}(x)+\hat H_r(x)a_{\mathrm{req}}.
 \]
 
 Suppose interval analysis, Lipschitz bounds, reachability, or validated identification provides a componentwise torque-realization error set
 
 \[
-\mathcal D_{\tau,r}(x,v)
+\mathcal D_{\tau,r}(x,a_{\mathrm{req}})
 \subseteq
 \left\{
 \delta\tau:
-|\delta\tau|\le\bar\delta_{\tau,r}(x,v)
+|\delta\tau|\le\bar\delta_{\tau,r}(x,a_{\mathrm{req}})
 \right\},
 \]
 
 such that the true torque required before clipping satisfies
 
 \[
-\tau_r^{\mathrm{pre}}(x,v)
+\tau_r^{\mathrm{pre}}(x,a_{\mathrm{req}})
 \in
-\hat\tau_r(x,v)\oplus\mathcal D_{\tau,r}(x,v).
+\hat\tau_r(x,a_{\mathrm{req}})\oplus\mathcal D_{\tau,r}(x,a_{\mathrm{req}}).
 \]
 
 The robustly admissible behavior set is
@@ -580,8 +580,8 @@ The robustly admissible behavior set is
 \mathcal A_r^{\mathrm{tight}}(x)
 =
 \left\{
-v:
-\hat\tau_r(x,v)\oplus\mathcal D_{\tau,r}(x,v)
+a_{\mathrm{req}}:
+\hat\tau_r(x,a_{\mathrm{req}})\oplus\mathcal D_{\tau,r}(x,a_{\mathrm{req}})
 \subseteq\mathcal T_r
 \right\}.
 \]
@@ -589,11 +589,11 @@ v:
 For a box uncertainty bound, membership has the directly checkable form
 
 \[
-\tau_{\min,r}+\bar\delta_{\tau,r}(x,v)
+\tau_{\min,r}+\bar\delta_{\tau,r}(x,a_{\mathrm{req}})
 \le
-\hat\tau_r(x,v)
+\hat\tau_r(x,a_{\mathrm{req}})
 \le
-\tau_{\max,r}-\bar\delta_{\tau,r}(x,v).
+\tau_{\max,r}-\bar\delta_{\tau,r}(x,a_{\mathrm{req}}).
 \]
 
 The one-step abstraction defect that remains when no clipping occurs is bounded separately by
@@ -602,9 +602,9 @@ The one-step abstraction defect that remains when no clipping occurs is bounded 
 \Pi_r\!\left(
 f_r^d(x,\tau_r^{\mathrm{pre}},F_h)
 \right)
--F\!\left(\Pi_r(x),v\right)
+-F\!\left(\Pi_r(x),a_{\mathrm{req}}\right)
 \in
-\mathcal D_{z,r}(x,v,F_h).
+\mathcal D_{z,r}(x,a_{\mathrm{req}},F_h).
 \]
 
 Unlike the earlier matched-disturbance notation, \(\mathcal D_{z,r}\) may contain unmatched force coupling, discretization error, interpolation error, and secondary-channel coupling. Without verified \(\mathcal D_{\tau,r}\) and \(\mathcal D_{z,r}\), the MPC provides nominal frozen-model plan feasibility only, not a transferable physical certificate.
@@ -617,7 +617,7 @@ The slow MPC correction is not a cached full torque. The fast loop applies
 \tau_k
 =
 \tau_k^0
-+H_r(x_k)\Delta v_k^{\mathrm{MPC}}
++H_r(x_k)\Delta a_{\mathrm{req},k}^{\mathrm{MPC}}
 +\tau_k^{\mathrm{final}},
 \]
 
@@ -638,7 +638,7 @@ The abstract behavior model and physical robot are a concrete--abstract system p
 Let the abstract behavior dynamics be
 
 \[
-z_{\ell+1}=F(z_\ell,v_\ell).
+z_{\ell+1}=F(z_\ell,a_{\mathrm{req},\ell}).
 \]
 
 Let
@@ -656,7 +656,7 @@ be a certified abstract safe or stable set.
 The predictive manager, including its correction of the nominal fast controller, defines the abstract policy
 
 \[
-v_\ell=\kappa(z_\ell)
+a_{\mathrm{req},\ell}=\kappa(z_\ell)
 \]
 
 and is designed for the robust certificate
@@ -673,7 +673,7 @@ For robot \(r\), define:
 - \(x^r\) be the physical state;
 - \(\Pi_r(x^r)=z\) be the abstraction map;
 - \(f_r^d(x^r,\tau,F_h)\) be the one-step physical dynamics; and
-- \(\hat\tau_r(x^r,v)\) be the predicted pre-saturation realization command.
+- \(\hat\tau_r(x^r,a_{\mathrm{req}})\) be the predicted pre-saturation realization command.
 
 The physical actuator applies
 
@@ -698,9 +698,9 @@ Assume a verified local sensitivity set \(\mathcal L_r(x)c_{\tau,r}\) bounds the
 \Pi_r\!\left(
 f_r^d(x,\tau_r^{\mathrm{app}},F_h)
 \right)
--F\!\left(\Pi_r(x),v\right)
+-F\!\left(\Pi_r(x),a_{\mathrm{req}}\right)
 \in
-\mathcal D_{z,r}(x,v,F_h)
+\mathcal D_{z,r}(x,a_{\mathrm{req}},F_h)
 \oplus
 \mathcal L_r(x)c_{\tau,r}.
 \]
@@ -719,23 +719,23 @@ F(z,\kappa(z))\oplus\mathcal E_\star
 \forall z\in\mathcal S.
 \]
 
-For robot \(r\), consider a certified physical operating region \(\mathcal X_r\) such that \(\Pi_r(\mathcal X_r)\subseteq\mathcal S\). Suppose that, for every \(x\in\mathcal X_r\), every admissible \(F_h\), and \(v=\kappa(\Pi_r(x))\):
+For robot \(r\), consider a certified physical operating region \(\mathcal X_r\) such that \(\Pi_r(\mathcal X_r)\subseteq\mathcal S\). Suppose that, for every \(x\in\mathcal X_r\), every admissible \(F_h\), and \(a_{\mathrm{req}}=\kappa(\Pi_r(x))\):
 
 1. the true pre-saturation torque obeys
    \[
-   \tau_r^{\mathrm{pre}}(x,v)
+   \tau_r^{\mathrm{pre}}(x,a_{\mathrm{req}})
    \in
-   \hat\tau_r(x,v)\oplus\mathcal D_{\tau,r}(x,v);
+   \hat\tau_r(x,a_{\mathrm{req}})\oplus\mathcal D_{\tau,r}(x,a_{\mathrm{req}});
    \]
 2. the manager enforces the realizability-margin condition
    \[
-   \hat\tau_r(x,v)\oplus\mathcal D_{\tau,r}(x,v)
+   \hat\tau_r(x,a_{\mathrm{req}})\oplus\mathcal D_{\tau,r}(x,a_{\mathrm{req}})
    \subseteq\mathcal T_r,
    \]
-   equivalently \(v\in\mathcal A_r^{\mathrm{tight}}(x)\);
+   equivalently \(a_{\mathrm{req}}\in\mathcal A_r^{\mathrm{tight}}(x)\);
 3. the no-clipping abstraction defect is constructively bounded by
    \[
-   \mathcal D_{z,r}(x,v,F_h)\subseteq\mathcal E_\star;
+   \mathcal D_{z,r}(x,a_{\mathrm{req}},F_h)\subseteq\mathcal E_\star;
    \]
 4. interpolation, torque-rate limiting, secondary torques, and the final high-rate projection are included in \(\mathcal D_{\tau,r}\), \(\mathcal D_{z,r}\), or the definition of the physical realization; and
 5. \(x_0\in\mathcal X_r\), with the physical successor remaining inside the operating region whenever its abstraction remains in \(\mathcal S\).
@@ -753,7 +753,7 @@ the approximate refinement relation follows rather than being assumed,
 f_r^d(x,\tau_r^{\mathrm{app}},F_h)
 \right)
 \in
-F\!\left(\Pi_r(x),v\right)\oplus\mathcal E_\star,
+F\!\left(\Pi_r(x),a_{\mathrm{req}}\right)\oplus\mathcal E_\star,
 \]
 
 and therefore
@@ -825,21 +825,21 @@ this turns the transfer test into two numerical inequalities: the actuator margi
 To cover the nonlinear projection explicitly, define its set-valued residual
 
 \[
-\mathcal C_{\tau,r}(x,v)
+\mathcal C_{\tau,r}(x,a_{\mathrm{req}})
 =
 \left\{
 \operatorname{proj}_{\mathcal T_r}(\tau)-\tau:
 \tau\in
-\hat\tau_r(x,v)\oplus\mathcal D_{\tau,r}(x,v)
+\hat\tau_r(x,a_{\mathrm{req}})\oplus\mathcal D_{\tau,r}(x,a_{\mathrm{req}})
 \right\}.
 \]
 
-Theorem 1 uses the transparent special case \(\mathcal C_{\tau,r}(x,v)=\{0\}\). More generally, including when uncertainty straddles the saturation boundary or clipping is active, the refinement and certificate still transfer if the **computed** nonlinear projection defect satisfies
+Theorem 1 uses the transparent special case \(\mathcal C_{\tau,r}(x,a_{\mathrm{req}})=\{0\}\). More generally, including when uncertainty straddles the saturation boundary or clipping is active, the refinement and certificate still transfer if the **computed** nonlinear projection defect satisfies
 
 \[
-\mathcal D_{z,r}(x,v,F_h)
+\mathcal D_{z,r}(x,a_{\mathrm{req}},F_h)
 \oplus
-\mathcal L_r(x)\mathcal C_{\tau,r}(x,v)
+\mathcal L_r(x)\mathcal C_{\tau,r}(x,a_{\mathrm{req}})
 \subseteq
 \mathcal E_\star.
 \]
@@ -858,13 +858,13 @@ Define the certificate-preserving \(N\)-step viability set
 =
 \big\{
 z_0:\;&
-\exists v_{0:N-1}\ \text{such that}\\
+\exists a_{\mathrm{req},0:N-1}\ \text{such that}\\
 &
-v_i\in\mathcal A_r^{\mathrm{tight}}(x_i),\\
+a_{\mathrm{req},i}\in\mathcal A_r^{\mathrm{tight}}(x_i),\\
 &
-\mathcal D_{z,r}(x_i,v_i,F_{h,i})\subseteq\mathcal E_\star,\\
+\mathcal D_{z,r}(x_i,a_{\mathrm{req},i},F_{h,i})\subseteq\mathcal E_\star,\\
 &
-z_{i+1}\in F(z_i,v_i)\oplus\mathcal E_\star,\\
+z_{i+1}\in F(z_i,a_{\mathrm{req},i})\oplus\mathcal E_\star,\\
 &
 z_N\in\mathcal X_f
 \big\}.
@@ -873,8 +873,8 @@ z_N\in\mathcal X_f
 
 Three events must not be conflated:
 
-1. \(v_i^0\notin\mathcal A_r^{\mathrm{tight}}(x_i)\): the nominal fast controller requires intervention;
-2. a corrected \(v_i\in\mathcal A_r^{\mathrm{tight}}(x_i)\) still exists: Theorem 1 can remain active; and
+1. \(a_{\mathrm{req},i}^0\notin\mathcal A_r^{\mathrm{tight}}(x_i)\): the nominal fast controller requires intervention;
+2. a corrected \(a_{\mathrm{req},i}\in\mathcal A_r^{\mathrm{tight}}(x_i)\) still exists: Theorem 1 can remain active; and
 3. \(z_i\notin\mathcal V_{N,r}^{\mathrm{cert}}\): no correction sequence in the chosen horizon can preserve the theorem's realizability and terminal conditions.
 
 The third event would define a finite-horizon certificate boundary relative to the chosen model, error bounds, terminal set, and horizon; it would not imply that no controller could recover the physical robot. Because the current implementation has no certified \(\mathcal X_f\) and does not track \(\mathcal V_{N,r}^{\mathrm{cert}}\), this extension is outside the experimental claims.
@@ -915,7 +915,7 @@ Suppose the abstract behavior system satisfies
 \[
 V(z_{\ell+1})-V(z_\ell)
 \le
-T_s\,w_\ell^\top y_\ell+\epsilon_\ell,
+\Delta t\,w_\ell^\top y_\ell+\epsilon_\ell,
 \]
 
 and define the power defect introduced specifically by the final actuator projection as
@@ -1185,8 +1185,9 @@ The reduced-order experiments resolve the implementation questions but leave the
 3. repeat the transfer audit on two full rigid-body robot models with manufacturer actuator limits;
 4. evaluate contacts, orientation, null-space motion, torque rate, sensing delay, and state-estimation error;
 5. compare against independently implemented, parameter-matched predictive safety-filter and reference-governor baselines;
-6. move the fast path to a real-time implementation and report deadline misses over long-duration trials; and
-7. validate the architecture on hardware with an independent emergency-stop and safety layer.
+6. sweep disturbance magnitude, timing, and sensor noise across seeds to characterize the margin between each successful scenario and its failure boundary, rather than reporting single deterministic trajectories;
+7. move the fast path to a real-time implementation and report deadline misses over long-duration trials; and
+8. validate the architecture on hardware with an independent emergency-stop and safety layer.
 
 Until those checks are complete, the strongest defensible positioning is certificate-transferable predictive saturation management demonstrated in reduced-order simulation.
 
