@@ -10,6 +10,7 @@ import numpy as np
 from saturation_benchmark import (
     BenchmarkConfig,
     RunOptions,
+    Scenario,
     make_controllers,
     make_robots,
     make_scenarios,
@@ -121,6 +122,35 @@ def test_final_projection_is_required_for_impulsive_case():
     assert unprotected["peak_applied_torque_violation_Nm"] > 1.0
 
 
+def test_certified_action_set_bounds_speed_below_uncertified_case():
+    robots, controllers, scenarios, cfg = _objects()
+    zero = lambda _t: np.zeros(2)
+    scenario = Scenario(
+        "certificate_margin",
+        (0.0, 0.0, 0.58, 0.0),
+        lambda _t: np.array([0.5, 0.0]),
+        zero,
+        lambda _t: 1.0,
+        description="K_cert regression check",
+    )
+    common = (robots["fr3_surrogate"], controllers["impedance"], scenario, cfg)
+    constrained = summarize(
+        run_case(*common, RunOptions(method="proposed", certificate_constrained=True)),
+        cfg,
+    )
+    unconstrained = summarize(
+        run_case(*common, RunOptions(method="proposed", certificate_constrained=False)),
+        cfg,
+    )
+    initial_speed = scenario.initial_state[2]
+    # z_0 itself is not constrained, so the certified case cannot undo an
+    # already-out-of-budget start; it must not grow past it, while the
+    # unconstrained case is free to climb toward the untightened speed_limit.
+    assert constrained["peak_speed_mps"] <= initial_speed + 1.0e-9
+    assert unconstrained["peak_speed_mps"] > initial_speed + 1.0e-3
+    assert unconstrained["peak_speed_mps"] < cfg.speed_limit + 1.0e-9
+
+
 def test_same_sampled_interface_audit_holds_across_robots():
     robots, controllers, scenarios, cfg = _objects()
     for robot in robots.values():
@@ -143,7 +173,7 @@ def test_saved_report_covers_every_required_experiment_family():
     assert len(report["scenario_comparison"]) == 40
     assert len(report["controller_transfer"]) == 30
     assert len(report["robot_transfer"]) == 24
-    assert len(report["ablations"]) == 14
+    assert len(report["ablations"]) == 17
     assert len(report["sampled_interface_audit"]) == 3
     assert len(
         {

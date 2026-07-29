@@ -8,11 +8,11 @@ This manuscript narrows an earlier universal-predictor framing to conditional ce
 
 High-rate robot controllers such as proportional--derivative control, impedance control, reinforcement-learning policies, neural-network policies, and AI-generated behavior policies can all produce satisfactory nominal motion while still losing their intended closed-loop dynamics when actuator saturation occurs. Direct clipping is computationally cheap, but it intervenes only after the requested command has become unrealizable and hides the resulting change in behavior.
 
-This paper proposes a two-rate architecture in which a nominal controller exposing a task-acceleration request remains in a \(1~\mathrm{kHz}\) fast loop, while a slower model-predictive realization manager forecasts loss of actuator authority and modifies the requested dynamics before saturation. The fast controller is not replaced by MPC. Instead, it supplies a nominal task-acceleration request and, when available, a preview model; the predictive layer selects a realizable acceleration sequence close to that nominal preview. The robot-dependent realization map converts actuator boxes into configuration-dependent admissible task-acceleration sets, exposing directional authority loss.
+This paper proposes a two-rate architecture in which a nominal controller exposing a task-acceleration request remains in a \(1~\mathrm{kHz}\) fast loop, while a slower model-predictive realization manager forecasts loss of actuator authority and modifies the requested dynamics before saturation. The fast controller is not replaced by MPC. Instead, it supplies a nominal task-acceleration request and, when available, a preview model; the predictive layer seeks a realizable acceleration sequence close to that nominal preview, with a reactive fallback when the horizon problem is infeasible. The robot-dependent realization map converts actuator boxes into configuration-dependent admissible task-acceleration sets, exposing directional authority loss.
 
-The universal double-integrator prediction backbone is treated as a convenient interface rather than as the principal novelty. The central contribution is a certificate-transfer result: a feasibility, stability, or dissipativity certificate established in the abstract behavior coordinates transfers to a physical robot when its realization map satisfies an explicit refinement condition and the prediction error lies inside the certificate's robustness margin. This separates reusable behavior-level reasoning from robot-specific actuator geometry while retaining the latter where it is physically unavoidable.
+The universal double-integrator prediction backbone is treated as a convenient interface rather than as the principal novelty. The central contribution is a certificate-transfer result: a feasibility, stability, or dissipativity certificate established in the abstract behavior coordinates transfers to a physical robot when its realization map satisfies an explicit refinement condition and the prediction error lies inside the certificate's robustness margin. A concrete, deliberately simple certified action set is now enforced inside the QP itself, so a feasible solution satisfies both the actuator-feasibility and certificate-membership conditions by construction rather than by a check applied after the fact; the reported experiments additionally audit the realization-side conditions along sampled trajectories. This separates reusable behavior-level reasoning from robot-specific actuator geometry while retaining the latter where it is physically unavoidable.
 
-A deterministic suite of 108 configurations evaluates five controller interfaces, three robot-specific realization surrogates, eight stress scenarios (one reserved for the horizon-constraint ablation), and six ablation families. Horizon-wide constraints remove a \(3.594~\mathrm{Nm}\) planned future violation missed by a first-step check, while a common \(0.03~\mathrm{m/s}\) empirical budget contains the sampled successor defects of all three realization maps. This sampled audit does not instantiate the robust-invariance premise of the transfer theorem. Severe disturbance and model/preview mismatch explicitly fail the sampled refinement checks.
+A deterministic suite of 111 configurations evaluates five controller interfaces, three robot-specific realization surrogates, eight stress scenarios (one reserved for the horizon-constraint ablation, plus a ninth dedicated scenario reserved for the certified-action-set ablation), and eight ablation families. Horizon-wide constraints remove a \(3.587~\mathrm{Nm}\) planned future violation missed by a first-step check, while a common \(0.03~\mathrm{m/s}\) empirical budget contains the sampled successor defects of all three realization maps. A dedicated ablation confirms the certified action set changes the manager's output when it binds (holding peak speed at \(0.580~\mathrm{m/s}\) versus \(0.597~\mathrm{m/s}\) unconstrained), while leaving the eight main stress scenarios unaffected, consistent with their own comfortable certificate margin. This sampled audit does not by itself establish a workspace-wide invariance proof. Severe disturbance and model/preview mismatch explicitly fail the sampled refinement checks.
 
 ---
 
@@ -217,7 +217,7 @@ The nominal pre-projection torque is then *defined*, not assumed, as the robot's
 \[
 \tau_k^0=\tau_{\mathrm{base},r}(x_k)+H_r(x_k)a_{\mathrm{req},k}^0,
 \]
-so the fast-loop correction of Section 6.4 is well defined by construction. A controller that instead outputs torque directly is outside this interface unless it exposes the decomposition \(\tau_k^0=\tau_{\mathrm{base},r}(x_k)+H_r(x_k)a_{\mathrm{req},k}^0+\tau_{\perp,k}^0\), with the null-space residual \(\tau_{\perp,k}^0\) folded into \(\tau_{\mathrm{base},r}(x_k)\)'s actuator-budget accounting; otherwise its realizability cannot be tested against \(\mathcal A_r^{\mathrm{tight}}(x)\) below.
+so the fast-loop correction of Section 6.4 is well defined by construction. A controller that instead outputs torque directly is outside this interface unless it exposes the decomposition \(\tau_k^0=\tau_{\mathrm{base},r}(x_k)+\tau_{\perp,k}^0+H_r(x_k)a_{\mathrm{req},k}^0\), where \(\tau_{\perp,k}^0\) is a policy-dependent secondary-torque term reported alongside \(\tau_{\mathrm{base},r}(x_k)\), not merged into it: \(\tau_{\mathrm{base},r}\) remains the purely robot-dependent quantity used throughout, and testing such a controller's realizability against \(\mathcal A_r^{\mathrm{tight}}(x)\) below requires subtracting \(\tau_{\perp,k}^0\) from the available actuator budget in addition to \(\tau_{\mathrm{base},r}(x_k)\).
 
 The current request \(a_{\mathrm{req},k}^0\) is mandatory. Preview is not assumed to be exact. If the controller has no reliable preview model, the manager may use a zero-order hold, a local linearization, an ensemble bound, or a learned predictor, but the resulting uncertainty must appear explicitly in \(\Sigma_{\theta,k}\).
 
@@ -296,19 +296,21 @@ e\\
 Over a local operating region, feedback linearization gives
 
 \[
-\ddot e = a_{\mathrm{req}}+d_r(x),
+\ddot e = a_{\mathrm{req}}+w_r(x),
 \]
 
-where \(a_{\mathrm{req}}\in\mathbb R^{d}\) is the requested task acceleration and \(d_r\) collects interaction forces, residual coupling, and model error.
+where \(a_{\mathrm{req}}\in\mathbb R^{d}\) is the complete requested task acceleration --- already including whatever response to the interaction wrench its issuing controller or the realization map of Section 4.2 provides, not a quantity to which a further interaction-force term must be added --- and \(w_r\) is the residual left over after that response: realization error, discretization, unmodeled coupling, state-estimation error, and intra-period command drift, but not a second, separate accounting of the interaction force.
 
-Writing \(d_r\) in the same channel as \(a_{\mathrm{req}}\) is a matched-disturbance specialization, not a property of arbitrary model error or contact. Unmatched discretization, coupling, and interaction-force errors are retained below as a set-valued successor defect rather than being silently absorbed into \(d_r\).
+\(w_r\) is therefore not a matched-disturbance specialization of arbitrary model error or contact; it is the residual after force has already been accounted for once, upstream. Section 7.2 bounds it empirically as the successor defect \(\mathcal D_{z,r}\) rather than absorbing it silently into the nominal prediction.
 
-With slow sample time \(\Delta t=mT_f\), the abstract predictor is
+With slow sample time \(\Delta t=mT_f\), the general abstract predictor is
 
 \[
 z_{\ell+1}
 =
-Az_\ell+B\left(a_{\mathrm{req},\ell}+d_\ell\right),
+Az_\ell+Ba_{\mathrm{req},\ell}+w_\ell,
+\qquad
+w_\ell\in\mathcal W_\ell,
 \]
 
 \[
@@ -325,7 +327,7 @@ B=
 \end{bmatrix}.
 \]
 
-This prediction backbone is intentionally not presented as the novelty.
+This prediction backbone is intentionally not presented as the novelty. The implemented QP of Section 6.2 uses the nominal case \(w_\ell=0\); Section 7.2 bounds the resulting successor mismatch empirically as \(\mathcal D_{z,r}\), and Theorem 1's condition 3 requires that bound to lie inside the certificate margin \(\mathcal E_\star\), so the nominal-model choice is checked rather than assumed away.
 
 ## 4.2 Robot-dependent realization map
 
@@ -483,6 +485,8 @@ a_c-\alpha d\in\mathcal A_r^{\mathrm{tight}}(x)
 
 A controller may retain substantial overall torque margin while losing authority in the direction required to reject an interaction force. Directional authority therefore reveals a failure that scalar torque utilization can hide.
 
+Because \(\mathcal A_r^{\mathrm{tight}}(x)\) is itself an affine image of a box (the same construction as \(\mathcal Z_r\) in Section 4.3, once \(\tau_{\mathrm{base},r}\) and the tightening margin are subtracted from the torque box first), computing \(\alpha_r^{+}\) does not require facet enumeration or a general linear program: for a halfspace representation \(\{v:Av\le b\}\) of \(\mathcal A_r^{\mathrm{tight}}(x)\), the maximum feasible step along \(d\) from a feasible \(a_c\) is the closed form \(\alpha_r^{+}=\min_{j:\,(Ad)_j>0}(b_j-(Aa_c)_j)/(Ad)_j\), which is exactly the ray--halfspace intersection the implementation evaluates.
+
 ## 5.3 Finite-horizon feasibility diagnostic
 
 The implemented manager reports whether its finite-horizon QP is feasible. This diagnostic answers whether the particular frozen-model problem has a constraint-satisfying sequence at the current update. It is not membership in a viability kernel: the implementation has no separately constructed terminal invariant set or certified backup policy. The corresponding experiment is therefore called the **near-boundary braking stress case**, not a point of no return.
@@ -555,7 +559,7 @@ a_{\mathrm{req},\min}\le a_{\mathrm{req},i|\ell}\le a_{\mathrm{req},\max},
 \end{aligned}
 \]
 
-Here \(\hat x^0_{i|\ell}\) is fixed from the nominal rollout when the QP matrices are assembled. The state prediction above omits the disturbance term \(d_{i|\ell}\) of Section 4.1: the implemented propagation is the homogeneous \(z_{i+1|\ell}=Az_{i|\ell}+Ba_{\mathrm{req},i|\ell}\), so the predicted position and speed constraints implicitly assume \(d_{i|\ell}=0\) rather than a forecast value. For controllers whose acceleration request does not itself respond to \(F_h\) (Section 3.3's PD and AI-based examples), this makes the state prediction optimistic under load; propagating an explicit \(\hat d_{i|\ell}\) forecast, with a corresponding tightening of the state constraints, is left to future work (Section 15). The state, acceleration, rate, and tightened torque bounds are hard. The implementation contains neither slack variables nor a separately constructed terminal invariant set. Because acceleration variation is penalized, a small intervention may occur even when the nominal sequence is feasible. The applied first correction is \(\Delta a_{\mathrm{req},\ell}=a_{\mathrm{req},0|\ell}-a_{\mathrm{req},0|\ell}^0\).
+Here \(\hat x^0_{i|\ell}\) is fixed from the nominal rollout when the QP matrices are assembled. This is the nominal case \(w_{i|\ell}=0\) of Section 4.1's general predictor: the predicted position and speed constraints implicitly assume \(a_{\mathrm{req},i|\ell}\) is held fixed for the full \(\Delta t\) it labels. This is not violated by force per se: the realization map compensates for the currently measured \(F_h\) rather than a forecast one (Section 3.1), the fast loop recomputes its nominal request and cancels the interaction wrench at every \(1~\mathrm{kHz}\) sample regardless of controller type, and the observed successor-defect magnitudes are numerically similar across the five tested interfaces (Section 9.3) even under sudden disturbance --- confirmed directly against the reported metrics, though the study runs one deterministic trajectory per case and this is not a statistical claim. What the nominal-model choice misses is intra-step drift: if the fast controller's own request changes materially within one \(20~\mathrm{ms}\) manager period --- most acutely when an impulse arrives between manager updates --- the frozen \(a_{\mathrm{req},i|\ell}\) held throughout that step no longer matches what the fast loop actually applies, exactly the component of \(w_{i|\ell}\) the sampled \(\mathcal D_{z,r}\) check of Section 7.2 must contain. Constructing a tightened bound \(\mathcal W_{i|\ell}\) directly, rather than checking its empirical consequence after the fact, is left to future work (Section 15). The state, acceleration, rate, and tightened torque bounds are hard. The implementation contains neither slack variables nor a separately constructed terminal invariant set. Before solving, the manager checks whether the nominal rollout \(a_{\mathrm{req},0:N-1}^0\) already satisfies every constraint above; if so, it is returned unmodified rather than passed through the objective, so the rate-smoothing term cannot perturb an already-feasible request, giving the exact-pass-through property \(a_{\mathrm{req},0:N-1}^0\in\mathcal F_N\implies\Delta a_{\mathrm{req},\ell}=0\), where \(\mathcal F_N\) is the horizon-wide feasible set above. The QP is solved only when this check fails. The applied first correction is \(\Delta a_{\mathrm{req},\ell}=a_{\mathrm{req},0|\ell}-a_{\mathrm{req},0|\ell}^0\).
 
 ## 6.3 Robust tightening
 
@@ -626,14 +630,19 @@ Unlike the earlier matched-disturbance notation, \(\mathcal D_{z,r}\) may contai
 The slow MPC correction is not a cached full torque. The fast loop applies
 
 \[
-\tau_k
+\tau_k^{\mathrm{pre}}
 =
 \tau_k^0
 +H_r(x_k)\Delta a_{\mathrm{req},k}^{\mathrm{MPC}}
-+\tau_k^{\mathrm{final}},
+=
+\tau_{\mathrm{base},r}(x_k)+H_r(x_k)\left(a_{\mathrm{req},k}^0+\Delta a_{\mathrm{req},k}^{\mathrm{MPC}}\right),
+\qquad
+\tau_k^{\mathrm{app}}
+=
+\operatorname{proj}_{\mathcal T_r}\!\left(\tau_k^{\mathrm{pre}}\right),
 \]
 
-where \(H_r(x_k)\) is recomputed from the current state and \(\tau_k^{\mathrm{final}}\) is a high-rate emergency projection or CBF correction.
+where \(H_r(x_k)\) is recomputed from the current state. Writing the high-rate emergency projection or CBF correction's effect as \(\Delta\tau_k^{\mathrm{proj}}=\tau_k^{\mathrm{app}}-\tau_k^{\mathrm{pre}}\), so that \(\tau_k^{\mathrm{app}}=\tau_k^{\mathrm{pre}}+\Delta\tau_k^{\mathrm{proj}}\), makes the no-clipping branch of Theorem 1 immediate: it is precisely the case \(\Delta\tau_k^{\mathrm{proj}}=0\).
 
 This distinction matters. Holding the full torque from the slow loop would turn modeling drift between updates into an artificial disturbance and would no longer preserve a true \(1~\mathrm{kHz}\) nominal controller.
 
@@ -766,13 +775,31 @@ the last inclusion following directly from \(a_{\mathrm{req}}\in\mathcal K_{\mat
 i=0,\ldots,N,
 \]
 
-which is the finite-horizon guarantee actually supported by the implemented manager and the experiments of Section 9. Extending this to \(\Pi_r(x_k)\in\mathcal S\) for all \(k\ge0\) additionally requires the operating-region condition to hold indefinitely, a separate and independent claim.
+which is the finite-horizon guarantee that applies to the implemented manager, since \(\mathcal K_{\mathrm{cert}}\) is instantiated and enforced as a QP constraint (Remark below) rather than only checked after the fact; the experiments additionally audit Conditions 1--2 and the sampled successor defect, since \(\mathcal K_{\mathrm{cert}}\)-membership alone does not by itself verify Conditions 1--3 hold for the chosen \(a_{\mathrm{req}}\). Extending this to \(\Pi_r(x_k)\in\mathcal S\) for all \(k\ge0\) additionally requires the operating-region condition to hold indefinitely, a separate and independent claim.
 
 **Proof.** By Conditions 1--2, \(\tau_r^{\mathrm{pre}}\in\mathcal T_r\); hence projection onto \(\mathcal T_r\) is the identity and \(c_{\tau,r}=0\). The concrete defect decomposition therefore reduces to \(\mathcal D_{z,r}\), which is contained in \(\mathcal E_\star\) by Condition 3, placing the successor in \(F(\Pi_r(x),a_{\mathrm{req}})\oplus\mathcal E_\star\subseteq\mathcal S\) directly by the definition of \(\mathcal K_{\mathrm{cert}}\) --- no separate robust-invariance premise about a specific policy is needed. Finite induction from \(x_0\in\mathcal X_r\) over \(i=0,\ldots,N\) gives the horizon result; extending it to all \(k\ge0\) requires Condition 5 to hold at every step, which this argument alone does not establish.
 
 The theorem's nontrivial, falsifiable work is the construction of \(\mathcal D_{\tau,r}\) and \(\mathcal D_{z,r}\) and verification of their containments against the available actuator margin. If those sets are merely postulated without a reproducible bound, the result collapses back to a tautological refinement assumption.
 
-**Remark (connection to the implemented manager).** The QP of Section 6.2 enforces \(a_{\mathrm{req},i|\ell}\in\mathcal A_r^{\mathrm{tight}}(\hat x^0_{i|\ell})\); it does not enforce \(a_{\mathrm{req},i|\ell}\in\mathcal K_{\mathrm{cert}}(z_{i|\ell})\), and the two sets are constructed independently rather than intersected inside the solver. Theorem 1 therefore certifies the manager's actual output only on samples where that output happens to also lie in \(\mathcal K_{\mathrm{cert}}\), which the present experiments do not verify online; the audit of Section 9 checks Conditions 1--2 and the sampled successor defect, not \(\mathcal K_{\mathrm{cert}}\) membership. Constructing a concrete, computable representation of \(\mathcal K_{\mathrm{cert}}\) and adding it as an explicit QP constraint would close this gap between the theorem and the algorithm; this reduced-order study does neither and leaves both to future work (Section 15).
+**Remark (concrete instantiation).** The QP of Section 6.2 enforces \(a_{\mathrm{req},i|\ell}\in\mathcal A_r^{\mathrm{tight}}(\hat x^0_{i|\ell})\cap\mathcal K_{\mathrm{cert}}(z_{i|\ell})\), so that any feasible solution provably satisfies both sets by construction rather than by a check applied after the fact. The instantiation used is deliberately simple. Let
+
+\[
+V(z)=\max\!\left\{\frac{|e_1|}{\mathrm{pos}_{\max}},\frac{|e_2|}{\mathrm{pos}_{\max}},\frac{|\dot e_1|}{\mathrm{spd}_{\max}},\frac{|\dot e_2|}{\mathrm{spd}_{\max}}\right\},
+\qquad
+\mathcal S=\{z:V(z)\le1\},
+\]
+
+an \(\infty\)-norm storage function chosen, in place of a quadratic \(z^\top Pz\), specifically because it keeps \(\mathcal S\) and \(\mathcal K_{\mathrm{cert}}\) linear and solvable by the same OSQP instance already used for \(\mathcal A_r^{\mathrm{tight}}\), without a QCQP solver. Here \(\mathcal S\) is exactly the existing position/speed operating region \(\mathcal X\) of Section 6. With \(\epsilon_{\mathrm{audit}}=0.03~\mathrm{m/s}\) standing in for the abstract radius of \(\mathcal E_\star\)---this numeric choice ties the prospectively enforced bound to the same value retrospectively checked by the audit of Section 9, not a general requirement of Theorem 1---the certified action set tightens only the one-step-ahead velocity block,
+
+\[
+\mathcal K_{\mathrm{cert}}(z)
+=
+\left\{a:\left|(Az+Ba)_{\dot e}\right|\le\mathrm{spd}_{\max}-\epsilon_{\mathrm{audit}}\right\}.
+\]
+
+Position is left untightened: only the velocity-space successor defect is measured and audited here, so tightening position would not be backed by a measured quantity. Because deceleration at the actuator limit removes \(\epsilon_{\mathrm{audit}}\) of speed within \(\epsilon_{\mathrm{audit}}/(\Delta t\,a_{\max})\ll1\) of one manager period for the parameters used, \(\mathcal K_{\mathrm{cert}}(z)\) is nonempty for every \(z\in\mathcal S\). Section 9 reports a dedicated ablation showing this constraint changes the manager's output relative to leaving it out; in the eight main stress scenarios it does not bind, consistent with Section 9's own finding that the audited defect leaves most of the certificate radius unused.
+
+The region-persistence clause is likewise an explicit conditional assumption, not a consequence of the implemented finite-horizon QP. A recursively feasible terminal set or certified backup policy would be one way to establish it over an unbounded horizon. Without such a construction, the horizon in this study should be read as finite --- matching the manager's own \(N=12\)-step horizon --- rather than indefinite.
 
 ### Norm-checkable specialization
 
@@ -958,12 +985,14 @@ The latter two names denote actuator-geometry surrogates, not manufacturer-accur
 \mathcal E=\{d_z:\|d_z\|_2\le 0.03~\mathrm{m/s}\}.
 \]
 
-The experiment suite contains 108 deterministic cases:
+The experiment suite contains 111 deterministic cases:
 
 - 40 scenario--architecture comparisons;
 - 30 controller-interface cases;
 - 24 cross-realization refinement checks; and
-- 14 targeted ablations.
+- 17 targeted ablations.
+
+A ninth scenario, reserved for the certified-action-set ablation and not registered in the main scenario or robot-transfer matrices, starts with velocity already inside the untightened speed box but outside the certificate-tightened one, isolating whether \(\mathcal K_{\mathrm{cert}}\) actually binds (Section 9.4).
 
 Five fast-controller interfaces are exercised without changing the manager formulation:
 
@@ -998,17 +1027,19 @@ The principal scenario results are summarized below. “Pre-projection torque ex
 | No saturation | Clipping | 0.000 | 0.000 | -- | Yes |
 | No saturation | Proposed | 0.000 | 0.000 | -- | Yes |
 | Slow saturation | Clipping | 0.000 | 78.970 | -- | No |
-| Slow saturation | Proposed | 0.000 | 0.001 | 0.912 | Yes |
+| Slow saturation | Proposed | 0.000 | 0.001 | 0.412 | Yes |
 | Sudden disturbance | Clipping | 7.208 | 0.000 | -- | No |
 | Sudden disturbance | Proposed | 11.976 | 0.000 | 0.084 | No |
 | Directional collapse | Clipping | 0.693 | 103.914 | -- | No |
-| Directional collapse | Proposed | 0.000 | 0.003 | 0.939 | Yes |
+| Directional collapse | Proposed | 0.000 | 0.003 | 0.339 | Yes |
 | Near-boundary braking | Clipping | 0.000 | 52.537 | -- | No |
 | Near-boundary braking | Proposed | 0.000 | 0.011 | 0.566 | Yes |
 | Model mismatch | Clipping | 12.665 | 190.434 | -- | No |
-| Model mismatch | Proposed | 1.981 | 193.599 | 0.558 | No |
+| Model mismatch | Proposed | 1.981 | 193.598 | 0.558 | No |
 | Preview mismatch | Clipping | 19.917 | 190.191 | -- | No |
-| Preview mismatch | Proposed | 4.409 | 344.246 | 0.790 | No |
+| Preview mismatch | Proposed | 4.409 | 344.265 | 0.170 | No |
+
+With the exact-pass-through bypass of Section 6.2, the proposed manager's warning lead for slow saturation and directional collapse (\(0.412\) and \(0.339~\mathrm{s}\)) now falls between the reactive projection's (\(0.419\) and \(0.340~\mathrm{s}\)) and the reference governor's (\(0.395\) and \(0.306~\mathrm{s}\)), rather than exceeding both as an earlier, still-perturbable version of the manager reported. Intervention is now triggered only by genuine infeasibility, not partly by the smoothing term; the remaining differences across all three methods are at most a few tens of milliseconds.
 
 The proposed manager prevents the slow, directional, and near-boundary braking violations in this benchmark. It does not rescue requests under abrupt disturbance or severe model/preview mismatch. In those cases the final projection still enforces the actuator box, but the pre-projection request is infeasible and the sampled successor defect exceeds the empirical budget; therefore Theorem 1 cannot be invoked.
 
@@ -1020,11 +1051,11 @@ The same manager formulation and weights were used for all five controller inter
 
 | Fast-controller interface | Realization RMSE (\(\mathrm{m/s^2}\)) | Correction RMSE (\(\mathrm{m/s^2}\)) | Warning lead (s) | Workspace excess (mm) | Sampled refinement checks |
 |---|---:|---:|---:|---:|---:|
-| PD | 0.732 | 0.726 | 0.991 | 0.001 | Yes |
-| Impedance | 1.064 | 1.060 | 0.912 | 0.001 | Yes |
+| PD | 0.732 | 0.726 | 0.371 | 0.001 | Yes |
+| Impedance | 1.064 | 1.060 | 0.412 | 0.001 | Yes |
 | Trained policy | 0.652 | 0.652 | 1.207 | 0.016 | Yes |
-| Fitted neural policy | 0.655 | 0.649 | 1.016 | 0.001 | Yes |
-| AI-conditioned proxy | 0.835 | 0.830 | 0.959 | 0.006 | Yes |
+| Fitted neural policy | 0.655 | 0.649 | 0.356 | 0.001 | Yes |
+| AI-conditioned proxy | 0.835 | 0.830 | 0.359 | 0.006 | Yes |
 
 These results support interface substitution in the implemented operating region. They do not establish a controller-independent safety theorem: each preview error must still be covered by the verified uncertainty sets.
 
@@ -1036,37 +1067,43 @@ The behavior model, predictive objective, and \(0.03~\mathrm{m/s}\) empirical su
 
 | Realization map | Maximum successor defect (m/s) | Unused defect budget (m/s) | \(D_\tau\) containment margin (Nm) | Sampled refinement checks |
 |---|---:|---:|---:|---:|
-| Planar 2R | 0.007456 | 0.022544 | 0.002525 | Yes |
-| FR3-inspired surrogate | 0.007586 | 0.022414 | \(8.82\times10^{-6}\) | Yes |
-| Six-axis-arm surrogate | 0.007586 | 0.022414 | \(9.97\times10^{-5}\) | Yes |
+| Planar 2R | 0.007456 | 0.022544 | 0.002523 | Yes |
+| FR3-inspired surrogate | 0.007696 | 0.022304 | \(8.66\times10^{-6}\) | Yes |
+| Six-axis-arm surrogate | 0.007696 | 0.022304 | \(9.96\times10^{-5}\) | Yes |
 
 All three reports use the same numerical budget. This is a sampled-trajectory numerical audit, not an analytic workspace-wide proof, a robust-invariance experiment, or validation of the surrogates as full robot models. Instantiating certificate transfer would additionally require an independently verified \((F,\mathcal K_{\mathrm{cert}},\mathcal S,\mathcal E_\star)\).
 
 ## 9.4 Ablations
 
-![Paired ablations for horizon constraints, tightening, preview, fast remapping, final projection, and realization-map updates.](results/ablation_summary.png)
+![Paired ablations for horizon constraints, tightening, preview, fast remapping, final projection, rate smoothing, realization-map updates, and the certified action set.](results/ablation_summary.png)
 
-The full-horizon controller produced zero predicted future torque violation in the horizon-ramp case. Constraining only the first predicted move also kept the executed first move inside the box, but left a \(3.594~\mathrm{Nm}\) planned future violation and produced \(31.192~\mathrm{mm}\) workspace excess. Thus checking only \(i=0\) hides the failure that motivated this study.
+The full-horizon controller produced zero predicted future torque violation in the horizon-ramp case. Constraining only the first predicted move also kept the executed first move inside the box, but left a \(3.587~\mathrm{Nm}\) planned future violation and produced \(31.180~\mathrm{mm}\) workspace excess. Thus checking only \(i=0\) hides the failure that motivated this study.
 
 Removing uncertainty tightening produced \(0.0848~\mathrm{Nm}\) pre-projection excess; the final projection concealed this at the applied-torque channel but did not restore the no-clipping refinement condition. Disabling the final projection in the sudden-disturbance case produced \(10.538~\mathrm{Nm}\) applied excess, confirming that slow prediction cannot replace the high-rate actuator guard.
 
-The remaining ablations are informative negative results. Zero-force preview increased workspace excess from \(344.25\) to \(874.06~\mathrm{mm}\), and neither preview option recovered viability under the deliberately severe preview mismatch. In the reduced-order benchmark, high-rate remapping did not outperform cached torque, and updating the realization map was numerically indistinguishable from freezing it. These two architectural benefits therefore remain hypotheses for nonlinear rigid-body and hardware tests, not demonstrated conclusions of the present experiment.
+Removing the rate-smoothing term from the objective left correction RMSE under slow saturation statistically unchanged (\(1.0604\) versus \(1.0603~\mathrm{m/s^2}\) with smoothing on). With the exact-pass-through bypass already confining intervention to genuinely infeasible steps, smoothing's remaining role is to shape the QP's solution during those interventions, and this gradually ramping scenario does not exercise that distinction; its effect under a more abrupt correction is left to future work.
+
+The remaining ablations are informative negative results. Zero-force preview increased workspace excess from \(344.265\) to \(873.921~\mathrm{mm}\), and neither preview option recovered viability under the deliberately severe preview mismatch. In the reduced-order benchmark, high-rate remapping did not outperform cached torque, and updating the realization map was numerically indistinguishable from freezing it. These two architectural benefits therefore remain hypotheses for nonlinear rigid-body and hardware tests, not demonstrated conclusions of the present experiment.
+
+The eight main stress scenarios never approach the certificate-tightened velocity bound closely enough to exercise \(\mathcal K_{\mathrm{cert}}\), consistent with Section 9.3's finding that the audited defect leaves most of the certificate radius unused. A dedicated ninth scenario (Section 8) starts at \(v_0=0.58~\mathrm{m/s}\), already inside the narrow band above the tightened bound (\(0.57~\mathrm{m/s}\)) but below the untightened speed limit (\(0.60~\mathrm{m/s}\)), with a distant goal that keeps pulling the request further. With \(\mathcal K_{\mathrm{cert}}\) enforced, peak speed is held at its \(0.580~\mathrm{m/s}\) starting value; without it, peak speed climbs to \(0.597~\mathrm{m/s}\), toward the untightened limit. Because the initial state \(z_0\) itself is never constrained by the QP, the constrained case cannot undo an already-out-of-budget start --- it can only prevent further growth --- so this ablation isolates the constraint's effect on the manager's output rather than demonstrating recovery from an infeasible initial condition.
 
 ## 9.5 Timing
 
-In the regenerated run, the manager's median-of-run-medians was \(1.795~\mathrm{ms}\), with a worst observed maximum of \(13.543~\mathrm{ms}\), below the \(20~\mathrm{ms}\) manager period. The fast-path median-of-run-medians was \(121.7~\mu\mathrm{s}\), with a worst observed maximum of \(451.7~\mu\mathrm{s}\). All recorded calls met their nominal periods on this run, but non-real-time Python measurements establish typical throughput, not hard real-time execution.
+In the regenerated run, the manager's median-of-run-medians was \(1.695~\mathrm{ms}\), with a worst observed maximum of \(13.398~\mathrm{ms}\), below the \(20~\mathrm{ms}\) manager period. The fast-path median-of-run-medians was \(121.2~\mu\mathrm{s}\), but its worst observed maximum was \(2.466~\mathrm{ms}\), exceeding the \(1~\mathrm{ms}\) nominal period. This scheduling outlier's severity varies across regenerated runs and is characteristic of the non-real-time Python implementation; it establishes typical throughput, not hard real-time execution.
 
 ---
 
 # 10. Claim Audit
 
-The evidence supports four bounded conclusions, plus one conditional analytical result.
+The evidence supports six bounded conclusions, plus one conditional analytical result.
 
 1. A common command/preview contract accepted all five implemented fast-controller interfaces without changing the predictive optimization statement.
 2. Horizon-wide constraints exposed a future violation that a first-step-only check missed.
 3. One empirical successor-defect budget passed sampled checks across three distinct realization maps.
 4. The final \(1~\mathrm{kHz}\) projection remained necessary for disturbances arriving between manager updates.
-5. Section 7.6 sketches, without stating as a corollary, a candidate task-channel dissipativity-transfer condition on the no-clipping branch; it is analytical only, not evaluated in the experiments, assumes rather than constructs its power-defect bound, and never relates the abstract storage function to a physical one.
+5. The exact-pass-through bypass verifiably confines intervention to genuinely infeasible steps: correction RMSE under no saturation is exactly zero for four of five controllers, and removing the rate-smoothing term leaves correction under slow saturation statistically unchanged, confirming smoothing no longer perturbs already-feasible requests.
+6. The concrete, velocity-tightening instantiation of \(\mathcal K_{\mathrm{cert}}\) is enforced as a hard QP constraint, and a dedicated ablation confirms it changes the manager's output when it binds while leaving all eight main stress scenarios unaffected.
+7. Section 7.6 sketches, without stating as a corollary, a candidate task-channel dissipativity-transfer condition on the no-clipping branch; it is analytical only, not evaluated in the experiments, assumes rather than constructs its power-defect bound, and never relates the abstract storage function to a physical one.
 
 The evidence does not support universal black-box-policy safety, hard real-time execution, recursive feasibility, a certified viability region, full-port passivity, or manufacturer-specific FR3 performance. The mismatch failures are not omitted: they mark where the sampled refinement checks and theorem premises cease to hold.
 
@@ -1165,7 +1202,7 @@ The architecture offers a model-based runtime boundary for physical-AI behavior 
 
 This paper does not propose MPC as a replacement for fast robot control. PD, impedance, RL, neural, and AI-conditioned controllers remain in the \(1~\mathrm{kHz}\) loop. A slower predictive realization manager forecasts when their requested dynamics will become unrealizable under actuator saturation and introduces the smallest behavior correction before direct clipping is required.
 
-The double-integrator prediction backbone is useful but classical. The contribution is the separation that permits a behavior-level certificate to be reused through an explicit robot-specific refinement condition. In 108 deterministic cases, the interface accepted five fast-controller types, and one empirical successor-defect budget passed sampled checks across three realization surrogates. The benchmark does not instantiate the theorem's robust-invariance premise. Horizon-wide correction prevented the slow, directional, and near-boundary braking violations, while abrupt disturbance and severe mismatch provided explicit counterexamples outside the theorem's premises.
+The double-integrator prediction backbone is useful but classical. The contribution is the separation that permits a behavior-level certificate to be reused through an explicit robot-specific refinement condition, and a certified action set stated in behavior coordinates. A deliberately simple instantiation of that certified action set is enforced inside the QP itself, so the theorem's key hypothesis holds by construction rather than by a check applied afterward. In 111 deterministic cases, the interface accepted five fast-controller types, one empirical successor-defect budget passed sampled checks across three realization surrogates, and a dedicated ablation confirmed the certified action set changes the manager's output when it binds. Only the abstract side of the theorem's premise is instantiated this way; the physical containment the robust-invariance premise also requires remains a sampled audit, not a workspace-wide proof. Horizon-wide correction prevented the slow, directional, and near-boundary braking violations, while abrupt disturbance and severe mismatch provided explicit counterexamples outside the theorem's premises.
 
 Physical feasibility remains configuration-dependent; what transfers is the certificate and the logic connecting behavior to realization. The present results establish a reproducible reduced-order proof of concept, not hardware robustness, analytic whole-workspace verification, or hard real-time execution.
 
@@ -1181,7 +1218,7 @@ The reduced-order experiments resolve the implementation questions but leave the
 4. evaluate contacts, orientation, null-space motion, torque rate, sensing delay, and state-estimation error;
 5. compare against independently implemented, parameter-matched predictive safety-filter and vector or command-governor baselines that modify a multidimensional task command, not only a scalar parameter;
 6. sweep disturbance magnitude, timing, and sensor noise across seeds to characterize the margin between each successful scenario and its failure boundary, rather than reporting single deterministic trajectories;
-7. propagate the estimated disturbance \(d_{i|\ell}\) of Section 4.1 through the QP's state prediction, which currently assumes it is zero, and intersect \(\mathcal K_{\mathrm{cert}}(z_{i|\ell})\) with \(\mathcal A_r^{\mathrm{tight}}\) inside the solver so that Theorem 1 is enforced by construction rather than checked after the fact;
+7. bound the intra-step drift of the fast controller's re-evaluated request within one manager period (the QP currently holds \(a_{\mathrm{req},i|\ell}\) fixed for its full \(\Delta t\), which the sudden-disturbance failure mode exposes, not a lack of force compensation in the realization map), and generalize the instantiated \(\mathcal K_{\mathrm{cert}}\) beyond its present scope --- it tightens only the one-step velocity block using an \(\infty\)-norm storage function, not a general quadratic or position-aware certificate, and was constructed for one 2-D reduced-order model rather than derived from a workspace-wide invariance proof;
 8. move the fast path to a real-time implementation and report deadline misses over long-duration trials; and
 9. validate the architecture on hardware with an independent emergency-stop and safety layer.
 

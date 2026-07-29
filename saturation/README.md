@@ -44,12 +44,14 @@ PYTHONPATH=simulation \
 python3 simulation/run_all_experiments.py
 ```
 
-The command runs:
+The command runs 111 deterministic configurations:
 
 - 40 scenario/baseline cases;
 - 30 controller-interface cases;
 - 24 cross-realization cases; and
-- 14 targeted ablations.
+- 17 targeted ablations, including a dedicated ninth scenario (unregistered
+  in the main scenario/robot-transfer matrices) isolating the certified
+  action set's effect.
 
 It writes:
 
@@ -65,11 +67,20 @@ It writes:
 ## Headline results
 
 - Horizon-wide constraints reduce the planned future torque excess from
-  \(3.594~\mathrm{Nm}\) to zero in the dedicated horizon-ramp case.
+  \(3.587~\mathrm{Nm}\) to zero in the dedicated horizon-ramp case.
 - The same \(0.03~\mathrm{m/s}\) empirical audit threshold contains the
   observed successor defects for all three realization maps; their maximum observed
-  defects are \(0.00746\), \(0.00759\), and \(0.00759~\mathrm{m/s}\). This
+  defects are \(0.00746\), \(0.00770\), and \(0.00770~\mathrm{m/s}\). This
   audit is not a robust-invariance certificate.
+- An exact-pass-through bypass confines intervention to genuinely infeasible
+  steps: correction RMSE under no saturation is exactly zero for four of the
+  five controller interfaces.
+- A concrete, deliberately simple certified action set (velocity-block
+  tightening via an \(\infty\)-norm storage function) is now enforced as a
+  hard QP constraint alongside the actuator-feasibility set. A dedicated
+  ablation confirms it changes the manager's output when it binds, holding
+  peak speed at \(0.580~\mathrm{m/s}\) versus \(0.597~\mathrm{m/s}\)
+  unconstrained, while leaving the eight main stress scenarios unaffected.
 - The slow, directional-collapse, and near-boundary braking cases satisfy
   every sampled interface-audit check under the proposed manager.
 - Sudden disturbance and severe model/preview mismatch do not satisfy the

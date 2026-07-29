@@ -16,6 +16,7 @@ import numpy as np
 from saturation_benchmark import (
     BenchmarkConfig,
     RunOptions,
+    Scenario,
     make_controllers,
     make_robots,
     make_scenarios,
@@ -23,6 +24,27 @@ from saturation_benchmark import (
     serializable_config,
     summarize,
 )
+
+
+def _certificate_margin_scenario() -> Scenario:
+    """Dedicated K_cert ablation scenario: not registered in make_scenarios(),
+    so it does not enter the scenario or robot-transfer matrices. Starts with
+    velocity already inside the untightened speed box but outside the
+    certificate-tightened one, with a distant goal that keeps pulling further,
+    to test whether the certified action set actually binds."""
+
+    zero = lambda _t: np.zeros(2)
+    return Scenario(
+        "certificate_margin",
+        (0.0, 0.0, 0.58, 0.0),
+        lambda _t: np.array([0.5, 0.0]),
+        zero,
+        lambda _t: 1.0,
+        description=(
+            "dedicated K_cert ablation: initial speed above the "
+            "certificate-tightened bound, goal continuing to pull further"
+        ),
+    )
 
 
 METHODS = (
@@ -210,13 +232,30 @@ def ablation_matrix(cfg, robots, controllers, scenarios):
             "preview_oracle_force",
             RunOptions(method="proposed", preview_mode="oracle"),
         ),
+        (
+            "slow_saturation",
+            "no_smoothing",
+            RunOptions(method="proposed", smoothing=False),
+        ),
+        (
+            "certificate_margin",
+            "constrained",
+            RunOptions(method="proposed", certificate_constrained=True),
+        ),
+        (
+            "certificate_margin",
+            "unconstrained",
+            RunOptions(method="proposed", certificate_constrained=False),
+        ),
     )
+    all_scenarios = dict(scenarios)
+    all_scenarios["certificate_margin"] = _certificate_margin_scenario()
     for scenario_name, variant_name, options in experiments:
         key = _case_key("ablation", scenario_name, variant_name)
         log = run_case(
             robot,
             controller,
-            scenarios[scenario_name],
+            all_scenarios[scenario_name],
             cfg,
             options,
         )
@@ -468,7 +507,7 @@ def make_robot_transfer_figure(audit: dict, output: Path):
 def make_ablation_figure(
     metrics: dict, scenario_metrics: dict, output: Path
 ):
-    fig, axes = plt.subplots(2, 3, figsize=(12.0, 7.2))
+    fig, axes = plt.subplots(2, 4, figsize=(15.5, 7.2))
 
     def bars(ax, labels, values, ylabel, title, color="#2563eb"):
         x = np.arange(len(labels))
@@ -522,6 +561,21 @@ def make_ablation_figure(
         "Final 1 kHz projection",
         color="#dc2626",
     )
+    bars(
+        axes[0, 3],
+        ["smoothing on", "smoothing off"],
+        [
+            scenario_metrics["scenario__slow_saturation__proposed"][
+                "correction_rmse_mps2"
+            ],
+            metrics["ablation__slow_saturation__no_smoothing"][
+                "correction_rmse_mps2"
+            ],
+        ],
+        "correction RMSE (m/s$^2$)",
+        "Rate-smoothing term",
+        color="#be185d",
+    )
     preview_labels = ["rollout", "ZOH", "zero force", "oracle force"]
     preview_keys = [
         "ablation__preview_mismatch__full",
@@ -566,6 +620,17 @@ def make_ablation_figure(
         "successor defect (m/s)",
         "Realization-map update",
         color="#0891b2",
+    )
+    bars(
+        axes[1, 3],
+        [r"$\mathcal{K}_{cert}$ on", r"$\mathcal{K}_{cert}$ off"],
+        [
+            metrics["ablation__certificate_margin__constrained"]["peak_speed_mps"],
+            metrics["ablation__certificate_margin__unconstrained"]["peak_speed_mps"],
+        ],
+        "peak speed (m/s)",
+        "Certified action set",
+        color="#65a30d",
     )
     fig.tight_layout()
     fig.savefig(output, dpi=180)

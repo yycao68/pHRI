@@ -591,6 +591,8 @@ class PredictiveManager:
         tightening: bool = True,
         preview_mode: str = "rollout",
         map_mode: str = "updated",
+        smoothing: bool = True,
+        certificate_constrained: bool = True,
     ) -> None:
         self.cfg = cfg
         self.robot = robot
@@ -598,6 +600,8 @@ class PredictiveManager:
         self.tightening = tightening
         self.preview_mode = preview_mode
         self.map_mode = map_mode
+        self.smoothing = smoothing
+        self.certificate_constrained = certificate_constrained
         self.previous = np.zeros(2)
 
     def _force_forecast(self, scenario: Scenario, t: float, measured: Array) -> Array:
@@ -672,6 +676,18 @@ class PredictiveManager:
         predicted_torque_blocks: list[tuple[Array, Array, Array]] = []
         frozen_state = nominal_states[0]
 
+        # Certified action set K_cert: the one-step-ahead velocity block is
+        # tightened by the certificate radius (successor_defect_budget), so
+        # that any a_req satisfying this constraint keeps the successor
+        # inside the speed bound even under a successor defect up to that
+        # radius. Position is left untightened: only the velocity-space
+        # successor defect is measured and audited (Table III).
+        speed_bound = (
+            cfg.speed_limit - cfg.successor_defect_budget
+            if self.certificate_constrained
+            else cfg.speed_limit
+        )
+
         for i in range(h_n):
             selector = np.zeros((2, n_u))
             selector[:, 2 * i : 2 * i + 2] = np.eye(2)
@@ -681,13 +697,13 @@ class PredictiveManager:
             lowers.extend(
                 (
                     -cfg.position_limit * np.ones(2) - state_offset[:2],
-                    -cfg.speed_limit * np.ones(2) - state_offset[2:],
+                    -speed_bound * np.ones(2) - state_offset[2:],
                 )
             )
             uppers.extend(
                 (
                     cfg.position_limit * np.ones(2) - state_offset[:2],
-                    cfg.speed_limit * np.ones(2) - state_offset[2:],
+                    speed_bound * np.ones(2) - state_offset[2:],
                 )
             )
 
@@ -747,48 +763,64 @@ class PredictiveManager:
         uppers.append(rate_step * np.ones(n_u) - diff_offset)
 
         q_ref = nominal.reshape(-1)
-        p_mat = 2.0 * (
-            cfg.correction_weight * np.eye(n_u)
-            + cfg.rate_weight * difference.T @ difference
-        )
-        q_vec = -2.0 * cfg.correction_weight * q_ref
-        q_vec += 2.0 * cfg.rate_weight * difference.T @ diff_offset
-        p_mat += 1.0e-8 * np.eye(n_u)
+        con_stack = np.vstack(con_maps)
+        lower_stack = np.concatenate(lowers)
+        upper_stack = np.concatenate(uppers)
 
-        solver = osqp.OSQP()
-        solver.setup(
-            P=sparse.csc_matrix(p_mat),
-            q=q_vec,
-            A=sparse.csc_matrix(np.vstack(con_maps)),
-            l=np.concatenate(lowers),
-            u=np.concatenate(uppers),
-            verbose=False,
-            polishing=False,
-            eps_abs=cfg.osqp_eps,
-            eps_rel=cfg.osqp_eps,
-            max_iter=5000,
+        # Exact pass-through: if the nominal rollout already satisfies every
+        # constraint row, skip the QP rather than let the smoothing term
+        # perturb an already-feasible request.
+        nominal_feasible = bool(
+            np.all(con_stack @ q_ref >= lower_stack - 1.0e-9)
+            and np.all(con_stack @ q_ref <= upper_stack + 1.0e-9)
         )
-        result = solver.solve(raise_error=False)
-        feasible = result.info.status_val in (1, 2)
-        if feasible:
-            sequence = np.asarray(result.x[:n_u]).reshape(h_n, 2)
+        if nominal_feasible:
+            sequence = nominal.copy()
+            feasible = True
         else:
-            a_h, b_h = halfspaces_for_acceleration(
-                self.robot,
-                state,
-                measured_force,
-                t,
-                scenario.torque_scale(t),
-                scenario.mismatch_scale,
-                self.tightening,
+            rate_weight = cfg.rate_weight if self.smoothing else 0.0
+            p_mat = 2.0 * (
+                cfg.correction_weight * np.eye(n_u)
+                + rate_weight * difference.T @ difference
             )
-            a_state, b_state = reactive_state_halfspaces(state, cfg)
-            first = project_polytope_2d(
-                nominal[0],
-                np.vstack((a_h, a_state)),
-                np.concatenate((b_h, b_state)),
+            q_vec = -2.0 * cfg.correction_weight * q_ref
+            q_vec += 2.0 * rate_weight * difference.T @ diff_offset
+            p_mat += 1.0e-8 * np.eye(n_u)
+
+            solver = osqp.OSQP()
+            solver.setup(
+                P=sparse.csc_matrix(p_mat),
+                q=q_vec,
+                A=sparse.csc_matrix(con_stack),
+                l=lower_stack,
+                u=upper_stack,
+                verbose=False,
+                polishing=False,
+                eps_abs=cfg.osqp_eps,
+                eps_rel=cfg.osqp_eps,
+                max_iter=5000,
             )
-            sequence = np.tile(first, (h_n, 1))
+            result = solver.solve(raise_error=False)
+            feasible = result.info.status_val in (1, 2)
+            if feasible:
+                sequence = np.asarray(result.x[:n_u]).reshape(h_n, 2)
+            else:
+                a_h, b_h = halfspaces_for_acceleration(
+                    self.robot,
+                    state,
+                    measured_force,
+                    t,
+                    scenario.torque_scale(t),
+                    scenario.mismatch_scale,
+                    self.tightening,
+                )
+                a_state, b_state = reactive_state_halfspaces(state, cfg)
+                first = project_polytope_2d(
+                    nominal[0],
+                    np.vstack((a_h, a_state)),
+                    np.concatenate((b_h, b_state)),
+                )
+                sequence = np.tile(first, (h_n, 1))
         self.previous = sequence[0].copy()
 
         margins = []
@@ -875,6 +907,8 @@ class RunOptions:
     map_mode: str = "updated"
     final_projection: bool = True
     cached_torque: bool = False
+    smoothing: bool = True
+    certificate_constrained: bool = True
 
 
 def run_case(
@@ -893,6 +927,8 @@ def run_case(
         tightening=options.tightening,
         preview_mode=options.preview_mode,
         map_mode=options.map_mode,
+        smoothing=options.smoothing,
+        certificate_constrained=options.certificate_constrained,
     )
     held_delta = np.zeros(2)
     held_alpha = 1.0
@@ -1208,6 +1244,7 @@ def summarize(log: dict, cfg: BenchmarkConfig) -> dict:
         "peak_applied_torque_violation_Nm": float(np.max(applied_excess)),
         "peak_position_violation_m": float(np.max(position_excess)),
         "peak_speed_violation_mps": float(np.max(speed_excess)),
+        "peak_speed_mps": float(np.max(np.abs(state[:, 2:]))),
         "behavior_realization_rmse_mps2": float(np.sqrt(np.mean(realization**2))),
         "correction_rmse_mps2": correction_rmse,
         "intervention_fraction": float(
