@@ -1,4 +1,4 @@
-# Certificate-Transferable Predictive Saturation Management for Fast Robot Controllers
+# Predictive Saturation Management through a Behavior--Realization Interface
 
 ## Working Paper Draft
 
@@ -8,11 +8,11 @@ This manuscript narrows an earlier universal-predictor framing to conditional ce
 
 High-rate robot controllers such as proportional--derivative control, impedance control, reinforcement-learning policies, neural-network policies, and AI-generated behavior policies can all produce satisfactory nominal motion while still losing their intended closed-loop dynamics when actuator saturation occurs. Direct clipping is computationally cheap, but it intervenes only after the requested command has become unrealizable and hides the resulting change in behavior.
 
-This paper proposes a two-rate architecture in which an arbitrary nominal controller remains in a \(1~\mathrm{kHz}\) fast loop, while a slower model-predictive realization manager forecasts loss of actuator authority and modifies the requested dynamics before saturation. The fast controller is not replaced by MPC. Instead, it supplies a nominal command and, when available, a preview model; the predictive layer selects a realizable acceleration sequence close to that nominal preview. The robot-dependent realization map converts actuator boxes into configuration-dependent admissible task-acceleration zonotopes, exposing directional authority loss.
+This paper proposes a two-rate architecture in which a nominal controller exposing a task-acceleration request remains in a \(1~\mathrm{kHz}\) fast loop, while a slower model-predictive realization manager forecasts loss of actuator authority and modifies the requested dynamics before saturation. The fast controller is not replaced by MPC. Instead, it supplies a nominal task-acceleration request and, when available, a preview model; the predictive layer selects a realizable acceleration sequence close to that nominal preview. The robot-dependent realization map converts actuator boxes into configuration-dependent admissible task-acceleration sets, exposing directional authority loss.
 
 The universal double-integrator prediction backbone is treated as a convenient interface rather than as the principal novelty. The central contribution is a certificate-transfer result: a feasibility, stability, or dissipativity certificate established in the abstract behavior coordinates transfers to a physical robot when its realization map satisfies an explicit refinement condition and the prediction error lies inside the certificate's robustness margin. This separates reusable behavior-level reasoning from robot-specific actuator geometry while retaining the latter where it is physically unavoidable.
 
-A deterministic suite of 108 simulation cases evaluates five controller interfaces, three robot-specific realization surrogates, eight stress scenarios (one reserved for the horizon-constraint ablation), and six ablation families. Horizon-wide constraints remove a \(3.594~\mathrm{Nm}\) planned future violation missed by a first-step check, while a common \(0.03~\mathrm{m/s}\) empirical budget contains the sampled successor defects of all three realization maps. This sampled audit does not instantiate the robust-invariance premise of the transfer theorem. Severe disturbance and model/preview mismatch explicitly fail the sampled refinement checks.
+A deterministic suite of 108 configurations evaluates five controller interfaces, three robot-specific realization surrogates, eight stress scenarios (one reserved for the horizon-constraint ablation), and six ablation families. Horizon-wide constraints remove a \(3.594~\mathrm{Nm}\) planned future violation missed by a first-step check, while a common \(0.03~\mathrm{m/s}\) empirical budget contains the sampled successor defects of all three realization maps. This sampled audit does not instantiate the robust-invariance premise of the transfer theorem. Severe disturbance and model/preview mismatch explicitly fail the sampled refinement checks.
 
 ---
 
@@ -198,33 +198,41 @@ where \(T_f=1~\mathrm{ms}\) is the fast-loop sample time.
 
 ## 3.2 Controller-agnostic nominal-command interface
 
-Every fast controller is wrapped by the same interface:
+Every fast controller is wrapped by the same interface, and it must expose a task-acceleration request, not an arbitrary torque:
 
 \[
 \mathcal I_\theta:
 (s_k,\xi_k)
 \mapsto
-\left(\tau_k^0,\mathcal P_{\theta,k},\Sigma_{\theta,k}\right).
+\left(a_{\mathrm{req},k}^0,\mathcal P_{\theta,k},\Sigma_{\theta,k}\right).
 \]
 
 Here:
 
-- \(\tau_k^0\) is the nominal torque requested at the current \(1~\mathrm{kHz}\) sample;
-- \(\mathcal P_{\theta,k}\) is an optional preview operator that predicts future nominal commands along a candidate state rollout; and
+- \(a_{\mathrm{req},k}^0\) is the nominal task-acceleration requested at the current \(1~\mathrm{kHz}\) sample;
+- \(\mathcal P_{\theta,k}\) is an optional preview operator that predicts future nominal requests along a candidate state rollout; and
 - \(\Sigma_{\theta,k}\) bounds preview uncertainty or model error.
 
-The current command \(\tau_k^0\) is mandatory. Preview is not assumed to be exact. If the controller has no reliable preview model, the manager may use a zero-order hold, a local linearization, an ensemble bound, or a learned predictor, but the resulting uncertainty must appear explicitly in \(\Sigma_{\theta,k}\).
+The nominal pre-projection torque is then *defined*, not assumed, as the robot's own realization of that request (Section 4.2),
+\[
+\tau_k^0=\tau_{\mathrm{base},r}(x_k)+H_r(x_k)a_{\mathrm{req},k}^0,
+\]
+so the fast-loop correction of Section 6.4 is well defined by construction. A controller that instead outputs torque directly is outside this interface unless it exposes the decomposition \(\tau_k^0=\tau_{\mathrm{base},r}(x_k)+H_r(x_k)a_{\mathrm{req},k}^0+\tau_{\perp,k}^0\), with the null-space residual \(\tau_{\perp,k}^0\) folded into \(\tau_{\mathrm{base},r}(x_k)\)'s actuator-budget accounting; otherwise its realizability cannot be tested against \(\mathcal A_r^{\mathrm{tight}}(x)\) below.
 
-This prevents an unjustified universality claim: an opaque policy with no current command, no query access, and no bounded preview error is outside the theorem.
+The current request \(a_{\mathrm{req},k}^0\) is mandatory. Preview is not assumed to be exact. If the controller has no reliable preview model, the manager may use a zero-order hold, a local linearization, an ensemble bound, or a learned predictor, but the resulting uncertainty must appear explicitly in \(\Sigma_{\theta,k}\).
+
+This prevents an unjustified universality claim: an opaque policy with no current request, no query access, and no bounded preview error is outside the theorem.
 
 ## 3.3 Examples of the interface
+
+All five interfaces below expose \(a_{\mathrm{req}}^0\) directly and need no torque decomposition; secondary torque (gravity, orientation, null-space) belongs to \(\tau_{\mathrm{base},r}(x)\) in the realization map, not to the controller's own request.
 
 ### PD controller
 
 \[
-\tau^0
+a^0
 =
-K_p(q_d-q)+K_d(\dot q_d-\dot q)+h_r(q,\dot q).
+K_p(q_d-q)+K_d(\dot q_d-\dot q).
 \]
 
 Its preview operator evaluates the same analytic law on predicted states and reference samples.
@@ -232,13 +240,11 @@ Its preview operator evaluates the same analytic law on predicted states and ref
 ### Cartesian impedance controller
 
 \[
-\tau^0
+a^0
 =
-J^\top
 \left(
 -K_xe-D_x\dot e+F_{\mathrm{ff}}
-\right)
-+\tau_{\mathrm{null}}+h_r.
+\right)/M_d.
 \]
 
 Its preview is analytic when the desired pose and interaction-force forecast are available.
@@ -246,7 +252,7 @@ Its preview is analytic when the desired pose and interaction-force forecast are
 ### Reinforcement-learning policy
 
 \[
-\tau^0=\pi_{\mathrm{RL}}(o_k).
+a^0=\pi_{\mathrm{RL}}(o_k).
 \]
 
 Preview may query the policy on predicted observations. For stochastic policies, the manager uses a confidence set or bounded disturbance model rather than a single deterministic rollout.
@@ -254,19 +260,19 @@ Preview may query the policy on predicted observations. For stochastic policies,
 ### Neural-network controller
 
 \[
-\tau^0=\pi_{\mathrm{NN}}(s_k;\theta).
+a^0=\pi_{\mathrm{NN}}(s_k;\theta).
 \]
 
 Preview can use direct network evaluation, local Jacobian bounds, interval bounds, or an ensemble. A point prediction without a validated error bound provides empirical forecasting, not a transferable certificate.
 
 ### AI-based behavior controller
 
-A language model, diffusion policy, or world-model planner should not normally close a raw \(1~\mathrm{kHz}\) torque loop. It may provide a behavior command \(b_k\) to a fast policy,
+A language model, diffusion policy, or world-model planner should not normally close a raw \(1~\mathrm{kHz}\) loop. It may provide a behavior command \(b_k\) to a fast policy that itself exposes the required interface,
 
 \[
 b_k=\pi_{\mathrm{AI}}(\mathcal C_k),
 \qquad
-\tau^0_k=\pi_{\mathrm{fast}}(s_k,b_k).
+a^0_k=\pi_{\mathrm{fast}}(s_k,b_k).
 \]
 
 Only the fast execution contract and its bounded preview enter the analysis; the semantics of the upstream AI output are outside the certificate.
@@ -342,6 +348,8 @@ H_r(x)=J_r(q)^\top\Lambda_r(q),
 \left(J_rM_r^{-1}J_r^\top\right)^{-1}.
 \]
 
+Because the robot dynamics of Section 3.1 already include \(J_r(q)^\top F_h\), the actuator only supplies the part of the task force not already delivered by the interaction wrench; \(\tau_{\mathrm{base},r}(x)\) and the realization map are evaluated net of this feedforward term, and \(\hat\tau_r\), \(\tau_r^{\mathrm{pre}}\) (Section 6.3) depend on the current or forecast \(F_h\) as well as on \((x,a_{\mathrm{req}})\), suppressed notationally below.
+
 All actuator-consuming secondary commands, including orientation and
 null-space torques, must be included in
 \(\tau_{\mathrm{base},r}(x)\). Omitting them makes
@@ -413,7 +421,7 @@ facets. This structure enables support-function and directional-authority calcul
 
 ## 5.1 Saturation margin
 
-For a predicted torque \(\tau_{i|\ell}\), define the normalized actuator margin
+For a predicted torque \(\tau_{i|\ell}\), define the normalized actuator margin, centered so that \(\mu=1\) at \(\tau_c\) and \(\mu=0\) at either bound,
 
 \[
 \mu_{i|\ell}
@@ -421,17 +429,21 @@ For a predicted torque \(\tau_{i|\ell}\), define the normalized actuator margin
 \min_j
 \left\{
 \frac{\tau_{\max,j}-\tau_{j,i|\ell}}
-{\tau_{\max,j}-\tau_{\min,j}},
+{\tau_{\max,j}-\tau_{c,j}},
 \frac{\tau_{j,i|\ell}-\tau_{\min,j}}
-{\tau_{\max,j}-\tau_{\min,j}}
-\right\}.
+{\tau_{c,j}-\tau_{\min,j}}
+\right\},
+\qquad
+\tau_{c,j}=\frac{\tau_{\max,j}+\tau_{\min,j}}{2},
 \]
 
-Then:
+which for symmetric limits reduces to \(\mu_{i|\ell}=1-\max_j|\tau_{j,i|\ell}|/\tau_{\max,j}\). Then:
 
 - \(\mu_{i|\ell}>0\): the command is inside the actuator box;
 - \(\mu_{i|\ell}=0\): at least one actuator lies on its limit;
 - \(\mu_{i|\ell}<0\): the nominal predicted command is unrealizable.
+
+This scalar is a diagnostic only and is not computed in the experiments of Section 9; the directional measure below is the one used there.
 
 The horizon margin is
 
@@ -443,7 +455,7 @@ The horizon margin is
 
 ## 5.2 Directional authority
 
-Given a current feasible task acceleration \(a_c\) and a unit direction \(d\), define the remaining positive authority
+Given a current feasible task acceleration \(a_c\) and a unit direction \(d\), define the remaining positive authority against the tightened realizable set \(\mathcal A_r^{\mathrm{tight}}(x)\) of Section 6.3, not the untightened zonotope \(\mathcal Z_r(x)\) of Section 4.3, so the metric accounts for secondary-torque consumption and uncertainty exactly as the optimizer does:
 
 \[
 \alpha_r^{+}(x,a_c,d)
@@ -452,7 +464,7 @@ Given a current feasible task acceleration \(a_c\) and a unit direction \(d\), d
 \left\{
 \alpha
 \;\middle|\;
-a_c+\alpha d\in\mathcal Z_r(x)
+a_c+\alpha d\in\mathcal A_r^{\mathrm{tight}}(x)
 \right\}.
 \]
 
@@ -465,7 +477,7 @@ Similarly,
 \left\{
 \alpha
 \;\middle|\;
-a_c-\alpha d\in\mathcal Z_r(x)
+a_c-\alpha d\in\mathcal A_r^{\mathrm{tight}}(x)
 \right\}.
 \]
 
@@ -516,7 +528,7 @@ Let \(a_{\mathrm{req},i|\ell}^0\) be the behavior acceleration induced by the fi
 z_{i+1|\ell}
 =
 Az_{i|\ell}
-+B\left(a_{\mathrm{req},i|\ell}+\hat d_{i|\ell}\right),
++Ba_{\mathrm{req},i|\ell},
 \\
 &
 \tau_{i|\ell}
@@ -543,7 +555,7 @@ a_{\mathrm{req},\min}\le a_{\mathrm{req},i|\ell}\le a_{\mathrm{req},\max},
 \end{aligned}
 \]
 
-Here \(\hat x^0_{i|\ell}\) is fixed from the nominal rollout when the QP matrices are assembled. The state, acceleration, rate, and tightened torque bounds are hard. The implementation contains neither slack variables nor a separately constructed terminal invariant set. Because acceleration variation is penalized, a small intervention may occur even when the nominal sequence is feasible. The applied first correction is \(\Delta a_{\mathrm{req},\ell}=a_{\mathrm{req},0|\ell}-a_{\mathrm{req},0|\ell}^0\).
+Here \(\hat x^0_{i|\ell}\) is fixed from the nominal rollout when the QP matrices are assembled. The state prediction above omits the disturbance term \(d_{i|\ell}\) of Section 4.1: the implemented propagation is the homogeneous \(z_{i+1|\ell}=Az_{i|\ell}+Ba_{\mathrm{req},i|\ell}\), so the predicted position and speed constraints implicitly assume \(d_{i|\ell}=0\) rather than a forecast value. For controllers whose acceleration request does not itself respond to \(F_h\) (Section 3.3's PD and AI-based examples), this makes the state prediction optimistic under load; propagating an explicit \(\hat d_{i|\ell}\) forecast, with a corresponding tightening of the state constraints, is left to future work (Section 15). The state, acceleration, rate, and tightened torque bounds are hard. The implementation contains neither slack variables nor a separately constructed terminal invariant set. Because acceleration variation is penalized, a small intervention may occur even when the nominal sequence is feasible. The applied first correction is \(\Delta a_{\mathrm{req},\ell}=a_{\mathrm{req},0|\ell}-a_{\mathrm{req},0|\ell}^0\).
 
 ## 6.3 Robust tightening
 
@@ -653,20 +665,18 @@ z:V(z)\le c
 
 be a certified abstract safe or stable set.
 
-The predictive manager, including its correction of the nominal fast controller, defines the abstract policy
+Rather than designing the manager around a single abstract policy, define the *certified action set* at every \(z\in\mathcal S\),
 
 \[
-a_{\mathrm{req},\ell}=\kappa(z_\ell)
-\]
-
-and is designed for the robust certificate
-
-\[
-F(z,\kappa(z))\oplus\mathcal E_\star
-\subseteq\mathcal S
+\mathcal K_{\mathrm{cert}}(z)
+=
+\left\{a: F(z,a)\oplus\mathcal E_\star\subseteq\mathcal S\right\}
+\neq\emptyset,
 \qquad
-\forall z\in\mathcal S.
+\forall z\in\mathcal S,
 \]
+
+so that \(\mathcal S\) is robustly invariant under any measurable selection \(\kappa\) with \(\kappa(z)\in\mathcal K_{\mathrm{cert}}(z)\) for all \(z\in\mathcal S\). The predictive manager, including its correction of the nominal fast controller, need only select some \(a_{\mathrm{req},\ell}\in\mathcal K_{\mathrm{cert}}(z_\ell)\); it is not required to reproduce a single robot-independent \(\kappa\), and different robots selecting different members of \(\mathcal K_{\mathrm{cert}}(z)\) is expected, not a failure of transfer. The robot-independent object is the set \(\mathcal K_{\mathrm{cert}}\).
 
 For robot \(r\), define:
 
@@ -710,16 +720,7 @@ Inside \(\mathcal A_r^{\mathrm{tight}}(x)\), every admissible true pre-command l
 ## 7.3 Constructive theorem
 
 **Theorem 1 (Realizability-margin condition for certificate transfer).**  
-Let the abstract policy \(\kappa\) and set \(\mathcal S\) satisfy
-
-\[
-F(z,\kappa(z))\oplus\mathcal E_\star
-\subseteq\mathcal S
-\qquad
-\forall z\in\mathcal S.
-\]
-
-For robot \(r\), consider a certified physical operating region \(\mathcal X_r\) such that \(\Pi_r(\mathcal X_r)\subseteq\mathcal S\). Suppose that, for every \(x\in\mathcal X_r\), every admissible \(F_h\), and \(a_{\mathrm{req}}=\kappa(\Pi_r(x))\):
+Let \(\mathcal K_{\mathrm{cert}}\) and \(\mathcal S\) be as in Section 7.2. For robot \(r\), consider a certified physical operating region \(\mathcal X_r\) such that \(\Pi_r(\mathcal X_r)\subseteq\mathcal S\). Suppose that, for every \(x\in\mathcal X_r\), every admissible \(F_h\), and every \(a_{\mathrm{req}}\in\mathcal K_{\mathrm{cert}}(\Pi_r(x))\) that the robot-specific manager may select:
 
 1. the true pre-saturation torque obeys
    \[
@@ -753,22 +754,25 @@ the approximate refinement relation follows rather than being assumed,
 f_r^d(x,\tau_r^{\mathrm{app}},F_h)
 \right)
 \in
-F\!\left(\Pi_r(x),a_{\mathrm{req}}\right)\oplus\mathcal E_\star,
+F\!\left(\Pi_r(x),a_{\mathrm{req}}\right)\oplus\mathcal E_\star
+\subseteq\mathcal S,
 \]
 
-and therefore
+the last inclusion following directly from \(a_{\mathrm{req}}\in\mathcal K_{\mathrm{cert}}(\Pi_r(x))\), and therefore, if Condition 5's operating-region containment is verified for \(i=1,\ldots,N\) steps ahead,
 
 \[
-\Pi_r(x_k)\in\mathcal S
+\Pi_r(x_{\ell+i})\in\mathcal S,
 \qquad
-\forall k\ge0
+i=0,\ldots,N,
 \]
 
-for as long as the verified operating-region conditions hold.
+which is the finite-horizon guarantee actually supported by the implemented manager and the experiments of Section 9. Extending this to \(\Pi_r(x_k)\in\mathcal S\) for all \(k\ge0\) additionally requires the operating-region condition to hold indefinitely, a separate and independent claim.
 
-**Proof.** By Conditions 1--2, \(\tau_r^{\mathrm{pre}}\in\mathcal T_r\); hence projection onto \(\mathcal T_r\) is the identity and \(c_{\tau,r}=0\). The concrete defect decomposition therefore reduces to \(\mathcal D_{z,r}\), which is contained in \(\mathcal E_\star\) by Condition 3. This establishes the approximate refinement inclusion. Robust invariance of \(\mathcal S\) contains the next abstracted physical state. Induction from Condition 5 completes the proof.
+**Proof.** By Conditions 1--2, \(\tau_r^{\mathrm{pre}}\in\mathcal T_r\); hence projection onto \(\mathcal T_r\) is the identity and \(c_{\tau,r}=0\). The concrete defect decomposition therefore reduces to \(\mathcal D_{z,r}\), which is contained in \(\mathcal E_\star\) by Condition 3, placing the successor in \(F(\Pi_r(x),a_{\mathrm{req}})\oplus\mathcal E_\star\subseteq\mathcal S\) directly by the definition of \(\mathcal K_{\mathrm{cert}}\) --- no separate robust-invariance premise about a specific policy is needed. Finite induction from \(x_0\in\mathcal X_r\) over \(i=0,\ldots,N\) gives the horizon result; extending it to all \(k\ge0\) requires Condition 5 to hold at every step, which this argument alone does not establish.
 
 The theorem's nontrivial, falsifiable work is the construction of \(\mathcal D_{\tau,r}\) and \(\mathcal D_{z,r}\) and verification of their containments against the available actuator margin. If those sets are merely postulated without a reproducible bound, the result collapses back to a tautological refinement assumption.
+
+**Remark (connection to the implemented manager).** The QP of Section 6.2 enforces \(a_{\mathrm{req},i|\ell}\in\mathcal A_r^{\mathrm{tight}}(\hat x^0_{i|\ell})\); it does not enforce \(a_{\mathrm{req},i|\ell}\in\mathcal K_{\mathrm{cert}}(z_{i|\ell})\), and the two sets are constructed independently rather than intersected inside the solver. Theorem 1 therefore certifies the manager's actual output only on samples where that output happens to also lie in \(\mathcal K_{\mathrm{cert}}\), which the present experiments do not verify online; the audit of Section 9 checks Conditions 1--2 and the sampled successor defect, not \(\mathcal K_{\mathrm{cert}}\) membership. Constructing a concrete, computable representation of \(\mathcal K_{\mathrm{cert}}\) and adding it as an explicit QP constraint would close this gap between the theorem and the algorithm; this reduced-order study does neither and leaves both to future work (Section 15).
 
 ### Norm-checkable specialization
 
@@ -902,49 +906,39 @@ The theorem does not eliminate per-robot work. Each robot must verify:
 - the operating region; and
 - the tightened admissible set.
 
-What transfers is the robust abstract certificate \((F,\kappa,\mathcal S,\mathcal E_\star)\). A new robot need not repeat that proof if it verifies the constructive margin conditions above.
+What transfers is the robust abstract certificate \((F,\mathcal K_{\mathrm{cert}},\mathcal S,\mathcal E_\star)\). A new robot need not repeat that proof if it verifies the constructive margin conditions above.
 
 That is the paper's proposed irreducibility claim:
 
 > Separation does not make physical feasibility universal; it makes the logical boundary between a reusable certificate and robot-specific feasibility explicit and testable.
 
-## 7.6 Corollary: saturation-induced passivity defect
+## 7.6 Sketch: task-channel dissipativity transfer (not a formal result)
 
-Suppose the abstract behavior system satisfies
+This is deliberately not stated as a corollary. It is a conditional, first-version sketch: it assumes a bounded realization-power defect rather than constructing that bound from the manager's own directional-authority margin, and it never relates the abstract storage function below to a physical robot storage function or fixes sign conventions between the task-error convention \(e\) and physical interaction power. A stronger result --- bounding the defect using \(\alpha_r^+\) so that dissipativity holds precisely when the manager preserves realizability, including through active clipping, and grounded in an actual physical storage function --- requires a defined energy port and an in-horizon tank that this benchmark does not implement, and is left to future work.
+
+Suppose the abstract certificate additionally supplied a storage function \(V_\tau\) on the task-force channel with the sampled balance
 
 \[
-V(z_{\ell+1})-V(z_\ell)
+V_\tau(z_{\ell+1})-V_\tau(z_\ell)
 \le
-\Delta t\,w_\ell^\top y_\ell+\epsilon_\ell,
+\Delta t\,w_\ell^\top\dot e_\ell+\varepsilon_\ell,
 \]
 
-and define the power defect introduced specifically by the final actuator projection as
+where \(\dot e_\ell\) is the task-velocity block already carried in \(z_\ell\) and \(w_\ell\) is the task-space force accounted for by the certificate (for example, the certified component of \(F_h\)). Suppose further that the realized task-channel force is consistent with the certificate's accounting up to a bounded defect,
 
 \[
-\Delta P_{\mathrm{sat},\ell}
-=
-c_{\tau,r,\ell}^{\top}\dot q_\ell.
-\]
-
-Under Theorem 1's realizability-margin condition,
-\(c_{\tau,r,\ell}=0\), so saturation contributes no unmodeled power channel:
-
-\[
-\Delta P_{\mathrm{sat},\ell}=0.
-\]
-
-Equivalently in task-acceleration geometry, the uncertain requested correction must remain inside \(\mathcal Z_r(x)\). Along a correction direction \(d\), a sufficient scalar test is that the required correction plus its uncertainty does not exceed the directional authority \(\alpha_r^+(x,a_c,d)\).
-
-If that authority condition fails, projection can activate and the positive energy defect must be accounted for explicitly:
-
-\[
-\left[\Delta P_{\mathrm{sat},\ell}\right]_+
+\left(\Lambda_r(x_\ell)a_{\mathrm{req},\ell}\right)^\top\dot e_\ell
 \le
-\|c_{\tau,r,\ell}\|_*
-\|\dot q_\ell\|.
+w_\ell^\top\dot e_\ell+\delta_\ell,
+\qquad
+|\delta_\ell|\le\bar\delta,
 \]
 
-A tank or dissipativity budget must cover the accumulated positive part; it cannot be replaced by an assumption that an unspecified defect is bounded. This corollary removes only the saturation-induced power defect. A full-port passivity result must still include interaction-port sign conventions, sampling, orientation and null-space channels, model error, and any high-rate safety projection.
+where \(\Lambda_r(x_\ell)a_{\mathrm{req},\ell}\) is the task-space force realized through \(H_r(x_\ell)=J_r(q)^\top\Lambda_r(q)\) (Section 4.2); both sides of this inequality are stated at the task port, so no joint-space secondary-channel power enters \(\delta_\ell\).
+
+then this sketch would give, on the no-clipping branch of Theorem 1 (\(\tau_r^{\mathrm{app}}=\tau_r^{\mathrm{pre}}\), so that \(\delta_\ell\) is the residual model and discretization defect at the task port only) and with the accumulated bounds on \(\varepsilon_\ell\) and \(\delta_\ell\) inside the certificate margin \(\mathcal E_\star\), a task-channel dissipation budget transferring to the physical implementation over the horizon.
+
+None of this is evaluated in the experiments of Section 9, and \(\bar\delta\) is assumed here, not constructed. Under active clipping, the achieved task acceleration departs from \(a_{\mathrm{req},\ell}\) by \(G_r(x_\ell)(\tau_r^{\mathrm{app}}-\tau_r^{\mathrm{pre}})\) (Section 4.3), and \(\delta_\ell\) would additionally have to absorb the resulting task-force power \(\left(\Lambda_r(x_\ell)G_r(x_\ell)(\tau_r^{\mathrm{app}}-\tau_r^{\mathrm{pre}})\right)^\top\dot e_\ell\), which is uncounted in the balance above and can violate it; a tank or dissipativity budget would have to cover the accumulated positive part of that term, and it cannot be replaced by an assumption that an unspecified defect is bounded. Bounding that term by the directional-authority margin \(\alpha_r^+\) --- so that dissipativity would hold precisely when the manager preserves realizability --- would extend this sketch to the clipping branch; we leave that construction, the physical storage function, the sign-convention check, and the energy-tank machinery to future work. We claim nothing here beyond the sketch itself: no conditional transfer, no full-port passivity, and no coupled stability against an arbitrary passive environment.
 
 ---
 
@@ -1046,7 +1040,7 @@ The behavior model, predictive objective, and \(0.03~\mathrm{m/s}\) empirical su
 | FR3-inspired surrogate | 0.007586 | 0.022414 | \(8.82\times10^{-6}\) | Yes |
 | Six-axis-arm surrogate | 0.007586 | 0.022414 | \(9.97\times10^{-5}\) | Yes |
 
-All three reports use the same numerical budget. This is a sampled-trajectory numerical audit, not an analytic workspace-wide proof, a robust-invariance experiment, or validation of the surrogates as full robot models. Instantiating certificate transfer would additionally require an independently verified \((F,\kappa,\mathcal S,\mathcal E_\star)\).
+All three reports use the same numerical budget. This is a sampled-trajectory numerical audit, not an analytic workspace-wide proof, a robust-invariance experiment, or validation of the surrogates as full robot models. Instantiating certificate transfer would additionally require an independently verified \((F,\mathcal K_{\mathrm{cert}},\mathcal S,\mathcal E_\star)\).
 
 ## 9.4 Ablations
 
@@ -1066,12 +1060,13 @@ In the regenerated run, the manager's median-of-run-medians was \(1.795~\mathrm{
 
 # 10. Claim Audit
 
-The evidence supports four bounded conclusions.
+The evidence supports four bounded conclusions, plus one conditional analytical result.
 
 1. A common command/preview contract accepted all five implemented fast-controller interfaces without changing the predictive optimization statement.
 2. Horizon-wide constraints exposed a future violation that a first-step-only check missed.
 3. One empirical successor-defect budget passed sampled checks across three distinct realization maps.
 4. The final \(1~\mathrm{kHz}\) projection remained necessary for disturbances arriving between manager updates.
+5. Section 7.6 sketches, without stating as a corollary, a candidate task-channel dissipativity-transfer condition on the no-clipping branch; it is analytical only, not evaluated in the experiments, assumes rather than constructs its power-defect bound, and never relates the abstract storage function to a physical one.
 
 The evidence does not support universal black-box-policy safety, hard real-time execution, recursive feasibility, a certified viability region, full-port passivity, or manufacturer-specific FR3 performance. The mismatch failures are not omitted: they mark where the sampled refinement checks and theorem premises cease to hold.
 
@@ -1181,13 +1176,14 @@ Physical feasibility remains configuration-dependent; what transfers is the cert
 The reduced-order experiments resolve the implementation questions but leave the following publication-critical work:
 
 1. derive analytic or interval-certified bounds for \(\mathcal D_{\tau,r}\) and \(\mathcal D_{z,r}\) over a stated workspace;
-2. instantiate Theorem 1 with a terminal robust invariant set or a precisely scoped dissipativity certificate;
+2. instantiate Theorem 1 with a terminal robust invariant set, and extend the dissipativity sketch of Section 7.6 from the no-clipping branch to active clipping by bounding the saturation-power term with the directional-authority margin \(\alpha_r^+\) and a constructed physical storage function, which requires a defined energy port and an in-horizon tank;
 3. repeat the transfer audit on two full rigid-body robot models with manufacturer actuator limits;
 4. evaluate contacts, orientation, null-space motion, torque rate, sensing delay, and state-estimation error;
-5. compare against independently implemented, parameter-matched predictive safety-filter and reference-governor baselines;
+5. compare against independently implemented, parameter-matched predictive safety-filter and vector or command-governor baselines that modify a multidimensional task command, not only a scalar parameter;
 6. sweep disturbance magnitude, timing, and sensor noise across seeds to characterize the margin between each successful scenario and its failure boundary, rather than reporting single deterministic trajectories;
-7. move the fast path to a real-time implementation and report deadline misses over long-duration trials; and
-8. validate the architecture on hardware with an independent emergency-stop and safety layer.
+7. propagate the estimated disturbance \(d_{i|\ell}\) of Section 4.1 through the QP's state prediction, which currently assumes it is zero, and intersect \(\mathcal K_{\mathrm{cert}}(z_{i|\ell})\) with \(\mathcal A_r^{\mathrm{tight}}\) inside the solver so that Theorem 1 is enforced by construction rather than checked after the fact;
+8. move the fast path to a real-time implementation and report deadline misses over long-duration trials; and
+9. validate the architecture on hardware with an independent emergency-stop and safety layer.
 
 Until those checks are complete, the strongest defensible positioning is certificate-transferable predictive saturation management demonstrated in reduced-order simulation.
 
