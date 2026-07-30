@@ -127,7 +127,7 @@ def test_certified_action_set_bounds_speed_below_uncertified_case():
     zero = lambda _t: np.zeros(2)
     scenario = Scenario(
         "certificate_margin",
-        (0.0, 0.0, 0.58, 0.0),
+        (0.0, 0.0, 0.565, 0.0),
         lambda _t: np.array([0.5, 0.0]),
         zero,
         lambda _t: 1.0,
@@ -143,11 +143,10 @@ def test_certified_action_set_bounds_speed_below_uncertified_case():
         cfg,
     )
     initial_speed = scenario.initial_state[2]
-    # z_0 itself is not constrained, so the certified case cannot undo an
-    # already-out-of-budget start; it must not grow past it, while the
-    # unconstrained case is free to climb toward the untightened speed_limit.
-    assert constrained["peak_speed_mps"] <= initial_speed + 1.0e-9
-    assert unconstrained["peak_speed_mps"] > initial_speed + 1.0e-3
+    certified_limit = cfg.speed_limit - cfg.velocity_defect_radius
+    assert initial_speed < certified_limit
+    assert constrained["peak_speed_mps"] <= certified_limit + 1.0e-9
+    assert unconstrained["peak_speed_mps"] > certified_limit + 1.0e-3
     assert unconstrained["peak_speed_mps"] < cfg.speed_limit + 1.0e-9
 
 

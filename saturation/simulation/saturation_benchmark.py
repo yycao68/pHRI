@@ -1,7 +1,7 @@
 """Two-rate predictive saturation-management benchmark.
 
 This module is intentionally self-contained.  It evaluates the architecture in
-``fast_controller_predictive_saturation_draft.md`` on a 2-D interaction task:
+``predictive_saturation_paper_v3.md`` on a 2-D interaction task:
 
 * an analytic/learned nominal controller runs at 1 kHz;
 * a predictive manager runs at 50 Hz;
@@ -43,7 +43,7 @@ class BenchmarkConfig:
     correction_weight: float = 1.0
     rate_weight: float = 0.025
     osqp_eps: float = 1.0e-5
-    successor_defect_budget: float = 0.030
+    velocity_defect_radius: float = 0.030
     torque_bound_scale: float = 1.0
     state_bound_scale: float = 1.0
 
@@ -57,7 +57,7 @@ class BenchmarkConfig:
             self.horizon,
             self.position_limit,
             self.speed_limit,
-            self.successor_defect_budget,
+            self.velocity_defect_radius,
         )
         return sha256(repr(shared).encode("utf-8")).hexdigest()[:12]
 
@@ -676,14 +676,14 @@ class PredictiveManager:
         predicted_torque_blocks: list[tuple[Array, Array, Array]] = []
         frozen_state = nominal_states[0]
 
-        # Certified action set K_cert: the one-step-ahead velocity block is
-        # tightened by the certificate radius (successor_defect_budget), so
+        # Velocity certificate K_v: the one-step-ahead velocity block is
+        # tightened by the certificate radius (velocity_defect_radius), so
         # that any a_req satisfying this constraint keeps the successor
         # inside the speed bound even under a successor defect up to that
         # radius. Position is left untightened: only the velocity-space
         # successor defect is measured and audited (Table III).
         speed_bound = (
-            cfg.speed_limit - cfg.successor_defect_budget
+            cfg.speed_limit - cfg.velocity_defect_radius
             if self.certificate_constrained
             else cfg.speed_limit
         )
@@ -957,7 +957,7 @@ def run_case(
         "manager_feasible": [],
         "manager_time_s": [],
         "fast_time_s": [],
-        "refinement_defect": [],
+        "velocity_successor_defect": [],
         "tightening_bound": [],
     }
     previous_slow_state = state.copy()
@@ -1101,13 +1101,19 @@ def run_case(
         )
         numer = b_h - a_h @ requested
         denom = a_h @ direction
-        positive = denom > 1.0e-10
-        authority = (
-            float(np.min(numer[positive] / denom[positive]))
-            if np.any(positive)
-            else float("inf")
-        )
-        authority = max(0.0, authority)
+        if np.any(numer < -1.0e-10):
+            # The forward ray formula is defined from a feasible starting
+            # acceleration.  An already-infeasible request has no certified
+            # remaining authority under this diagnostic.
+            authority = 0.0
+        else:
+            positive = denom > 1.0e-10
+            authority = (
+                float(np.min(numer[positive] / denom[positive]))
+                if np.any(positive)
+                else float("inf")
+            )
+            authority = max(0.0, authority)
 
         # One-slow-step empirical abstraction defect, evaluated when a new slow
         # sample is reached.  Intermediate samples repeat the last value.
@@ -1169,7 +1175,7 @@ def run_case(
             else 0.0
         )
         log["fast_time_s"].append(fast_elapsed)
-        log["refinement_defect"].append(defect.copy())
+        log["velocity_successor_defect"].append(defect.copy())
         log["tightening_bound"].append(delta_bound.copy())
         state = next_state
 
@@ -1189,7 +1195,7 @@ def summarize(log: dict, cfg: BenchmarkConfig) -> dict:
     correction = log["correction"]
     nominal = log["nominal_acceleration"]
     actual = log["actual_acceleration"]
-    defects = log["refinement_defect"]
+    defects = log["velocity_successor_defect"]
     manager_times = log["manager_time_s"]
     manager_times = manager_times[manager_times > 0.0]
     fast_times = log["fast_time_s"]
@@ -1227,12 +1233,19 @@ def summarize(log: dict, cfg: BenchmarkConfig) -> dict:
         np.max(torque_excess) <= 1.0e-9
     )
     defect_satisfied = bool(
-        empirical_defect <= cfg.successor_defect_budget
+        empirical_defect <= cfg.velocity_defect_radius
     )
     torque_bound_satisfied = bool(
         np.min(torque_bound_residual) >= -1.0e-10
     )
     manager_satisfied = bool(np.mean(log["manager_feasible"]) >= 0.999)
+    feasible_mask = np.asarray(log["manager_feasible"], dtype=bool)
+    slow_modes = feasible_mask[:: cfg.fast_per_slow]
+    mode_switches = int(np.sum(slow_modes[1:] != slow_modes[:-1]))
+
+    def masked_peak(values: Array, mask: Array) -> float | None:
+        return float(np.max(values[mask])) if np.any(mask) else None
+
     return {
         "peak_nominal_torque_violation_Nm": float(
             np.max(nominal_torque_excess)
@@ -1264,9 +1277,23 @@ def summarize(log: dict, cfg: BenchmarkConfig) -> dict:
             else None
         ),
         "manager_feasibility_rate": float(np.mean(log["manager_feasible"])),
-        "refinement_defect_peak_mps": empirical_defect,
-        "successor_defect_budget_mps": cfg.successor_defect_budget,
-        "sampled_defect_check_satisfied": defect_satisfied,
+        "fallback_fraction": float(1.0 - np.mean(log["manager_feasible"])),
+        "manager_mode_switches": mode_switches,
+        "peak_preclip_torque_violation_mpc_mode_Nm": masked_peak(
+            torque_excess, feasible_mask
+        ),
+        "peak_preclip_torque_violation_fallback_mode_Nm": masked_peak(
+            torque_excess, ~feasible_mask
+        ),
+        "peak_position_violation_mpc_mode_m": masked_peak(
+            position_excess, feasible_mask
+        ),
+        "peak_position_violation_fallback_mode_m": masked_peak(
+            position_excess, ~feasible_mask
+        ),
+        "velocity_successor_defect_peak_mps": empirical_defect,
+        "velocity_defect_radius_mps": cfg.velocity_defect_radius,
+        "sampled_velocity_defect_check_satisfied": defect_satisfied,
         "sampled_state_check_satisfied": state_satisfied,
         "realizability_margin_condition_satisfied": (
             realizability_margin_satisfied

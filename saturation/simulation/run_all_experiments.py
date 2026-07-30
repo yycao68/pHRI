@@ -27,22 +27,23 @@ from saturation_benchmark import (
 
 
 def _certificate_margin_scenario() -> Scenario:
-    """Dedicated K_cert ablation scenario: not registered in make_scenarios(),
-    so it does not enter the scenario or robot-transfer matrices. Starts with
-    velocity already inside the untightened speed box but outside the
-    certificate-tightened one, with a distant goal that keeps pulling further,
-    to test whether the certified action set actually binds."""
+    """Dedicated K_v ablation scenario, outside the main scenario matrices.
+
+    It starts inside the velocity-certificate set with a distant goal that
+    would drive the next manager-sample velocity outside that set when the
+    certificate rows are removed.
+    """
 
     zero = lambda _t: np.zeros(2)
     return Scenario(
         "certificate_margin",
-        (0.0, 0.0, 0.58, 0.0),
+        (0.0, 0.0, 0.565, 0.0),
         lambda _t: np.array([0.5, 0.0]),
         zero,
         lambda _t: 1.0,
         description=(
-            "dedicated K_cert ablation: initial speed above the "
-            "certificate-tightened bound, goal continuing to pull further"
+            "dedicated K_v ablation: initial speed inside the certificate "
+            "set, with the goal continuing to pull outward"
         ),
     )
 
@@ -177,6 +178,7 @@ def ablation_matrix(cfg, robots, controllers, scenarios):
     robot = robots["fr3_surrogate"]
     controller = controllers["impedance"]
     metrics = {}
+    raw = {}
     experiments = (
         ("horizon_ramp", "full", RunOptions(method="proposed")),
         (
@@ -260,7 +262,9 @@ def ablation_matrix(cfg, robots, controllers, scenarios):
             options,
         )
         metrics[key] = summarize(log, cfg)
-    return metrics
+        if scenario_name == "horizon_ramp":
+            raw[key] = log
+    return metrics, raw
 
 
 def sampled_interface_audit(cfg, robot_metrics, robots):
@@ -272,7 +276,7 @@ def sampled_interface_audit(cfg, robot_metrics, robots):
             if key.startswith(f"robot__{robot_name}__")
             and key.endswith("__proposed")
         ]
-        peak_defect = max(v["refinement_defect_peak_mps"] for v in selected)
+        peak_defect = max(v["velocity_successor_defect_peak_mps"] for v in selected)
         min_torque_bound = min(
             v["minimum_error_bound_residual_Nm"] for v in selected
         )
@@ -287,11 +291,11 @@ def sampled_interface_audit(cfg, robot_metrics, robots):
         )
         rows[robot_name] = {
             "shared_audit_config_hash": cfg.audit_config_hash(),
-            "shared_successor_defect_budget_mps": cfg.successor_defect_budget,
+            "shared_velocity_defect_radius_mps": cfg.velocity_defect_radius,
             "required_empirical_radius_mps": peak_defect,
-            "unused_radius_mps": cfg.successor_defect_budget - peak_defect,
+            "unused_radius_mps": cfg.velocity_defect_radius - peak_defect,
             "all_successor_defects_contained": all(
-                v["sampled_defect_check_satisfied"] for v in selected
+                v["sampled_velocity_defect_check_satisfied"] for v in selected
             ),
             "minimum_error_bound_residual_Nm": min_torque_bound,
             "sampled_torque_error_bound_range_Nm": [
@@ -307,10 +311,10 @@ def sampled_interface_audit(cfg, robot_metrics, robots):
                 for v in selected
             ),
             "robot_specific_objects": [
-                "Pi_r",
+                "Pi_v_r",
                 "tau_hat_r",
                 "D_tau_r",
-                "D_z_r",
+                "D_v_r",
                 "A_tight_r",
             ],
         }
@@ -388,6 +392,45 @@ def make_representative_figure(raw: dict, cfg: BenchmarkConfig, output: Path):
     )
 
 
+def make_horizon_ramp_figure(raw: dict, cfg: BenchmarkConfig, output: Path):
+    variants = ("first_step_torque", "full")
+    labels = {
+        "first_step_torque": "first-step-only constraint",
+        "full": "full-horizon constraint (proposed)",
+    }
+    colors = {"first_step_torque": "#d97706", "full": "#2563eb"}
+    fig, axes = plt.subplots(3, 1, figsize=(9.0, 7.5), sharex=True)
+    for variant in variants:
+        log = raw[_case_key("ablation", "horizon_ramp", variant)]
+        t = log["time"]
+        color = colors[variant]
+        label = labels[variant]
+        axes[0].plot(t, log["planned_violation"], color=color, label=label, linewidth=1.6)
+        ratio = np.max(
+            np.abs(log["torque_pre"]) / np.maximum(log["torque_limit"], 1.0e-9),
+            axis=1,
+        )
+        axes[1].plot(t, ratio, color=color, linewidth=1.6)
+        axes[2].plot(t, log["state"][:, 0], color=color, linewidth=1.6)
+    axes[0].axhline(0.0, color="black", linestyle=":", linewidth=1.0)
+    axes[0].set_ylabel("max planned\nfuture violation\n(Nm)")
+    axes[1].axhline(1.0, color="black", linestyle=":", linewidth=1.0)
+    axes[1].set_ylabel("current-step\npre-clip\nutilization")
+    axes[2].axhline(cfg.position_limit, color="black", linestyle=":")
+    axes[2].set_ylabel(r"$e_x$ (m)")
+    axes[2].set_xlabel("time (s)")
+    axes[0].legend(fontsize=9, loc="upper left")
+    for ax in axes:
+        ax.grid(alpha=0.25)
+    fig.suptitle(
+        "Horizon-ramp scenario: anticipated versus reactive torque feasibility",
+        fontsize=12,
+    )
+    fig.tight_layout()
+    fig.savefig(output, dpi=180)
+    plt.close(fig)
+
+
 def make_point_of_no_return_figure(raw: dict, cfg: BenchmarkConfig, output: Path):
     _make_stress_case_figure(
         raw,
@@ -451,6 +494,13 @@ def make_scenario_summary_figure(metrics: dict, output: Path):
 
 def make_controller_heatmap(metrics: dict, controllers: dict, output: Path):
     names = list(controllers)
+    display_names = {
+        "pd": "PD",
+        "impedance": "impedance",
+        "rl_policy": "trained policy",
+        "neural_policy": "fitted neural policy",
+        "ai_conditioned_proxy": "conditioned motion primitive",
+    }
     scenarios = ("no_saturation", "slow_saturation", "sudden_disturbance")
     proposed = np.zeros((len(names), len(scenarios)))
     clipping = np.zeros_like(proposed)
@@ -469,7 +519,10 @@ def make_controller_heatmap(metrics: dict, controllers: dict, output: Path):
     ):
         image = ax.imshow(data, cmap="magma", aspect="auto", vmin=0.0, vmax=vmax)
         ax.set_xticks(range(len(scenarios)), [s.replace("_", "\n") for s in scenarios])
-        ax.set_yticks(range(len(names)), [n.replace("_", " ") for n in names])
+        ax.set_yticks(
+            range(len(names)),
+            [display_names.get(n, n.replace("_", " ")) for n in names],
+        )
         ax.set_title(title)
         for i in range(data.shape[0]):
             for j in range(data.shape[1]):
@@ -489,7 +542,7 @@ def make_robot_transfer_figure(audit: dict, output: Path):
     names = list(audit)
     required = [audit[n]["required_empirical_radius_mps"] for n in names]
     shared = [
-        audit[n]["shared_successor_defect_budget_mps"] for n in names
+        audit[n]["shared_velocity_defect_radius_mps"] for n in names
     ]
     x = np.arange(len(names))
     fig, ax = plt.subplots(figsize=(7.3, 4.3))
@@ -596,13 +649,13 @@ def make_ablation_figure(
         ["fast remap", "cached torque"],
         [
             scenario_metrics["scenario__slow_saturation__proposed"][
-                "refinement_defect_peak_mps"
+                "velocity_successor_defect_peak_mps"
             ],
             metrics["ablation__slow_saturation__cached_full_torque"][
-                "refinement_defect_peak_mps"
+                "velocity_successor_defect_peak_mps"
             ],
         ],
-        "successor defect (m/s)",
+        "velocity-successor defect (m/s)",
         "Slow-to-fast implementation",
         color="#7c3aed",
     )
@@ -611,13 +664,13 @@ def make_ablation_figure(
         ["updated map", "frozen map"],
         [
             metrics["ablation__model_mismatch__updated_realization_map"][
-                "refinement_defect_peak_mps"
+                "velocity_successor_defect_peak_mps"
             ],
             metrics["ablation__model_mismatch__frozen_realization_map"][
-                "refinement_defect_peak_mps"
+                "velocity_successor_defect_peak_mps"
             ],
         ],
-        "successor defect (m/s)",
+        "velocity-successor defect (m/s)",
         "Realization-map update",
         color="#0891b2",
     )
@@ -686,7 +739,7 @@ def main() -> None:
     print(f"completed controller transfer: {len(controller_metrics)}", flush=True)
     robot_metrics = robot_transfer_matrix(cfg, robots, controllers, scenarios)
     print(f"completed robot transfer: {len(robot_metrics)}", flush=True)
-    ablation_metrics = ablation_matrix(cfg, robots, controllers, scenarios)
+    ablation_metrics, ablation_raw = ablation_matrix(cfg, robots, controllers, scenarios)
     print(f"completed ablations: {len(ablation_metrics)}", flush=True)
     audit = sampled_interface_audit(cfg, robot_metrics, robots)
     timing = timing_summary(
@@ -752,6 +805,9 @@ def main() -> None:
     )
     make_point_of_no_return_figure(
         raw, cfg, args.output_dir / "near_boundary_braking_results.png"
+    )
+    make_horizon_ramp_figure(
+        ablation_raw, cfg, args.output_dir / "horizon_ramp_results.png"
     )
     make_scenario_summary_figure(
         scenario_metrics, args.output_dir / "scenario_summary.png"
