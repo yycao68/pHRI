@@ -527,7 +527,7 @@ def make_controller_heatmap(metrics: dict, controllers: dict, output: Path):
         for i in range(data.shape[0]):
             for j in range(data.shape[1]):
                 ax.text(j, i, f"{data[i,j]:.2f}", ha="center", va="center", color="white", fontsize=8)
-    fig.subplots_adjust(left=0.18, right=0.88, bottom=0.16, top=0.88, wspace=0.18)
+    fig.subplots_adjust(left=0.26, right=0.88, bottom=0.16, top=0.88, wspace=0.18)
     color_axis = fig.add_axes((0.905, 0.16, 0.018, 0.72))
     fig.colorbar(
         image,
