@@ -165,6 +165,29 @@ def test_same_sampled_interface_audit_holds_across_robots():
         assert metrics["sampled_interface_audit_passed"]
 
 
+def test_t2_slack_subtracts_the_tightening_bound_from_the_raw_margin():
+    # minimum_T2_slack_Nm is the actual (T2) condition slack, limits -
+    # bar_delta_tau - |tau_hat|; minimum_planned_torque_margin_Nm is the
+    # untightened limits - |tau_hat|. T2 slack must therefore never exceed
+    # the raw margin (bar_delta_tau >= 0), and for a case with nonzero
+    # torque error bound the two should differ.
+    robots, controllers, scenarios, cfg = _objects()
+    for robot in robots.values():
+        log = run_case(
+            robot,
+            controllers["impedance"],
+            scenarios["slow_saturation"],
+            cfg,
+            RunOptions(method="proposed"),
+        )
+        metrics = summarize(log, cfg)
+        margin = metrics["minimum_planned_torque_margin_Nm"]
+        t2_slack = metrics["minimum_T2_slack_Nm"]
+        assert margin is not None and t2_slack is not None
+        assert t2_slack <= margin + 1.0e-9
+        assert t2_slack < margin - 1.0e-6
+
+
 def test_saved_report_covers_every_required_experiment_family():
     report_path = ROOT / "results" / "all_experiment_metrics.json"
     assert report_path.exists()

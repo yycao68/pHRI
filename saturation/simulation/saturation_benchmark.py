@@ -576,6 +576,7 @@ class ManagerResult:
     nominal_first: Array
     planned_min_margin: float
     planned_max_violation: float
+    planned_min_t2_slack: float
     feasible: bool
     solve_time_s: float
     sequence: Array
@@ -825,17 +826,35 @@ class PredictiveManager:
 
         margins = []
         violations = []
+        t2_slacks = []
         for i, (h, offset, limits) in enumerate(predicted_torque_blocks):
             tau = offset + h @ sequence[i]
             margins.append(float(np.min(limits - np.abs(tau))))
             violations.append(float(np.max(np.maximum(np.abs(tau) - limits, 0.0))))
+            # T2 slack must use the *same* bar-delta-tau that (T1) is
+            # checked against post-hoc -- the as-executed bound evaluated at
+            # the acceleration actually solved for, robot.torque_error_bound
+            # -- not the QP's own internal worst-case tightening bound
+            # (which substitutes cfg.acceleration_limit for the unknown
+            # future request and is therefore much more conservative than
+            # what (T1) is later checked against). Using the QP's internal
+            # bound here previously produced a near-zero/negative slack that
+            # did not match Theorem 1's own definition of (T2).
+            delta_asexecuted = self.robot.torque_error_bound(
+                sequence[i], scenario.mismatch_scale, force_forecast[i]
+            )
+            t2_slacks.append(
+                float(np.min(limits - delta_asexecuted - np.abs(tau)))
+            )
         min_margin = min(margins) if margins else float("nan")
         max_violation = max(violations) if violations else float("nan")
+        min_t2_slack = min(t2_slacks) if t2_slacks else float("nan")
         return ManagerResult(
             acceleration=sequence[0].copy(),
             nominal_first=nominal[0].copy(),
             planned_min_margin=min_margin,
             planned_max_violation=max_violation,
+            planned_min_t2_slack=min_t2_slack,
             feasible=feasible,
             solve_time_s=perf_counter() - started,
             sequence=sequence,
@@ -952,8 +971,11 @@ def run_case(
         "correction": [],
         "planned_margin": [],
         "planned_violation": [],
+        "planned_t2_slack": [],
         "true_margin": [],
         "directional_authority": [],
+        "directional_authority_with_disturbance": [],
+        "directional_authority_against_disturbance": [],
         "manager_feasible": [],
         "manager_time_s": [],
         "fast_time_s": [],
@@ -999,6 +1021,7 @@ def run_case(
                     nominal_first=nominal.copy(),
                     planned_min_margin=float("nan"),
                     planned_max_violation=float("nan"),
+                    planned_min_t2_slack=float("nan"),
                     feasible=True,
                     solve_time_s=perf_counter() - started,
                     sequence=np.tile(held_alpha * nominal, (cfg.horizon, 1)),
@@ -1100,20 +1123,33 @@ def run_case(
             options.tightening,
         )
         numer = b_h - a_h @ requested
-        denom = a_h @ direction
-        if np.any(numer < -1.0e-10):
-            # The forward ray formula is defined from a feasible starting
-            # acceleration.  An already-infeasible request has no certified
-            # remaining authority under this diagnostic.
-            authority = 0.0
-        else:
-            positive = denom > 1.0e-10
-            authority = (
-                float(np.min(numer[positive] / denom[positive]))
-                if np.any(positive)
+
+        def _ray_authority(unit_direction: Array) -> float:
+            denom_d = a_h @ unit_direction
+            if np.any(numer < -1.0e-10):
+                return 0.0
+            positive_d = denom_d > 1.0e-10
+            value = (
+                float(np.min(numer[positive_d] / denom_d[positive_d]))
+                if np.any(positive_d)
                 else float("inf")
             )
-            authority = max(0.0, authority)
+            return max(0.0, value)
+
+        authority = _ray_authority(direction)
+
+        # Fixed-direction authority: unlike `direction` above (the
+        # correction direction, which is endogenous and can switch
+        # discontinuously as the manager's own output changes), this uses
+        # the exogenous disturbance direction itself, so it is comparable
+        # across the trajectory and across methods.
+        force_norm = np.linalg.norm(force)
+        if force_norm > 1.0e-8:
+            disturbance_direction = force / force_norm
+        else:
+            disturbance_direction = np.array([0.0, 1.0])
+        authority_with_disturbance = _ray_authority(disturbance_direction)
+        authority_against_disturbance = _ray_authority(-disturbance_direction)
 
         # One-slow-step empirical abstraction defect, evaluated when a new slow
         # sample is reached.  Intermediate samples repeat the last value.
@@ -1147,6 +1183,11 @@ def run_case(
             if manager_result is not None
             else float("nan")
         )
+        planned_t2_slack = (
+            manager_result.planned_min_t2_slack
+            if manager_result is not None
+            else float("nan")
+        )
         fast_elapsed = max(0.0, perf_counter() - fast_started - slow_compute_time)
 
         log["time"].append(t)
@@ -1164,8 +1205,15 @@ def run_case(
         log["correction"].append((requested - nominal).copy())
         log["planned_margin"].append(planned_margin)
         log["planned_violation"].append(planned_violation)
+        log["planned_t2_slack"].append(planned_t2_slack)
         log["true_margin"].append(true_margin)
         log["directional_authority"].append(authority)
+        log["directional_authority_with_disturbance"].append(
+            authority_with_disturbance
+        )
+        log["directional_authority_against_disturbance"].append(
+            authority_against_disturbance
+        )
         log["manager_feasible"].append(
             manager_result.feasible if manager_result is not None else True
         )
@@ -1194,6 +1242,7 @@ def summarize(log: dict, cfg: BenchmarkConfig) -> dict:
     torque_limit = log["torque_limit"]
     correction = log["correction"]
     nominal = log["nominal_acceleration"]
+    requested = log["requested_acceleration"]
     actual = log["actual_acceleration"]
     defects = log["velocity_successor_defect"]
     manager_times = log["manager_time_s"]
@@ -1208,7 +1257,22 @@ def summarize(log: dict, cfg: BenchmarkConfig) -> dict:
     speed_excess = np.maximum(np.abs(state[:, 2:]) - cfg.speed_limit, 0.0)
     realization = actual - nominal
     correction_rmse = float(np.sqrt(np.mean(correction**2)))
+    # "behavior_realization_rmse_mps2" below is actual - nominal, which
+    # bundles the manager's *deliberate* intervention (requested - nominal,
+    # already reported as correction_rmse_mps2) together with whatever the
+    # real robot does differently from what was actually requested
+    # (actual - requested). The second piece is the one most directly tied
+    # to certificate transfer (it is the torque/velocity-domain mismatch
+    # T1/T3 bound, not a chosen action), so it is reported separately here.
+    tracking_defect = actual - requested
+    tracking_defect_rmse = float(np.sqrt(np.mean(tracking_defect**2)))
+    # Theorem 1's (T3) is stated in the infinity norm; the Euclidean (L2)
+    # norm reported alongside it is a stricter, conservative check (L2 >=
+    # Linf for any vector), kept as the audit's pass/fail criterion because
+    # it was the original metric, but it should not be read as the same
+    # quantity the theorem's norm names.
     empirical_defect = float(np.max(np.linalg.norm(defects, axis=1)))
+    empirical_defect_linf = float(np.max(np.abs(defects)))
     torque_error = np.abs(torque_pre - torque_predicted)
     torque_bound_residual = log["tightening_bound"] - torque_error
     first_i = log["first_intervention_time"]
@@ -1224,6 +1288,8 @@ def summarize(log: dict, cfg: BenchmarkConfig) -> dict:
     finite_planned_violation = planned_violation[
         np.isfinite(planned_violation)
     ]
+    planned_t2_slack = log["planned_t2_slack"]
+    finite_planned_t2_slack = planned_t2_slack[np.isfinite(planned_t2_slack)]
     state_satisfied = bool(
         np.max(position_excess) <= 5.0e-4
         and np.max(speed_excess) <= 5.0e-4
@@ -1260,16 +1326,37 @@ def summarize(log: dict, cfg: BenchmarkConfig) -> dict:
         "peak_speed_mps": float(np.max(np.abs(state[:, 2:]))),
         "behavior_realization_rmse_mps2": float(np.sqrt(np.mean(realization**2))),
         "correction_rmse_mps2": correction_rmse,
+        "tracking_defect_rmse_mps2": tracking_defect_rmse,
         "intervention_fraction": float(
             np.mean(np.linalg.norm(correction, axis=1) > 1.0e-3)
         ),
         "warning_lead_time_s": warning,
+        # Raw timestamps, exposed so a shared reference event (e.g. from a
+        # single "nominal_unbounded" run) can be substituted for
+        # first_nominal_violation_time when comparing lead time across
+        # methods -- each method's own first_nominal_violation_time is
+        # evaluated on that method's own (already-corrected) state
+        # trajectory, so it is not the same event across methods and
+        # warning_lead_time_s above is not directly comparable between them.
+        "first_intervention_time_s": first_i,
+        "first_nominal_violation_time_s": first_v,
         "minimum_directional_authority_mps2": float(
             np.min(log["directional_authority"])
+        ),
+        "minimum_directional_authority_with_disturbance_mps2": float(
+            np.min(log["directional_authority_with_disturbance"])
+        ),
+        "minimum_directional_authority_against_disturbance_mps2": float(
+            np.min(log["directional_authority_against_disturbance"])
         ),
         "minimum_true_torque_margin_Nm": float(np.min(log["true_margin"])),
         "minimum_planned_torque_margin_Nm": (
             float(np.min(finite_planned)) if finite_planned.size else None
+        ),
+        "minimum_T2_slack_Nm": (
+            float(np.min(finite_planned_t2_slack))
+            if finite_planned_t2_slack.size
+            else None
         ),
         "maximum_planned_torque_violation_Nm": (
             float(np.max(finite_planned_violation))
@@ -1292,6 +1379,7 @@ def summarize(log: dict, cfg: BenchmarkConfig) -> dict:
             position_excess, ~feasible_mask
         ),
         "velocity_successor_defect_peak_mps": empirical_defect,
+        "velocity_successor_defect_peak_linf_mps": empirical_defect_linf,
         "velocity_defect_radius_mps": cfg.velocity_defect_radius,
         "sampled_velocity_defect_check_satisfied": defect_satisfied,
         "sampled_state_check_satisfied": state_satisfied,

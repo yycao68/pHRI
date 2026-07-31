@@ -124,6 +124,25 @@ def scenario_matrix(cfg, robots, controllers, scenarios):
                 keep_raw=scenario_name
                 in ("directional_collapse", "sudden_disturbance", "point_of_no_return"),
             )
+        # warning_lead_time_s above is measured against each method's own
+        # first_nominal_violation_time, evaluated on that method's own
+        # (already-corrected) state trajectory -- so different methods are
+        # not being compared against the same limiting event. Recompute a
+        # second lead time against one shared reference event: the
+        # nominal_unbounded run's own first violation, since that channel
+        # applies no correction and no clipping at all and so is common
+        # ground independent of what any of the other four methods did.
+        shared_event = metrics[
+            _case_key("scenario", scenario_name, "nominal_unbounded")
+        ]["first_nominal_violation_time_s"]
+        for method in METHODS:
+            key = _case_key("scenario", scenario_name, method)
+            first_i = metrics[key]["first_intervention_time_s"]
+            metrics[key]["warning_lead_time_shared_event_s"] = (
+                float(shared_event - first_i)
+                if shared_event is not None and first_i is not None
+                else None
+            )
     return metrics, raw
 
 
@@ -277,6 +296,9 @@ def sampled_interface_audit(cfg, robot_metrics, robots):
             and key.endswith("__proposed")
         ]
         peak_defect = max(v["velocity_successor_defect_peak_mps"] for v in selected)
+        peak_defect_linf = max(
+            v["velocity_successor_defect_peak_linf_mps"] for v in selected
+        )
         min_torque_bound = min(
             v["minimum_error_bound_residual_Nm"] for v in selected
         )
@@ -289,11 +311,14 @@ def sampled_interface_audit(cfg, robot_metrics, robots):
         min_planned_margin = min(
             v["minimum_planned_torque_margin_Nm"] for v in selected
         )
+        min_t2_slack = min(v["minimum_T2_slack_Nm"] for v in selected)
         rows[robot_name] = {
             "shared_audit_config_hash": cfg.audit_config_hash(),
             "shared_velocity_defect_radius_mps": cfg.velocity_defect_radius,
             "required_empirical_radius_mps": peak_defect,
             "unused_radius_mps": cfg.velocity_defect_radius - peak_defect,
+            "required_empirical_radius_linf_mps": peak_defect_linf,
+            "unused_radius_linf_mps": cfg.velocity_defect_radius - peak_defect_linf,
             "all_successor_defects_contained": all(
                 v["sampled_velocity_defect_check_satisfied"] for v in selected
             ),
@@ -303,6 +328,7 @@ def sampled_interface_audit(cfg, robot_metrics, robots):
                 max_error_bound,
             ],
             "minimum_planned_actuator_margin_Nm": min_planned_margin,
+            "minimum_T2_slack_Nm": min_t2_slack,
             "all_torque_errors_contained": all(
                 v["torque_error_bound_satisfied"] for v in selected
             ),
