@@ -183,6 +183,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.0004670454135501223,
       "velocity_successor_defect_peak_linf_mps": 0.00041622966894473614,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -193,10 +198,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 136.79149560630322,
-        "p95": 160.99984059110284,
-        "p99": 210.0272802636027,
-        "max": 911.5410503000021
+        "median": 164.22895714640617,
+        "p95": 188.55036469176412,
+        "p99": 245.58666395023465,
+        "max": 371.7090003192425
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -237,6 +242,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.0004670454135501223,
       "velocity_successor_defect_peak_linf_mps": 0.00041622966894473614,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -247,10 +257,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 138.37497681379318,
-        "p95": 155.588099732995,
-        "p99": 195.30413672327995,
-        "max": 286.665977910161
+        "median": 162.3749267309904,
+        "p95": 184.00625558570027,
+        "p99": 245.21310115233058,
+        "max": 351.54190845787525
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -291,6 +301,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.0004670454135501223,
       "velocity_successor_defect_peak_linf_mps": 0.00041622966894473614,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -301,10 +316,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 181.62501510232687,
-        "p95": 227.16424427926532,
-        "p99": 272.23821729421616,
-        "max": 538.4581163525581
+        "median": 205.6880621239543,
+        "p95": 238.63344686105847,
+        "p99": 314.5601926371455,
+        "max": 464.58281576633453
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -345,6 +360,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.00036452689010085473,
       "velocity_successor_defect_peak_linf_mps": 0.0002771440140807782,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -355,16 +375,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 176.79156735539436,
-        "p95": 207.0062095299363,
-        "p99": 282.468763180077,
-        "max": 476.54216177761555
+        "median": 209.14548076689243,
+        "p95": 241.63948837667704,
+        "p99": 319.46102855727077,
+        "max": 411.6250202059746
       },
       "manager_time_ms": {
-        "median": 0.403333455324173,
-        "p95": 0.459600321482867,
-        "p99": 0.5504735582508145,
-        "max": 0.5727910902351141
+        "median": 0.4858119646087289,
+        "p95": 0.5154461250640451,
+        "p99": 0.6057661888189613,
+        "max": 0.607708003371954
       },
       "warning_lead_time_shared_event_s": null
     },
@@ -399,6 +419,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.0004670454135501223,
       "velocity_successor_defect_peak_linf_mps": 0.00041622966894473614,
+      "paired_min_T1_slack_Nm": 8.976736946697192e-05,
+      "paired_min_T2_slack_Nm": 4.075287017062192,
+      "paired_max_T3_defect_linf_mps": 0.00041622966894473614,
+      "paired_audit_record_count": 79,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -409,16 +434,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 138.70839029550552,
-        "p95": 173.70033310726282,
-        "p99": 223.19001611322165,
-        "max": 317.41708517074585
+        "median": 164.12499826401472,
+        "p95": 213.33824843168256,
+        "p99": 266.30815118551254,
+        "max": 345.2079836279154
       },
       "manager_time_ms": {
-        "median": 0.8403954561799765,
-        "p95": 0.9997556102462112,
-        "p99": 1.037870063446462,
-        "max": 1.092083053663373
+        "median": 0.932250521145761,
+        "p95": 1.042572408914566,
+        "p99": 1.0640661139041183,
+        "max": 1.0962910018861294
       },
       "warning_lead_time_shared_event_s": null
     },
@@ -453,6 +478,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.0031787581682404544,
       "velocity_successor_defect_peak_linf_mps": 0.0031777960387981974,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": false,
@@ -463,10 +493,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 136.20895333588123,
-        "p95": 173.09366958215824,
-        "p99": 240.63636315986514,
-        "max": 308.9590463787317
+        "median": 163.24990428984165,
+        "p95": 184.0872690081596,
+        "p99": 238.21184877306223,
+        "max": 356.45789466798306
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -507,6 +537,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.0031787581682404544,
       "velocity_successor_defect_peak_linf_mps": 0.0031777960387981974,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": false,
@@ -517,10 +552,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 136.99987903237343,
-        "p95": 178.98930236697194,
-        "p99": 279.54621706157917,
-        "max": 374.79191087186337
+        "median": 162.20798715949059,
+        "p95": 175.80032581463456,
+        "p99": 227.20777662470934,
+        "max": 362.5829704105854
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -561,6 +596,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.007773723456479679,
       "velocity_successor_defect_peak_linf_mps": 0.007773652504353246,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -571,10 +611,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 2507.06251244992,
-        "p95": 2928.7796700373287,
-        "p99": 3292.5391825847328,
-        "max": 15812.749974429607
+        "median": 3050.9585049003363,
+        "p95": 3282.458509784192,
+        "p99": 3350.419627968222,
+        "max": 3435.584018006921
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -615,6 +655,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.00795327642536182,
       "velocity_successor_defect_peak_linf_mps": 0.007953207053178368,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -625,16 +670,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 2490.8959167078137,
-        "p95": 2849.0944881923497,
-        "p99": 2976.1304636485875,
-        "max": 10437.916032969952
+        "median": 3048.7915500998497,
+        "p95": 3282.4353431351483,
+        "p99": 3382.1960096247494,
+        "max": 3575.500100851059
       },
       "manager_time_ms": {
-        "median": 6.524687516503036,
-        "p95": 8.199085132218897,
-        "p99": 8.454193607904015,
-        "max": 8.570916950702667
+        "median": 7.7376250410452485,
+        "p95": 9.569645253941417,
+        "p99": 9.644033191725612,
+        "max": 9.660457959398627
       },
       "warning_lead_time_shared_event_s": null
     },
@@ -669,6 +714,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.002835908825457137,
       "velocity_successor_defect_peak_linf_mps": 0.0028358595890601024,
+      "paired_min_T1_slack_Nm": 2.357139182349033e-05,
+      "paired_min_T2_slack_Nm": 0.8187892302229496,
+      "paired_max_T3_defect_linf_mps": 0.0028358595890601024,
+      "paired_audit_record_count": 79,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -679,16 +729,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 140.77103696763515,
-        "p95": 208.1808052025734,
-        "p99": 259.7005851566791,
-        "max": 356.1668563634157
+        "median": 167.12513752281666,
+        "p95": 236.52383824810383,
+        "p99": 300.46284664422274,
+        "max": 363.3748274296522
       },
       "manager_time_ms": {
-        "median": 2.322499523870647,
-        "p95": 4.142937867436558,
-        "p99": 4.78156879311427,
-        "max": 5.35975000821054
+        "median": 2.6817499892786145,
+        "p95": 4.443529434502124,
+        "p99": 5.58852197602391,
+        "max": 5.877958843484521
       },
       "warning_lead_time_shared_event_s": null
     },
@@ -723,6 +773,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.007243325719481452,
       "velocity_successor_defect_peak_linf_mps": 0.007238708881198305,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -733,10 +788,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 135.0409584119916,
-        "p95": 167.965330183506,
-        "p99": 230.54589051753283,
-        "max": 369.49990317225456
+        "median": 161.47957649081945,
+        "p95": 175.6375888362527,
+        "p99": 211.1354167573154,
+        "max": 296.1670979857445
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -777,6 +832,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.04687240287420157,
       "velocity_successor_defect_peak_linf_mps": 0.046721855125065326,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": false,
       "sampled_state_check_satisfied": true,
@@ -787,10 +847,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 136.75005175173283,
-        "p95": 165.65001569688317,
-        "p99": 203.5086369141936,
-        "max": 284.83313508331776
+        "median": 162.3749267309904,
+        "p95": 175.04097195342183,
+        "p99": 218.83351728320122,
+        "max": 400.0000189989805
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -831,6 +891,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.06729549824222396,
       "velocity_successor_defect_peak_linf_mps": 0.06728625620109652,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": false,
       "sampled_state_check_satisfied": true,
@@ -841,10 +906,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 176.68749205768108,
-        "p95": 2694.6710073389113,
-        "p99": 2806.7515627481043,
-        "max": 9669.875027611852
+        "median": 208.87493155896664,
+        "p95": 3175.529232248664,
+        "p99": 3303.3654536120594,
+        "max": 10205.250000581145
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -885,6 +950,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.06729549548695361,
       "velocity_successor_defect_peak_linf_mps": 0.06728625344522893,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": false,
       "sampled_state_check_satisfied": true,
@@ -895,16 +965,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 183.72898921370506,
-        "p95": 2650.682919193059,
-        "p99": 2813.1139907054603,
-        "max": 3014.9160884320736
+        "median": 210.8339685946703,
+        "p95": 3169.2812335677445,
+        "p99": 3261.435837484896,
+        "max": 3411.208977922797
       },
       "manager_time_ms": {
-        "median": 0.39712549187242985,
-        "p95": 0.45031467452645296,
-        "p99": 0.5113924806937574,
-        "max": 0.5279169417917728
+        "median": 0.47624995931982994,
+        "p95": 0.49996739253401756,
+        "p99": 0.5290150875225662,
+        "max": 0.5427091382443905
       },
       "warning_lead_time_shared_event_s": 0.06400000000000006
     },
@@ -939,6 +1009,11 @@
       "peak_position_violation_fallback_mode_m": 0.0,
       "velocity_successor_defect_peak_mps": 0.06717994866626731,
       "velocity_successor_defect_peak_linf_mps": 0.06717758611172522,
+      "paired_min_T1_slack_Nm": 2.6297407920313626e-05,
+      "paired_min_T2_slack_Nm": 0.21982999530154768,
+      "paired_max_T3_defect_linf_mps": 0.0028033060243088936,
+      "paired_audit_record_count": 73,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": false,
       "sampled_state_check_satisfied": true,
@@ -949,16 +1024,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 138.4580973535776,
-        "p95": 178.02705988287923,
-        "p99": 214.46348866447804,
-        "max": 385.37499494850636
+        "median": 163.6040396988392,
+        "p95": 211.09768422320482,
+        "p99": 256.8636648356914,
+        "max": 347.08413295447826
       },
       "manager_time_ms": {
-        "median": 0.8659996092319489,
-        "p95": 4.0350153227336705,
-        "p99": 4.484826230909675,
-        "max": 4.561292007565498
+        "median": 0.941374571993947,
+        "p95": 4.72672883188352,
+        "p99": 5.00167573103681,
+        "max": 5.146541865542531
       },
       "warning_lead_time_shared_event_s": 0.06400000000000006
     },
@@ -993,6 +1068,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.0025162521125797676,
       "velocity_successor_defect_peak_linf_mps": 0.0025076988124664856,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": false,
@@ -1003,10 +1083,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 135.04200614988804,
-        "p95": 150.79953009262678,
-        "p99": 202.5560988113284,
-        "max": 377.08296440541744
+        "median": 159.29201617836952,
+        "p95": 170.8382274955511,
+        "p99": 208.5996326059103,
+        "max": 297.2087822854519
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -1047,6 +1127,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.003917135160754948,
       "velocity_successor_defect_peak_linf_mps": 0.0037977621921242988,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": false,
@@ -1057,10 +1142,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 135.99987141788006,
-        "p95": 155.29817901551723,
-        "p99": 199.84212471172214,
-        "max": 358.8339313864708
+        "median": 162.4790020287037,
+        "p95": 188.6038924567401,
+        "p99": 254.58576856181026,
+        "max": 403.4999292343855
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -1101,6 +1186,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.0062180056602979756,
       "velocity_successor_defect_peak_linf_mps": 0.006211841174237287,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -1111,10 +1201,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 2489.5831011235714,
-        "p95": 2871.8994697555895,
-        "p99": 3041.5490036830306,
-        "max": 5900.207906961441
+        "median": 3024.6670357882977,
+        "p95": 3258.355741854757,
+        "p99": 3347.582232672721,
+        "max": 3500.0420175492764
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -1155,6 +1245,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.007085299982477444,
       "velocity_successor_defect_peak_linf_mps": 0.007079890692951896,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -1165,16 +1260,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 2487.874939106405,
-        "p95": 2851.3172175735235,
-        "p99": 2977.4831514805555,
-        "max": 11315.91689772904
+        "median": 3008.3750607445836,
+        "p95": 3243.0773368105292,
+        "p99": 3334.0509957633913,
+        "max": 3564.333077520132
       },
       "manager_time_ms": {
-        "median": 0.4033125005662441,
-        "p95": 7.731664541643112,
-        "p99": 8.419547823723406,
-        "max": 8.518166141584516
+        "median": 0.47741655725985765,
+        "p95": 9.228539816103874,
+        "p99": 9.53309305012226,
+        "max": 9.568082867190242
       },
       "warning_lead_time_shared_event_s": 0.278
     },
@@ -1209,6 +1304,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.0020050881057406236,
       "velocity_successor_defect_peak_linf_mps": 0.001978335489009081,
+      "paired_min_T1_slack_Nm": 2.4877607869861623e-05,
+      "paired_min_T2_slack_Nm": 0.11967082024904174,
+      "paired_max_T3_defect_linf_mps": 0.001978335489009081,
+      "paired_audit_record_count": 79,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -1219,16 +1319,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 138.58405873179436,
-        "p95": 198.092230129987,
-        "p99": 271.4164275676011,
-        "max": 341.5001556277275
+        "median": 163.93745318055153,
+        "p95": 220.42259806767098,
+        "p99": 317.51811504364014,
+        "max": 377.1660849452019
       },
       "manager_time_ms": {
-        "median": 2.214082982391119,
-        "p95": 10.4025979177095,
-        "p99": 13.072097529657183,
-        "max": 13.2944171782583
+        "median": 2.384291496127844,
+        "p95": 11.75022950628772,
+        "p99": 15.462960454169659,
+        "max": 15.577708138152957
       },
       "warning_lead_time_shared_event_s": 0.29800000000000004
     },
@@ -1263,6 +1363,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.002488287339067902,
       "velocity_successor_defect_peak_linf_mps": 0.0024742524296946233,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": false,
@@ -1273,10 +1378,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 132.89554044604301,
-        "p95": 148.49985018372536,
-        "p99": 192.3684519715606,
-        "max": 336.8330653756857
+        "median": 160.47945246100426,
+        "p95": 180.67742930725214,
+        "p99": 246.94897932931775,
+        "max": 349.4580741971731
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -1317,6 +1422,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.002488287339067902,
       "velocity_successor_defect_peak_linf_mps": 0.0024742524296946233,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": false,
@@ -1327,10 +1437,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 134.77052561938763,
-        "p95": 157.7951479703188,
-        "p99": 198.1129986234009,
-        "max": 319.7079058736563
+        "median": 161.9374379515648,
+        "p95": 176.0893501341343,
+        "p99": 205.66989900544286,
+        "max": 332.1669064462185
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -1371,6 +1481,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.0015333079729024047,
       "velocity_successor_defect_peak_linf_mps": 0.0015104252857557066,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -1381,10 +1496,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 2583.687426522374,
-        "p95": 2941.149624530226,
-        "p99": 3246.7287639155984,
-        "max": 13811.707962304354
+        "median": 3073.0629805475473,
+        "p95": 3257.169167045504,
+        "p99": 3374.061160720885,
+        "max": 11416.165856644511
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -1425,6 +1540,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.0015333079729024047,
       "velocity_successor_defect_peak_linf_mps": 0.0015104252857557066,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -1435,16 +1555,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 2518.707886338234,
-        "p95": 2925.90637691319,
-        "p99": 3081.028275191784,
-        "max": 7959.624985232949
+        "median": 3027.3754382506013,
+        "p95": 3265.7957053743303,
+        "p99": 3338.109028991312,
+        "max": 3526.7500206828117
       },
       "manager_time_ms": {
-        "median": 6.060083513148129,
-        "p95": 8.098253817297518,
-        "p99": 8.399642563890662,
-        "max": 8.755207993090153
+        "median": 7.177187013439834,
+        "p95": 9.424974885769188,
+        "p99": 9.621621849946678,
+        "max": 9.735249914228916
       },
       "warning_lead_time_shared_event_s": null
     },
@@ -1479,6 +1599,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.0016451402035834114,
       "velocity_successor_defect_peak_linf_mps": 0.001623834168530125,
+      "paired_min_T1_slack_Nm": 7.484812971716298e-06,
+      "paired_min_T2_slack_Nm": 0.22779123234034027,
+      "paired_max_T3_defect_linf_mps": 0.001623834168530125,
+      "paired_audit_record_count": 79,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -1489,16 +1614,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 139.37498442828655,
-        "p95": 232.95237915590403,
-        "p99": 312.7105929888785,
-        "max": 466.20797365903854
+        "median": 165.62500968575478,
+        "p95": 261.05447905138135,
+        "p99": 326.0370017960667,
+        "max": 402.5828093290329
       },
       "manager_time_ms": {
-        "median": 2.5442499900236726,
-        "p95": 4.048033058643338,
-        "p99": 6.866258129011836,
-        "max": 7.315207971259952
+        "median": 2.8389994986355305,
+        "p95": 4.708327562548218,
+        "p99": 8.174223899841303,
+        "max": 8.839666843414307
       },
       "warning_lead_time_shared_event_s": null
     },
@@ -1533,6 +1658,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.019749013447172354,
       "velocity_successor_defect_peak_linf_mps": 0.019737243415542616,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": false,
@@ -1543,10 +1673,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 126.624945551157,
-        "p95": 156.80046053603292,
-        "p99": 235.59760767966506,
-        "max": 363.8749476522207
+        "median": 150.22896695882082,
+        "p95": 171.58291302621365,
+        "p99": 227.10173623636362,
+        "max": 290.33306054770947
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -1587,6 +1717,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.08302235304942905,
       "velocity_successor_defect_peak_linf_mps": 0.08286350075775892,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": false,
       "sampled_state_check_satisfied": false,
@@ -1597,10 +1732,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 127.22949031740427,
-        "p95": 216.7643047869205,
-        "p99": 564.3543414771557,
-        "max": 2487.2911162674427
+        "median": 151.16692520678043,
+        "p95": 171.12725181505084,
+        "p99": 217.42577198892832,
+        "max": 336.7920871824026
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -1641,6 +1776,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.019574919598890184,
       "velocity_successor_defect_peak_linf_mps": 0.01954649676722328,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": false,
@@ -1651,10 +1791,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 2568.416530266404,
-        "p95": 3047.7977008558805,
-        "p99": 5681.581986136733,
-        "max": 17673.665890470147
+        "median": 3041.45785048604,
+        "p95": 3244.0292183309793,
+        "p99": 3321.5490193106234,
+        "max": 3538.4169314056635
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -1695,6 +1835,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.01879643100391266,
       "velocity_successor_defect_peak_linf_mps": 0.01878094103246937,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": false,
@@ -1705,16 +1850,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 2460.083458572626,
-        "p95": 3052.556025795638,
-        "p99": 6463.85877393186,
-        "max": 21386.291831731796
+        "median": 2993.520349264145,
+        "p95": 3261.356218717992,
+        "p99": 3364.48215181008,
+        "max": 11074.542067945004
       },
       "manager_time_ms": {
-        "median": 0.07493689190596342,
-        "p95": 8.081318391487002,
-        "p99": 8.339229512494057,
-        "max": 8.344166912138462
+        "median": 0.08510390762239695,
+        "p95": 9.570562338922173,
+        "p99": 9.742631171829998,
+        "max": 9.880749974399805
       },
       "warning_lead_time_shared_event_s": 0.8200000000000001
     },
@@ -1749,6 +1894,11 @@
       "peak_position_violation_fallback_mode_m": 0.19359770396720205,
       "velocity_successor_defect_peak_mps": 0.019782860123100505,
       "velocity_successor_defect_peak_linf_mps": 0.01977764836042184,
+      "paired_min_T1_slack_Nm": 0.0010568206617316278,
+      "paired_min_T2_slack_Nm": 0.30917198555221304,
+      "paired_max_T3_defect_linf_mps": 0.01977764836042184,
+      "paired_audit_record_count": 36,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": false,
@@ -1759,16 +1909,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 134.72908176481724,
-        "p95": 265.8107667230069,
-        "p99": 645.3712121583521,
-        "max": 4839.83289450407
+        "median": 158.6665166541934,
+        "p95": 241.63341149687767,
+        "p99": 296.13615712150926,
+        "max": 346.458051353693
       },
       "manager_time_ms": {
-        "median": 3.8079579826444387,
-        "p95": 4.713266878388819,
-        "p99": 10.522068249992973,
-        "max": 17.16083404608071
+        "median": 4.469417035579681,
+        "p95": 4.99814230715856,
+        "p99": 5.185929324943571,
+        "max": 5.249458132311702
       },
       "warning_lead_time_shared_event_s": 0.8200000000000001
     },
@@ -1803,6 +1953,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.005569874694423723,
       "velocity_successor_defect_peak_linf_mps": 0.005566389261365989,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": false,
@@ -1813,10 +1968,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 133.0000814050436,
-        "p95": 242.20813065767288,
-        "p99": 1046.3499790057538,
-        "max": 13157.333945855498
+        "median": 157.6045760884881,
+        "p95": 169.71207223832604,
+        "p99": 203.0894649215042,
+        "max": 290.24994000792503
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -1857,6 +2012,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.13136927034740772,
       "velocity_successor_defect_peak_linf_mps": 0.13119560946159636,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": false,
       "sampled_state_check_satisfied": false,
@@ -1867,10 +2027,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 133.16702097654343,
-        "p95": 172.42106841877103,
-        "p99": 247.67249589785933,
-        "max": 386.2499725073576
+        "median": 160.24988144636154,
+        "p95": 176.46002816036344,
+        "p99": 222.04279899597168,
+        "max": 276.58394537866116
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -1911,6 +2071,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.02005582131270909,
       "velocity_successor_defect_peak_linf_mps": 0.01989541250097432,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": false,
@@ -1921,10 +2086,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 2471.229527145624,
-        "p95": 2903.078740928322,
-        "p99": 3140.0486454367638,
-        "max": 3828.749991953373
+        "median": 3002.7710599824786,
+        "p95": 3233.793191611767,
+        "p99": 3344.861571677029,
+        "max": 3692.8330082446337
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -1965,6 +2130,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.02999370068190705,
       "velocity_successor_defect_peak_linf_mps": 0.02897462743157556,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": false,
@@ -1975,16 +2145,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 2471.8119530007243,
-        "p95": 2849.018794950098,
-        "p99": 2996.583234053105,
-        "max": 3504.417138174176
+        "median": 2998.3334243297577,
+        "p95": 3236.9103864766657,
+        "p99": 3335.6403443031013,
+        "max": 3472.584066912532
       },
       "manager_time_ms": {
-        "median": 0.08558342233300209,
-        "p95": 0.47226862516254187,
-        "p99": 0.5507804593071338,
-        "max": 0.5835001356899738
+        "median": 0.10243745055049658,
+        "p95": 0.5145210772752761,
+        "p99": 0.5739860539324577,
+        "max": 0.6203330121934414
       },
       "warning_lead_time_shared_event_s": 0.09999999999999998
     },
@@ -2019,6 +2189,11 @@
       "peak_position_violation_fallback_mode_m": 0.3441163155130205,
       "velocity_successor_defect_peak_mps": 0.019828765117823537,
       "velocity_successor_defect_peak_linf_mps": 0.01964153412202413,
+      "paired_min_T1_slack_Nm": 2.0285139927526258e-05,
+      "paired_min_T2_slack_Nm": 0.2662906295937608,
+      "paired_max_T3_defect_linf_mps": 0.0016516828069227385,
+      "paired_audit_record_count": 32,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": false,
@@ -2029,16 +2204,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 134.31254774332047,
-        "p95": 170.46894645318383,
-        "p99": 223.1797366403043,
-        "max": 315.37492759525776
+        "median": 162.479467689991,
+        "p95": 214.51869979500768,
+        "p99": 284.4627271406352,
+        "max": 341.3751255720854
       },
       "manager_time_ms": {
-        "median": 3.6962295416742563,
-        "p95": 4.350917367264628,
-        "p99": 5.590940518304684,
-        "max": 8.296625223010778
+        "median": 4.511896055191755,
+        "p95": 5.024683126248419,
+        "p99": 6.899567374493902,
+        "max": 10.017500026151538
       },
       "warning_lead_time_shared_event_s": 0.09999999999999998
     },
@@ -2073,6 +2248,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.0029317095799931817,
       "velocity_successor_defect_peak_linf_mps": 0.0029280100140109677,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -2083,10 +2263,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 132.29204341769218,
-        "p95": 144.6690410375595,
-        "p99": 162.4301658011973,
-        "max": 284.4170667231083
+        "median": 160.08305829018354,
+        "p95": 174.80241367593405,
+        "p99": 238.70867909863588,
+        "max": 357.37501457333565
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -2127,6 +2307,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.0029317095799931817,
       "velocity_successor_defect_peak_linf_mps": 0.0029280100140109677,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -2137,10 +2322,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 135.62501408159733,
-        "p95": 161.83169791474936,
-        "p99": 215.6414068304002,
-        "max": 321.83388248085976
+        "median": 162.12486661970615,
+        "p95": 183.76244697719812,
+        "p99": 238.9776357449591,
+        "max": 425.4579544067383
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -2181,6 +2366,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.0035927464968542777,
       "velocity_successor_defect_peak_linf_mps": 0.0034864376801375264,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": false,
@@ -2191,10 +2381,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 189.37501590698957,
-        "p95": 2742.264582775533,
-        "p99": 2874.0934561938043,
-        "max": 3112.250007688999
+        "median": 225.68705026060343,
+        "p95": 3276.9787590950727,
+        "p99": 3398.445479106158,
+        "max": 19184.208009392023
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -2235,6 +2425,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.0029317095799931817,
       "velocity_successor_defect_peak_linf_mps": 0.0029280100140109677,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -2245,16 +2440,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 181.3329290598631,
-        "p95": 2558.430645149201,
-        "p99": 2748.9213785156608,
-        "max": 2927.2499959915876
+        "median": 210.60439758002758,
+        "p95": 3160.182782448828,
+        "p99": 3279.4333063066006,
+        "max": 3496.292047202587
       },
       "manager_time_ms": {
-        "median": 0.40441693272441626,
-        "p95": 5.008635320700705,
-        "p99": 5.580923801753667,
-        "max": 5.873125046491623
+        "median": 0.47458347398787737,
+        "p95": 6.012557947542518,
+        "p99": 6.638602931052441,
+        "max": 7.299832999706268
       },
       "warning_lead_time_shared_event_s": 0.266
     },
@@ -2289,6 +2484,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.0028466209235762058,
       "velocity_successor_defect_peak_linf_mps": 0.0028419027505106748,
+      "paired_min_T1_slack_Nm": 2.6297407920313626e-05,
+      "paired_min_T2_slack_Nm": 0.20273638483944634,
+      "paired_max_T3_defect_linf_mps": 0.0028419027505106748,
+      "paired_audit_record_count": 79,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -2299,16 +2499,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 136.79196126759052,
-        "p95": 184.57096302881834,
-        "p99": 230.08013144135472,
-        "max": 334.0828698128462
+        "median": 165.33397138118744,
+        "p95": 227.3622551001608,
+        "p99": 285.39891354739666,
+        "max": 381.3749644905329
       },
       "manager_time_ms": {
-        "median": 1.7499375389888883,
-        "p95": 5.4456229438073915,
-        "p99": 9.794437496457217,
-        "max": 13.87775014154613
+        "median": 2.105854102410376,
+        "p95": 6.524200306739657,
+        "p99": 10.981953651644254,
+        "max": 15.567541820928454
       },
       "warning_lead_time_shared_event_s": 0.366
     }
@@ -2345,6 +2545,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.00039766355650872395,
       "velocity_successor_defect_peak_linf_mps": 0.00032612113876980415,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -2355,10 +2560,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 137.6039581373334,
-        "p95": 154.04402511194348,
-        "p99": 188.42305289581418,
-        "max": 289.4580829888582
+        "median": 161.79191879928112,
+        "p95": 176.05137545615432,
+        "p99": 219.9175138957798,
+        "max": 361.9580529630184
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -2398,6 +2603,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.00039766355650872395,
       "velocity_successor_defect_peak_linf_mps": 0.00032612113876980415,
+      "paired_min_T1_slack_Nm": 0.0003301665679317743,
+      "paired_min_T2_slack_Nm": 4.107946217062192,
+      "paired_max_T3_defect_linf_mps": 0.00032612113876980415,
+      "paired_audit_record_count": 79,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -2408,16 +2618,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 136.3544724881649,
-        "p95": 163.79607841372487,
-        "p99": 214.89766659215093,
-        "max": 304.8749640583992
+        "median": 163.37493434548378,
+        "p95": 212.49965066090226,
+        "p99": 266.0915697924792,
+        "max": 443.25017370283604
       },
       "manager_time_ms": {
-        "median": 0.8228749502450228,
-        "p95": 0.9634944261051714,
-        "p99": 1.0012965044006699,
-        "max": 1.074042171239853
+        "median": 0.9211041033267975,
+        "p95": 1.0663251276127994,
+        "p99": 1.2320556771010156,
+        "max": 1.2832090724259615
       }
     },
     "controller__pd__slow_saturation__clipping": {
@@ -2451,6 +2661,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.002140167707441982,
       "velocity_successor_defect_peak_linf_mps": 0.0021398387338812316,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": false,
@@ -2461,10 +2676,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 139.87510465085506,
-        "p95": 154.41905707120895,
-        "p99": 189.59314096719027,
-        "max": 317.24991276860237
+        "median": 163.24990428984165,
+        "p95": 176.37686105445027,
+        "p99": 229.23771291971204,
+        "max": 362.1659707278013
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -2504,6 +2719,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.002140167707441982,
       "velocity_successor_defect_peak_linf_mps": 0.0021398387338812316,
+      "paired_min_T1_slack_Nm": 2.2611215599904755e-05,
+      "paired_min_T2_slack_Nm": 0.8184438595488241,
+      "paired_max_T3_defect_linf_mps": 0.0021398387338812316,
+      "paired_audit_record_count": 79,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -2514,16 +2734,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 136.41687110066414,
-        "p95": 185.39817538112393,
-        "p99": 239.9234962649643,
-        "max": 335.25004982948303
+        "median": 164.27063383162022,
+        "p95": 217.22277160733938,
+        "p99": 283.51619839668274,
+        "max": 380.7500470429659
       },
       "manager_time_ms": {
-        "median": 1.8747920403257012,
-        "p95": 4.144625482149422,
-        "p99": 5.313650744501488,
-        "max": 6.96741696447134
+        "median": 2.2021459881216288,
+        "p95": 4.9317066674120715,
+        "p99": 6.4395151496864695,
+        "max": 8.434792049229145
       }
     },
     "controller__pd__sudden_disturbance__clipping": {
@@ -2557,6 +2777,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.12693139167416587,
       "velocity_successor_defect_peak_linf_mps": 0.12674286522852263,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": false,
       "sampled_state_check_satisfied": true,
@@ -2567,10 +2792,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 133.37493874132633,
-        "p95": 147.59845798835156,
-        "p99": 177.96721775084734,
-        "max": 313.041964545846
+        "median": 161.47957649081945,
+        "p95": 176.62929603829977,
+        "p99": 238.7945307418704,
+        "max": 376.8329042941332
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -2610,6 +2835,11 @@
       "peak_position_violation_fallback_mode_m": 0.0,
       "velocity_successor_defect_peak_mps": 0.06716900779542671,
       "velocity_successor_defect_peak_linf_mps": 0.06716735280678623,
+      "paired_min_T1_slack_Nm": 2.6550000339135155e-05,
+      "paired_min_T2_slack_Nm": 0.2203068438829261,
+      "paired_max_T3_defect_linf_mps": 0.003997724247578577,
+      "paired_audit_record_count": 73,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": false,
       "sampled_state_check_satisfied": true,
@@ -2620,16 +2850,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 136.39603275805712,
-        "p95": 164.79609766975042,
-        "p99": 214.83268821611998,
-        "max": 302.8332721441984
+        "median": 164.33396376669407,
+        "p95": 211.17123542353508,
+        "p99": 258.583789691329,
+        "max": 364.9999853223562
       },
       "manager_time_ms": {
-        "median": 0.8417294593527913,
-        "p95": 4.037295375019312,
-        "p99": 4.585264229681342,
-        "max": 4.65554092079401
+        "median": 0.9303339757025242,
+        "p95": 4.745850653853267,
+        "p99": 5.078978834208101,
+        "max": 5.1042919512838125
       }
     },
     "controller__impedance__no_saturation__clipping": {
@@ -2663,6 +2893,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.0004670454135501223,
       "velocity_successor_defect_peak_linf_mps": 0.00041622966894473614,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -2673,10 +2908,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 140.62505215406418,
-        "p95": 174.0955980494618,
-        "p99": 232.83881368115544,
-        "max": 372.08315916359425
+        "median": 163.37493434548378,
+        "p95": 174.87696604803205,
+        "p99": 207.6300955377519,
+        "max": 338.8328477740288
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -2716,6 +2951,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.0004670454135501223,
       "velocity_successor_defect_peak_linf_mps": 0.00041622966894473614,
+      "paired_min_T1_slack_Nm": 8.976736946697192e-05,
+      "paired_min_T2_slack_Nm": 4.075287017062192,
+      "paired_max_T3_defect_linf_mps": 0.00041622966894473614,
+      "paired_audit_record_count": 79,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -2726,16 +2966,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 139.45845421403646,
-        "p95": 168.78013266250488,
-        "p99": 217.9431612603366,
-        "max": 392.0411691069603
+        "median": 164.60451297461987,
+        "p95": 221.88336588442323,
+        "p99": 272.64031348749995,
+        "max": 348.29205833375454
       },
       "manager_time_ms": {
-        "median": 0.851562013849616,
-        "p95": 0.958397623617202,
-        "p99": 0.9714723494835197,
-        "max": 0.9765410795807838
+        "median": 0.9382704738527536,
+        "p95": 1.0294706444256008,
+        "p99": 1.0654580011032522,
+        "max": 1.07533298432827
       }
     },
     "controller__impedance__slow_saturation__clipping": {
@@ -2769,6 +3009,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.0031787581682404544,
       "velocity_successor_defect_peak_linf_mps": 0.0031777960387981974,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": false,
@@ -2779,10 +3024,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 140.58349188417196,
-        "p95": 154.50200298801064,
-        "p99": 210.63969936221838,
-        "max": 317.7919425070286
+        "median": 164.91697169840336,
+        "p95": 180.08496845141053,
+        "p99": 230.4766187444329,
+        "max": 327.12495885789394
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -2822,6 +3067,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.002835908825457137,
       "velocity_successor_defect_peak_linf_mps": 0.0028358595890601024,
+      "paired_min_T1_slack_Nm": 2.357139182349033e-05,
+      "paired_min_T2_slack_Nm": 0.8187892302229496,
+      "paired_max_T3_defect_linf_mps": 0.0028358595890601024,
+      "paired_audit_record_count": 79,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -2832,16 +3082,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 138.6875519528985,
-        "p95": 192.7976962178945,
-        "p99": 241.513189394027,
-        "max": 370.540888980031
+        "median": 166.60441178828478,
+        "p95": 227.06490708515045,
+        "p99": 284.62857473641634,
+        "max": 405.41705675423145
       },
       "manager_time_ms": {
-        "median": 2.206166507676244,
-        "p95": 3.677931393031031,
-        "p99": 4.201099362689996,
-        "max": 4.786291858181357
+        "median": 2.709354506805539,
+        "p95": 4.281599877867847,
+        "p99": 5.079388185404235,
+        "max": 5.8724170085042715
       }
     },
     "controller__impedance__sudden_disturbance__clipping": {
@@ -2875,6 +3125,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.04687240287420157,
       "velocity_successor_defect_peak_linf_mps": 0.046721855125065326,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": false,
       "sampled_state_check_satisfied": true,
@@ -2885,10 +3140,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 135.93747280538082,
-        "p95": 155.92642594128844,
-        "p99": 214.80801515281198,
-        "max": 359.1668792068958
+        "median": 165.18752090632915,
+        "p95": 181.16898136213422,
+        "p99": 244.56594372168178,
+        "max": 343.0829383432865
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -2928,6 +3183,11 @@
       "peak_position_violation_fallback_mode_m": 0.0,
       "velocity_successor_defect_peak_mps": 0.06717994866626731,
       "velocity_successor_defect_peak_linf_mps": 0.06717758611172522,
+      "paired_min_T1_slack_Nm": 2.6297407920313626e-05,
+      "paired_min_T2_slack_Nm": 0.21982999530154768,
+      "paired_max_T3_defect_linf_mps": 0.0028033060243088936,
+      "paired_audit_record_count": 73,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": false,
       "sampled_state_check_satisfied": true,
@@ -2938,16 +3198,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 138.75006698071957,
-        "p95": 186.08821555972096,
-        "p99": 248.92390239983797,
-        "max": 369.0000157803297
+        "median": 164.58402387797832,
+        "p95": 208.26163236051795,
+        "p99": 264.8822031915188,
+        "max": 323.54192808270454
       },
       "manager_time_ms": {
-        "median": 0.8888124721124768,
-        "p95": 4.2023517191410065,
-        "p99": 4.418563051149248,
-        "max": 4.471624968573451
+        "median": 0.9347919840365648,
+        "p95": 4.893966694362462,
+        "p99": 5.03804636420682,
+        "max": 5.107500124722719
       }
     },
     "controller__rl_policy__no_saturation__clipping": {
@@ -2981,6 +3241,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.007720370863168491,
       "velocity_successor_defect_peak_linf_mps": 0.006707652823103677,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": false,
@@ -2991,10 +3256,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 137.95914128422737,
-        "p95": 169.51671568676826,
-        "p99": 246.68408790603277,
-        "max": 328.5410348325968
+        "median": 167.20849089324474,
+        "p95": 188.07299202308053,
+        "p99": 238.12914034351707,
+        "max": 338.6249300092459
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -3034,6 +3299,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.007695991140375915,
       "velocity_successor_defect_peak_linf_mps": 0.0067963110002047245,
+      "paired_min_T1_slack_Nm": 0.0002203010268404526,
+      "paired_min_T2_slack_Nm": 2.363452141541557,
+      "paired_max_T3_defect_linf_mps": 0.0067963110002047245,
+      "paired_audit_record_count": 79,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -3044,16 +3314,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 141.99991710484028,
-        "p95": 225.30659334734082,
-        "p99": 341.4196521043777,
-        "max": 3694.9580535292625
+        "median": 167.7079126238823,
+        "p95": 232.3316526599228,
+        "p99": 333.1153630279004,
+        "max": 433.1669770181179
       },
       "manager_time_ms": {
-        "median": 3.7620204966515303,
-        "p95": 9.720708569511771,
-        "p99": 13.056587588507671,
-        "max": 14.357124920934439
+        "median": 4.506854573264718,
+        "p95": 11.126714304555207,
+        "p99": 11.977559973020085,
+        "max": 14.70125000923872
       }
     },
     "controller__rl_policy__slow_saturation__clipping": {
@@ -3087,6 +3357,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.007573528704764104,
       "velocity_successor_defect_peak_linf_mps": 0.006675621949407962,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": false,
@@ -3097,10 +3372,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 137.39557471126318,
-        "p95": 157.00628282502294,
-        "p99": 198.06575961411,
-        "max": 278.957886621356
+        "median": 165.91651365160942,
+        "p95": 183.5795235820114,
+        "p99": 246.509478893131,
+        "max": 344.2917950451374
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -3140,6 +3415,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.007583776078219905,
       "velocity_successor_defect_peak_linf_mps": 0.006767700279526778,
+      "paired_min_T1_slack_Nm": 0.0002376162853524634,
+      "paired_min_T2_slack_Nm": 0.6466638754929575,
+      "paired_max_T3_defect_linf_mps": 0.006767700279526778,
+      "paired_audit_record_count": 79,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -3150,16 +3430,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 139.8748718202114,
-        "p95": 168.76256559044123,
-        "p99": 247.6283605210483,
-        "max": 301.2490924447775
+        "median": 167.0829951763153,
+        "p95": 218.0897979997098,
+        "p99": 297.22503386437893,
+        "max": 389.0839871019125
       },
       "manager_time_ms": {
-        "median": 0.941687379963696,
-        "p95": 5.103102116845546,
-        "p99": 6.543709111865608,
-        "max": 6.768957944586873
+        "median": 1.0519579518586397,
+        "p95": 6.093283602967856,
+        "p99": 7.248666184023021,
+        "max": 7.46324984356761
       }
     },
     "controller__rl_policy__sudden_disturbance__clipping": {
@@ -3193,6 +3473,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.09797653852541524,
       "velocity_successor_defect_peak_linf_mps": 0.09536365590014045,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": false,
       "sampled_state_check_satisfied": false,
@@ -3203,10 +3488,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 138.4170027449727,
-        "p95": 159.058824647218,
-        "p99": 202.45965104550123,
-        "max": 292.83296316862106
+        "median": 163.89554366469383,
+        "p95": 180.8434841223061,
+        "p99": 245.46798085793853,
+        "max": 338.6251628398895
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -3246,6 +3531,11 @@
       "peak_position_violation_fallback_mode_m": 2.3086883024034388e-05,
       "velocity_successor_defect_peak_mps": 0.06686837226606465,
       "velocity_successor_defect_peak_linf_mps": 0.06681253291849683,
+      "paired_min_T1_slack_Nm": 0.0007785789050926591,
+      "paired_min_T2_slack_Nm": 0.10940222795367571,
+      "paired_max_T3_defect_linf_mps": 0.007929435142645769,
+      "paired_audit_record_count": 73,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": false,
       "sampled_state_check_satisfied": true,
@@ -3256,16 +3546,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 139.8329623043537,
-        "p95": 244.33709913864735,
-        "p99": 360.43602507561445,
-        "max": 5161.7498975247145
+        "median": 166.16703942418098,
+        "p95": 229.7171507962048,
+        "p99": 305.43865403160453,
+        "max": 387.91587576270103
       },
       "manager_time_ms": {
-        "median": 2.1343540865927935,
-        "p95": 4.653833573684088,
-        "p99": 8.349766966421157,
-        "max": 8.54529207572341
+        "median": 2.4783540284261107,
+        "p95": 5.21396070253104,
+        "p99": 9.390929932706056,
+        "max": 9.657915914431214
       }
     },
     "controller__neural_policy__no_saturation__clipping": {
@@ -3299,6 +3589,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.0016465660883836202,
       "velocity_successor_defect_peak_linf_mps": 0.0015324404052859779,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -3309,10 +3604,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 144.0625637769699,
-        "p95": 170.30553426593542,
-        "p99": 241.92869896069163,
-        "max": 348.1251187622547
+        "median": 167.1659993007779,
+        "p95": 183.173140976578,
+        "p99": 250.3346581943333,
+        "max": 337.2500650584698
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -3352,6 +3647,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.0016465660883836202,
       "velocity_successor_defect_peak_linf_mps": 0.0015324404052859779,
+      "paired_min_T1_slack_Nm": 0.0001176127281811365,
+      "paired_min_T2_slack_Nm": 4.189166828455746,
+      "paired_max_T3_defect_linf_mps": 0.0015324404052859779,
+      "paired_audit_record_count": 79,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -3362,16 +3662,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 141.62505976855755,
-        "p95": 174.7531467117369,
-        "p99": 212.05730503425002,
-        "max": 345.29203549027443
+        "median": 168.66601072251797,
+        "p95": 212.93170284479856,
+        "p99": 266.0056110471487,
+        "max": 361.16596311330795
       },
       "manager_time_ms": {
-        "median": 0.8656670106574893,
-        "p95": 0.9732189122587441,
-        "p99": 1.053655419964343,
-        "max": 1.060041133314371
+        "median": 0.9646664839237928,
+        "p95": 1.0789480293169618,
+        "p99": 1.141284459736198,
+        "max": 1.1683751363307238
       }
     },
     "controller__neural_policy__slow_saturation__clipping": {
@@ -3405,6 +3705,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.00247691376579789,
       "velocity_successor_defect_peak_linf_mps": 0.0024708068153079564,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": false,
@@ -3415,10 +3720,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 139.8960594087839,
-        "p95": 151.12711116671562,
-        "p99": 180.27915386483068,
-        "max": 272.2088247537613
+        "median": 166.91605560481548,
+        "p95": 182.55568575114012,
+        "p99": 239.0043879859149,
+        "max": 355.83297722041607
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -3458,6 +3763,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.00247691376579789,
       "velocity_successor_defect_peak_linf_mps": 0.0024708068153079564,
+      "paired_min_T1_slack_Nm": 4.871278080445518e-05,
+      "paired_min_T2_slack_Nm": 0.818118953125481,
+      "paired_max_T3_defect_linf_mps": 0.0024708068153079564,
+      "paired_audit_record_count": 79,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -3468,16 +3778,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 142.95789878815413,
-        "p95": 186.39778718352315,
-        "p99": 233.00833301618692,
-        "max": 290.2501728385687
+        "median": 168.12491230666637,
+        "p95": 223.92089013010258,
+        "p99": 303.46462735906243,
+        "max": 405.29086254537106
       },
       "manager_time_ms": {
-        "median": 1.8202909268438816,
-        "p95": 4.867718811146914,
-        "p99": 5.436192541383206,
-        "max": 5.577834090217948
+        "median": 2.1873959340155125,
+        "p95": 6.208482780493796,
+        "p99": 6.3313104934059075,
+        "max": 6.427625194191933
       }
     },
     "controller__neural_policy__sudden_disturbance__clipping": {
@@ -3511,6 +3821,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.08673794197305254,
       "velocity_successor_defect_peak_linf_mps": 0.08656931346938584,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": false,
       "sampled_state_check_satisfied": false,
@@ -3521,10 +3836,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 136.6250216960907,
-        "p95": 149.99997802078724,
-        "p99": 173.7107802182436,
-        "max": 270.12499049305916
+        "median": 164.75003212690353,
+        "p95": 191.71827007085085,
+        "p99": 234.86965801566836,
+        "max": 351.4159470796585
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -3564,6 +3879,11 @@
       "peak_position_violation_fallback_mode_m": 0.0,
       "velocity_successor_defect_peak_mps": 0.06753788164019663,
       "velocity_successor_defect_peak_linf_mps": 0.0674971645468079,
+      "paired_min_T1_slack_Nm": 4.107318437058735e-05,
+      "paired_min_T2_slack_Nm": 0.2179128527486336,
+      "paired_max_T3_defect_linf_mps": 0.004627242910843276,
+      "paired_audit_record_count": 73,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": false,
       "sampled_state_check_satisfied": true,
@@ -3574,16 +3894,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 141.0413533449173,
-        "p95": 183.71053738519547,
-        "p99": 228.35699375718832,
-        "max": 302.29100957512856
+        "median": 165.58310016989708,
+        "p95": 208.42436933889985,
+        "p99": 276.70948300510645,
+        "max": 357.75010474026203
       },
       "manager_time_ms": {
-        "median": 0.8906669681891799,
-        "p95": 4.21558148227632,
-        "p99": 4.5316022448241675,
-        "max": 4.904415924102068
+        "median": 0.9471040684729815,
+        "p95": 5.0595653359778225,
+        "p99": 5.492881913669405,
+        "max": 5.817999830469489
       }
     },
     "controller__ai_conditioned_proxy__no_saturation__clipping": {
@@ -3617,6 +3937,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.0004931670501241376,
       "velocity_successor_defect_peak_linf_mps": 0.00036765769520525954,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -3627,10 +3952,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 138.8129312545061,
-        "p95": 149.58801912143826,
-        "p99": 188.0950341001152,
-        "max": 262.62481696903706
+        "median": 164.0829723328352,
+        "p95": 183.7086980231106,
+        "p99": 233.77527017146343,
+        "max": 310.91715209186077
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -3670,6 +3995,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.0004931670501241376,
       "velocity_successor_defect_peak_linf_mps": 0.00036765769520525954,
+      "paired_min_T1_slack_Nm": 0.00035856069015618997,
+      "paired_min_T2_slack_Nm": 4.091616617062192,
+      "paired_max_T3_defect_linf_mps": 0.00036765769520525954,
+      "paired_audit_record_count": 79,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -3680,16 +4010,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 138.43807391822338,
-        "p95": 161.0933453775942,
-        "p99": 183.460155967623,
-        "max": 232.50002413988113
+        "median": 166.08403529971838,
+        "p95": 225.50622234120965,
+        "p99": 584.0791645459828,
+        "max": 968.8751306384802
       },
       "manager_time_ms": {
-        "median": 0.82693703006953,
-        "p95": 0.8749788510613143,
-        "p99": 0.8852468733675777,
-        "max": 0.893541844561696
+        "median": 0.9305214043706656,
+        "p95": 1.1070480686612418,
+        "p99": 2.6114488602615866,
+        "max": 2.9807090759277344
       }
     },
     "controller__ai_conditioned_proxy__slow_saturation__clipping": {
@@ -3723,6 +4053,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.002426308168348359,
       "velocity_successor_defect_peak_linf_mps": 0.0024234719391616477,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": false,
@@ -3733,10 +4068,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 137.16646935790777,
-        "p95": 148.00206990912557,
-        "p99": 179.0899457409978,
-        "max": 298.6658364534378
+        "median": 163.12510706484318,
+        "p95": 184.1437886469066,
+        "p99": 244.98203070834276,
+        "max": 361.1249849200249
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -3776,6 +4111,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.002426308168348359,
       "velocity_successor_defect_peak_linf_mps": 0.0024234719391616477,
+      "paired_min_T1_slack_Nm": 2.5411278798556647e-05,
+      "paired_min_T2_slack_Nm": 0.8183546375241794,
+      "paired_max_T3_defect_linf_mps": 0.0024234719391616477,
+      "paired_audit_record_count": 79,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -3786,16 +4126,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 138.08300718665123,
-        "p95": 182.0611068978905,
-        "p99": 258.2238591276109,
-        "max": 360.0830677896738
+        "median": 164.16655853390694,
+        "p95": 221.55870683491216,
+        "p99": 293.79505198448896,
+        "max": 381.79103285074234
       },
       "manager_time_ms": {
-        "median": 2.4269165005534887,
-        "p95": 3.897343797143548,
-        "p99": 5.046342485584318,
-        "max": 5.170833086594939
+        "median": 2.721271011978388,
+        "p95": 4.329216340556741,
+        "p99": 6.046973813790828,
+        "max": 6.066625006496906
       }
     },
     "controller__ai_conditioned_proxy__sudden_disturbance__clipping": {
@@ -3829,6 +4169,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.13119986622799407,
       "velocity_successor_defect_peak_linf_mps": 0.13098441324850302,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": false,
       "sampled_state_check_satisfied": true,
@@ -3839,10 +4184,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 135.1875253021717,
-        "p95": 173.79322089254856,
-        "p99": 257.1837021969258,
-        "max": 356.58408887684345
+        "median": 162.66689635813236,
+        "p95": 179.341493640095,
+        "p99": 245.30122987926006,
+        "max": 356.83391615748405
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -3882,6 +4227,11 @@
       "peak_position_violation_fallback_mode_m": 0.0,
       "velocity_successor_defect_peak_mps": 0.06716239055953487,
       "velocity_successor_defect_peak_linf_mps": 0.06716098501526316,
+      "paired_min_T1_slack_Nm": 2.7284332693701396e-05,
+      "paired_min_T2_slack_Nm": 0.22009627315730196,
+      "paired_max_T3_defect_linf_mps": 0.004398576194897363,
+      "paired_audit_record_count": 73,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": false,
       "sampled_state_check_satisfied": true,
@@ -3892,16 +4242,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 137.45797332376242,
-        "p95": 205.96267422661182,
-        "p99": 283.3435172215104,
-        "max": 430.8749921619892
+        "median": 163.66655472666025,
+        "p95": 213.2646390236914,
+        "p99": 272.6283064112067,
+        "max": 378.79101000726223
       },
       "manager_time_ms": {
-        "median": 0.8639789884909987,
-        "p95": 4.046835599001496,
-        "p99": 4.468813452403991,
-        "max": 4.731290973722935
+        "median": 0.9390630293637514,
+        "p95": 4.943880846258253,
+        "p99": 5.08317538537085,
+        "max": 5.201082909479737
       }
     }
   },
@@ -3937,6 +4287,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.00046704541355012245,
       "velocity_successor_defect_peak_linf_mps": 0.0004162296689447363,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -3947,10 +4302,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 129.4584944844246,
-        "p95": 142.75191351771355,
-        "p99": 222.00167877599594,
-        "max": 348.95818680524826
+        "median": 154.70897778868675,
+        "p95": 168.81902702152726,
+        "p99": 236.91347334533927,
+        "max": 284.0000670403242
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -3990,6 +4345,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.00046704541355012245,
       "velocity_successor_defect_peak_linf_mps": 0.0004162296689447363,
+      "paired_min_T1_slack_Nm": 0.002746936423487268,
+      "paired_min_T2_slack_Nm": 6.451381780578911,
+      "paired_max_T3_defect_linf_mps": 0.0004162296689447363,
+      "paired_audit_record_count": 79,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -4000,16 +4360,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 132.9374499619007,
-        "p95": 157.72471670061347,
-        "p99": 193.77728924155232,
-        "max": 293.8746474683285
+        "median": 155.0830202177167,
+        "p95": 193.62035673111674,
+        "p99": 258.67725722491735,
+        "max": 334.29102040827274
       },
       "manager_time_ms": {
-        "median": 0.8060830878093839,
-        "p95": 0.8936441736295819,
-        "p99": 0.9721539611928163,
-        "max": 0.991542125120759
+        "median": 0.884749460965395,
+        "p95": 0.9771208395250142,
+        "p99": 1.0084874881431458,
+        "max": 1.0173749178647995
       }
     },
     "robot__planar_2r__impedance__slow_saturation__clipping": {
@@ -4043,6 +4403,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.0031787581682404544,
       "velocity_successor_defect_peak_linf_mps": 0.0031777960387981974,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": false,
@@ -4053,10 +4418,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 129.208667203784,
-        "p95": 162.1815492399037,
-        "p99": 250.40555046871302,
-        "max": 676.0000251233578
+        "median": 151.87496319413185,
+        "p95": 164.9600570090115,
+        "p99": 223.34926528856155,
+        "max": 308.3329647779465
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -4096,6 +4461,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.00283590882545713,
       "velocity_successor_defect_peak_linf_mps": 0.0028358595890600954,
+      "paired_min_T1_slack_Nm": 0.0026368444207315184,
+      "paired_min_T2_slack_Nm": 1.192747276130227,
+      "paired_max_T3_defect_linf_mps": 0.0028358595890600954,
+      "paired_audit_record_count": 79,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -4106,16 +4476,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 129.6659465879202,
-        "p95": 169.26539829000825,
-        "p99": 221.05654468759892,
-        "max": 304.70825731754303
+        "median": 155.9375086799264,
+        "p95": 220.89604754000894,
+        "p99": 275.08728904649615,
+        "max": 339.7080581635237
       },
       "manager_time_ms": {
-        "median": 1.9663958810269833,
-        "p95": 3.138097724877298,
-        "p99": 3.3378405519761123,
-        "max": 3.643207950517535
+        "median": 2.389832981862128,
+        "p95": 3.518433379940688,
+        "p99": 3.992468039505182,
+        "max": 4.169000079855323
       }
     },
     "robot__planar_2r__rl_policy__no_saturation__clipping": {
@@ -4149,6 +4519,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.009194790281229461,
       "velocity_successor_defect_peak_linf_mps": 0.008007489296347106,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": false,
@@ -4159,10 +4534,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 126.5419414266944,
-        "p95": 139.92115855216977,
-        "p99": 167.86886611953375,
-        "max": 248.95905517041683
+        "median": 153.74994836747646,
+        "p95": 165.18367920070884,
+        "p99": 201.3187715783715,
+        "max": 332.75014720857143
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -4202,6 +4577,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.007455694959637346,
       "velocity_successor_defect_peak_linf_mps": 0.00681542539437191,
+      "paired_min_T1_slack_Nm": 0.0047451980743802025,
+      "paired_min_T2_slack_Nm": 0.14400532884877215,
+      "paired_max_T3_defect_linf_mps": 0.00681542539437191,
+      "paired_audit_record_count": 79,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -4212,16 +4592,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 131.3330139964819,
-        "p95": 162.75322996079922,
-        "p99": 227.3992169648409,
-        "max": 327.6248462498188
+        "median": 156.25008381903172,
+        "p95": 222.85274462774393,
+        "p99": 271.9715749844908,
+        "max": 365.54085090756416
       },
       "manager_time_ms": {
-        "median": 2.6674375403672457,
-        "p95": 4.838100040797144,
-        "p99": 7.5434362608939205,
-        "max": 10.09408407844603
+        "median": 3.169416915625334,
+        "p95": 5.602716642897575,
+        "p99": 8.77103486098347,
+        "max": 11.5921248216182
       }
     },
     "robot__planar_2r__rl_policy__slow_saturation__clipping": {
@@ -4255,6 +4635,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.009701531605154384,
       "velocity_successor_defect_peak_linf_mps": 0.008643864461804415,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": false,
@@ -4265,10 +4650,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 130.56257739663124,
-        "p95": 142.08722859621048,
-        "p99": 177.89056990295646,
-        "max": 272.58414775133133
+        "median": 155.87499365210533,
+        "p95": 169.55673927441237,
+        "p99": 217.80294133350253,
+        "max": 372.4999260157347
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -4308,6 +4693,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.007298342187833648,
       "velocity_successor_defect_peak_linf_mps": 0.00679752806080422,
+      "paired_min_T1_slack_Nm": 0.005100813771588268,
+      "paired_min_T2_slack_Nm": 0.14375559122012938,
+      "paired_max_T3_defect_linf_mps": 0.00679752806080422,
+      "paired_audit_record_count": 79,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -4318,16 +4708,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 131.4579276368022,
-        "p95": 161.35701444000003,
-        "p99": 237.0868227444589,
-        "max": 336.83329820632935
+        "median": 156.93739987909794,
+        "p95": 205.9816499240696,
+        "p99": 273.41906214132905,
+        "max": 376.2498963624239
       },
       "manager_time_ms": {
-        "median": 0.8360620122402906,
-        "p95": 3.6888292059302326,
-        "p99": 4.227167658973485,
-        "max": 4.236416891217232
+        "median": 0.984458951279521,
+        "p95": 4.2708211578428745,
+        "p99": 4.738063644617796,
+        "max": 4.8201249446719885
       }
     },
     "robot__fr3_surrogate__impedance__no_saturation__clipping": {
@@ -4361,6 +4751,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.0004670454135501223,
       "velocity_successor_defect_peak_linf_mps": 0.00041622966894473614,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -4371,10 +4766,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 135.79148799180984,
-        "p95": 144.50192684307694,
-        "p99": 152.39569358527658,
-        "max": 283.99983420968056
+        "median": 164.85457308590412,
+        "p95": 183.59317909926176,
+        "p99": 246.38444883748886,
+        "max": 334.91593785583973
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -4414,6 +4809,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.0004670454135501223,
       "velocity_successor_defect_peak_linf_mps": 0.00041622966894473614,
+      "paired_min_T1_slack_Nm": 8.976736946697192e-05,
+      "paired_min_T2_slack_Nm": 4.075287017062192,
+      "paired_max_T3_defect_linf_mps": 0.00041622966894473614,
+      "paired_audit_record_count": 79,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -4424,16 +4824,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 138.62503692507744,
-        "p95": 161.9725371710956,
-        "p99": 187.71431408822536,
-        "max": 271.4169677346945
+        "median": 166.3749571889639,
+        "p95": 206.13352535292506,
+        "p99": 236.5486230701208,
+        "max": 284.8329022526741
       },
       "manager_time_ms": {
-        "median": 0.827228999696672,
-        "p95": 0.8920874795876443,
-        "p99": 0.9337574103847146,
-        "max": 0.9389580227434635
+        "median": 0.9318540105596185,
+        "p95": 1.0484482161700726,
+        "p99": 1.106294449418783,
+        "max": 1.1091248597949743
       }
     },
     "robot__fr3_surrogate__impedance__slow_saturation__clipping": {
@@ -4467,6 +4867,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.0031787581682404544,
       "velocity_successor_defect_peak_linf_mps": 0.0031777960387981974,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": false,
@@ -4477,10 +4882,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 139.04203660786152,
-        "p95": 147.71330170333383,
-        "p99": 169.18081091716883,
-        "max": 300.7089253515005
+        "median": 163.20799477398396,
+        "p95": 178.9684989489615,
+        "p99": 246.56745139509437,
+        "max": 325.8748911321163
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -4520,6 +4925,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.002835908825457137,
       "velocity_successor_defect_peak_linf_mps": 0.0028358595890601024,
+      "paired_min_T1_slack_Nm": 2.357139182349033e-05,
+      "paired_min_T2_slack_Nm": 0.8187892302229496,
+      "paired_max_T3_defect_linf_mps": 0.0028358595890601024,
+      "paired_audit_record_count": 79,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -4530,16 +4940,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 139.45845421403646,
-        "p95": 167.9378212429582,
-        "p99": 221.5847303159535,
-        "max": 305.958092212677
+        "median": 166.24992713332176,
+        "p95": 232.4662054888903,
+        "p99": 295.7462961785495,
+        "max": 354.12516444921494
       },
       "manager_time_ms": {
-        "median": 2.2046874510124326,
-        "p95": 3.5397978848777707,
-        "p99": 4.284892596770071,
-        "max": 5.157249979674816
+        "median": 2.6340835029259324,
+        "p95": 4.234597296454012,
+        "p99": 5.076129615772508,
+        "max": 6.070541916415095
       }
     },
     "robot__fr3_surrogate__rl_policy__no_saturation__clipping": {
@@ -4573,6 +4983,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.007720370863168491,
       "velocity_successor_defect_peak_linf_mps": 0.006707652823103677,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": false,
@@ -4583,10 +4998,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 137.24993914365768,
-        "p95": 147.30143593624234,
-        "p99": 190.18231891095638,
-        "max": 811.1249189823866
+        "median": 165.74992332607508,
+        "p95": 193.93897382542488,
+        "p99": 250.2969186753035,
+        "max": 334.3340940773487
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -4626,6 +5041,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.007695991140375915,
       "velocity_successor_defect_peak_linf_mps": 0.0067963110002047245,
+      "paired_min_T1_slack_Nm": 0.0002203010268404526,
+      "paired_min_T2_slack_Nm": 2.363452141541557,
+      "paired_max_T3_defect_linf_mps": 0.0067963110002047245,
+      "paired_audit_record_count": 79,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -4636,16 +5056,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 140.37499204277992,
-        "p95": 184.39781852066514,
-        "p99": 245.67506741732356,
-        "max": 343.0829383432865
+        "median": 167.99999866634607,
+        "p95": 244.73071098327634,
+        "p99": 324.0436571650207,
+        "max": 446.501187980175
       },
       "manager_time_ms": {
-        "median": 3.7369794445112348,
-        "p95": 9.109872207045555,
-        "p99": 10.172074264846726,
-        "max": 12.232625158503652
+        "median": 4.539750050753355,
+        "p95": 11.089072690811008,
+        "p99": 11.898451971355804,
+        "max": 14.719542115926743
       }
     },
     "robot__fr3_surrogate__rl_policy__slow_saturation__clipping": {
@@ -4679,6 +5099,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.007573528704764104,
       "velocity_successor_defect_peak_linf_mps": 0.006675621949407962,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": false,
@@ -4689,10 +5114,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 140.4164358973503,
-        "p95": 151.46421501412988,
-        "p99": 216.72702161595217,
-        "max": 414.7919826209545
+        "median": 165.56261107325554,
+        "p95": 178.2645587809384,
+        "p99": 226.63375828415155,
+        "max": 342.2088921070099
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -4732,6 +5157,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.007583776078219905,
       "velocity_successor_defect_peak_linf_mps": 0.006767700279526778,
+      "paired_min_T1_slack_Nm": 0.0002376162853524634,
+      "paired_min_T2_slack_Nm": 0.6466638754929575,
+      "paired_max_T3_defect_linf_mps": 0.006767700279526778,
+      "paired_audit_record_count": 79,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -4742,16 +5172,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 140.02062380313873,
-        "p95": 219.87915970385072,
-        "p99": 323.2091502286493,
-        "max": 708.000035956502
+        "median": 168.95798034965992,
+        "p95": 222.54785289987916,
+        "p99": 291.05326859280467,
+        "max": 376.3751592487097
       },
       "manager_time_ms": {
-        "median": 0.9830830385908484,
-        "p95": 5.288431374356148,
-        "p99": 6.297933848109092,
-        "max": 6.822624942287803
+        "median": 1.0577919892966747,
+        "p95": 6.255283521022646,
+        "p99": 7.379691845271735,
+        "max": 7.674624910578132
       }
     },
     "robot__arm6_surrogate__impedance__no_saturation__clipping": {
@@ -4785,6 +5215,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.0004670454135501217,
       "velocity_successor_defect_peak_linf_mps": 0.00041622966894473636,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -4795,10 +5230,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 135.16657054424286,
-        "p95": 161.32532618939874,
-        "p99": 253.0252421274781,
-        "max": 402.37489156425
+        "median": 160.4169374331832,
+        "p95": 179.0166599676013,
+        "p99": 230.973248835653,
+        "max": 327.08398066461086
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -4838,6 +5273,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.0004670454135501217,
       "velocity_successor_defect_peak_linf_mps": 0.00041622966894473636,
+      "paired_min_T1_slack_Nm": 0.00020390314989935862,
+      "paired_min_T2_slack_Nm": 3.8605966501866833,
+      "paired_max_T3_defect_linf_mps": 0.00041622966894473636,
+      "paired_audit_record_count": 79,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -4848,16 +5288,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 138.47951777279377,
-        "p95": 172.50003293156624,
-        "p99": 210.91749658808112,
-        "max": 284.12509709596634
+        "median": 162.56258822977543,
+        "p95": 203.77923501655457,
+        "p99": 242.25461995229122,
+        "max": 304.24888245761395
       },
       "manager_time_ms": {
-        "median": 0.843020505271852,
-        "p95": 0.9324242593720554,
-        "p99": 0.9895374905318022,
-        "max": 0.9964159689843655
+        "median": 0.9113750420510769,
+        "p95": 1.02504410315305,
+        "p99": 1.040783072821796,
+        "max": 1.0532918386161327
       }
     },
     "robot__arm6_surrogate__impedance__slow_saturation__clipping": {
@@ -4891,6 +5331,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.0031787581682404544,
       "velocity_successor_defect_peak_linf_mps": 0.0031777960387981974,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": false,
@@ -4901,10 +5346,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 135.8336303383112,
-        "p95": 190.98706543445584,
-        "p99": 263.50005995482206,
-        "max": 437.1670074760914
+        "median": 162.1670089662075,
+        "p95": 176.88118387013674,
+        "p99": 228.1744545325637,
+        "max": 336.16693690419197
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -4944,6 +5389,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.002835908825457137,
       "velocity_successor_defect_peak_linf_mps": 0.0028358595890601024,
+      "paired_min_T1_slack_Nm": 0.00019701587937915807,
+      "paired_min_T2_slack_Nm": 0.9895871366485851,
+      "paired_max_T3_defect_linf_mps": 0.0028358595890601024,
+      "paired_audit_record_count": 79,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -4954,16 +5404,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 136.49999164044857,
-        "p95": 206.65820920839903,
-        "p99": 273.4465640969574,
-        "max": 756.0418453067541
+        "median": 162.7500168979168,
+        "p95": 224.64795038104054,
+        "p99": 280.1029244437814,
+        "max": 364.20789547264576
       },
       "manager_time_ms": {
-        "median": 2.1830624900758266,
-        "p95": 3.863435052335262,
-        "p99": 4.358316264115273,
-        "max": 4.433333175256848
+        "median": 2.6286665815860033,
+        "p95": 4.259212641045451,
+        "p99": 5.024434996303168,
+        "max": 5.356332985684276
       }
     },
     "robot__arm6_surrogate__rl_policy__no_saturation__clipping": {
@@ -4997,6 +5447,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.007720370863168481,
       "velocity_successor_defect_peak_linf_mps": 0.00670765282310376,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": false,
@@ -5007,10 +5462,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 136.31198089569807,
-        "p95": 170.92835623770952,
-        "p99": 255.61103830114,
-        "max": 443.9170006662607
+        "median": 161.6249792277813,
+        "p95": 174.50839513912797,
+        "p99": 234.1235498897731,
+        "max": 316.29204750061035
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -5050,6 +5505,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.00769599346986774,
       "velocity_successor_defect_peak_linf_mps": 0.006796314358888861,
+      "paired_min_T1_slack_Nm": 0.0001267396549988649,
+      "paired_min_T2_slack_Nm": 1.5672593754367807,
+      "paired_max_T3_defect_linf_mps": 0.006796314358888861,
+      "paired_audit_record_count": 79,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -5060,16 +5520,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 138.54203280061483,
-        "p95": 179.08959416672587,
-        "p99": 232.88072319701314,
-        "max": 308.41678380966187
+        "median": 164.6250020712614,
+        "p95": 222.7902295999228,
+        "p99": 308.58552316203713,
+        "max": 430.04192411899567
       },
       "manager_time_ms": {
-        "median": 3.378499997779727,
-        "p95": 6.017892248928545,
-        "p99": 9.001184916123721,
-        "max": 12.482583057135344
+        "median": 4.139625001698732,
+        "p95": 7.2145223733969015,
+        "p99": 10.92972611775619,
+        "max": 14.52037482522428
       }
     },
     "robot__arm6_surrogate__rl_policy__slow_saturation__clipping": {
@@ -5103,6 +5563,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.007573528704764104,
       "velocity_successor_defect_peak_linf_mps": 0.006675621949407989,
+      "paired_min_T1_slack_Nm": null,
+      "paired_min_T2_slack_Nm": null,
+      "paired_max_T3_defect_linf_mps": null,
+      "paired_audit_record_count": 0,
+      "paired_audit_passed": null,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": false,
@@ -5113,10 +5578,10 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 137.4159473925829,
-        "p95": 146.83621702715755,
-        "p99": 175.52089411765334,
-        "max": 301.2910019606352
+        "median": 162.20798715949059,
+        "p95": 176.41899175941944,
+        "p99": 209.7056782804429,
+        "max": 320.49999572336674
       },
       "manager_time_ms": {
         "median": 0.0,
@@ -5156,6 +5621,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.007583778630716086,
       "velocity_successor_defect_peak_linf_mps": 0.00676770423459222,
+      "paired_min_T1_slack_Nm": 0.00021649820222936766,
+      "paired_min_T2_slack_Nm": 0.7077482384059494,
+      "paired_max_T3_defect_linf_mps": 0.00676770423459222,
+      "paired_audit_record_count": 79,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -5166,16 +5636,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 139.7083979099989,
-        "p95": 177.4452277459204,
-        "p99": 232.24013391882178,
-        "max": 349.333044141531
+        "median": 164.853991009295,
+        "p95": 212.32228027656672,
+        "p99": 285.6433345004916,
+        "max": 344.5001784712076
       },
       "manager_time_ms": {
-        "median": 0.8935214718803763,
-        "p95": 4.648235067725178,
-        "p99": 6.247577622998505,
-        "max": 6.397875025868416
+        "median": 1.0495211463421583,
+        "p95": 5.14313960447907,
+        "p99": 6.908404352143404,
+        "max": 7.347875041887164
       }
     }
   },
@@ -5211,6 +5681,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.0028466209235762058,
       "velocity_successor_defect_peak_linf_mps": 0.0028419027505106748,
+      "paired_min_T1_slack_Nm": 2.6297407920313626e-05,
+      "paired_min_T2_slack_Nm": 0.20273638483944634,
+      "paired_max_T3_defect_linf_mps": 0.0028419027505106748,
+      "paired_audit_record_count": 79,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -5221,16 +5696,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 137.35448010265827,
-        "p95": 211.7707277648151,
-        "p99": 303.4194768406451,
-        "max": 403.12507189810276
+        "median": 163.7078821659088,
+        "p95": 225.1581870950758,
+        "p99": 281.3883242197335,
+        "max": 359.83300767838955
       },
       "manager_time_ms": {
-        "median": 1.9057499011978507,
-        "p95": 5.635210021864621,
-        "p99": 9.6230331715196,
-        "max": 14.185250038281083
+        "median": 2.037812606431544,
+        "p95": 6.625839613843709,
+        "p99": 11.080809885170277,
+        "max": 15.200790949165821
       }
     },
     "ablation__horizon_ramp__first_step_torque": {
@@ -5264,6 +5739,11 @@
       "peak_position_violation_fallback_mode_m": 0.03117985927405259,
       "velocity_successor_defect_peak_mps": 0.0028466181639899306,
       "velocity_successor_defect_peak_linf_mps": 0.0028418999834362996,
+      "paired_min_T1_slack_Nm": 2.6297407920313626e-05,
+      "paired_min_T2_slack_Nm": 0.22955614171332162,
+      "paired_max_T3_defect_linf_mps": 0.0028418999834362996,
+      "paired_audit_record_count": 60,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": false,
@@ -5274,16 +5754,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 138.9170065522194,
-        "p95": 204.9133065156638,
-        "p99": 298.0617596767843,
-        "max": 391.5829584002495
+        "median": 163.95910643041134,
+        "p95": 210.04813024774194,
+        "p99": 285.366962198168,
+        "max": 363.5829780250788
       },
       "manager_time_ms": {
-        "median": 1.2682919623330235,
-        "p95": 4.003853409085423,
-        "p99": 4.024533028714359,
-        "max": 4.046916961669922
+        "median": 1.406854367814958,
+        "p95": 4.543645854573697,
+        "p99": 4.6316566481254995,
+        "max": 4.632874857634306
       }
     },
     "ablation__slow_saturation__cached_full_torque": {
@@ -5317,6 +5797,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.0004280954050898108,
       "velocity_successor_defect_peak_linf_mps": 0.00040357571980106964,
+      "paired_min_T1_slack_Nm": 1.964876279561198e-05,
+      "paired_min_T2_slack_Nm": 0.8178548605145004,
+      "paired_max_T3_defect_linf_mps": 0.00040357571980106964,
+      "paired_audit_record_count": 79,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -5327,16 +5812,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 139.99990187585354,
-        "p95": 182.8328357078135,
-        "p99": 238.8880797661841,
-        "max": 325.95894299447536
+        "median": 165.81243835389614,
+        "p95": 217.81063405796883,
+        "p99": 279.6410885639488,
+        "max": 416.08395986258984
       },
       "manager_time_ms": {
-        "median": 2.26468697655946,
-        "p95": 4.141926916781813,
-        "p99": 5.662354910746213,
-        "max": 6.084083113819361
+        "median": 2.5463129859417677,
+        "p95": 4.675710760056971,
+        "p99": 6.393392232712352,
+        "max": 7.159790955483913
       }
     },
     "ablation__sudden_disturbance__full": {
@@ -5370,6 +5855,11 @@
       "peak_position_violation_fallback_mode_m": 0.0,
       "velocity_successor_defect_peak_mps": 0.06717994866626731,
       "velocity_successor_defect_peak_linf_mps": 0.06717758611172522,
+      "paired_min_T1_slack_Nm": 2.6297407920313626e-05,
+      "paired_min_T2_slack_Nm": 0.21982999530154768,
+      "paired_max_T3_defect_linf_mps": 0.0028033060243088936,
+      "paired_audit_record_count": 73,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": false,
       "sampled_state_check_satisfied": true,
@@ -5380,16 +5870,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 138.7498341500759,
-        "p95": 182.83376703038812,
-        "p99": 277.0585007965565,
-        "max": 482.29191452264786
+        "median": 164.37494195997715,
+        "p95": 212.00182382017374,
+        "p99": 264.73780628293747,
+        "max": 349.2920659482479
       },
       "manager_time_ms": {
-        "median": 0.8692503906786442,
-        "p95": 4.087994142901152,
-        "p99": 4.375650070142,
-        "max": 4.486249992623925
+        "median": 0.95391646027565,
+        "p95": 4.649522737599909,
+        "p99": 5.059606200084089,
+        "max": 5.17270783893764
       }
     },
     "ablation__sudden_disturbance__no_final_projection": {
@@ -5423,6 +5913,11 @@
       "peak_position_violation_fallback_mode_m": 0.0,
       "velocity_successor_defect_peak_mps": 0.0054518653681144115,
       "velocity_successor_defect_peak_linf_mps": 0.005445729958442946,
+      "paired_min_T1_slack_Nm": 2.6297407920313626e-05,
+      "paired_min_T2_slack_Nm": 0.22116698883170205,
+      "paired_max_T3_defect_linf_mps": 0.0007072971360313762,
+      "paired_audit_record_count": 73,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -5433,16 +5928,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 137.1670514345169,
-        "p95": 164.41016923636192,
-        "p99": 214.68639839440578,
-        "max": 304.665882140398
+        "median": 163.08319754898548,
+        "p95": 208.04955856874582,
+        "p99": 258.8881878182292,
+        "max": 645.3751120716333
       },
       "manager_time_ms": {
-        "median": 0.8621868910267949,
-        "p95": 3.9448958821594715,
-        "p99": 4.110802374780176,
-        "max": 4.353957949206233
+        "median": 0.9432914666831493,
+        "p95": 4.977370845153928,
+        "p99": 5.046084977220744,
+        "max": 5.046874983236194
       }
     },
     "ablation__model_mismatch__full": {
@@ -5476,6 +5971,11 @@
       "peak_position_violation_fallback_mode_m": 0.19359770396720205,
       "velocity_successor_defect_peak_mps": 0.019782860123100505,
       "velocity_successor_defect_peak_linf_mps": 0.01977764836042184,
+      "paired_min_T1_slack_Nm": 0.0010568206617316278,
+      "paired_min_T2_slack_Nm": 0.30917198555221304,
+      "paired_max_T3_defect_linf_mps": 0.01977764836042184,
+      "paired_audit_record_count": 36,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": false,
@@ -5486,16 +5986,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 130.41694182902575,
-        "p95": 179.84850564971566,
-        "p99": 223.4249864704907,
-        "max": 292.41712763905525
+        "median": 159.9579118192196,
+        "p95": 232.6206304132938,
+        "p99": 291.4312784560025,
+        "max": 408.1670194864273
       },
       "manager_time_ms": {
-        "median": 3.687312826514244,
-        "p95": 4.256800154689699,
-        "p99": 4.465032492298632,
-        "max": 4.561708075925708
+        "median": 4.497646004892886,
+        "p95": 4.996431584004313,
+        "p99": 5.222050694283097,
+        "max": 5.363000091165304
       }
     },
     "ablation__directional_collapse__full": {
@@ -5529,6 +6029,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.0020050881057406236,
       "velocity_successor_defect_peak_linf_mps": 0.001978335489009081,
+      "paired_min_T1_slack_Nm": 2.4877607869861623e-05,
+      "paired_min_T2_slack_Nm": 0.11967082024904174,
+      "paired_max_T3_defect_linf_mps": 0.001978335489009081,
+      "paired_audit_record_count": 79,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -5539,16 +6044,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 139.7079322487116,
-        "p95": 236.89948720857495,
-        "p99": 426.1194146238262,
-        "max": 4169.876221567392
+        "median": 164.56248704344034,
+        "p95": 223.03429432213304,
+        "p99": 300.4534263163805,
+        "max": 437.41706758737564
       },
       "manager_time_ms": {
-        "median": 2.626499510370195,
-        "p95": 10.456839541438965,
-        "p99": 13.425367586314676,
-        "max": 13.646667124703526
+        "median": 2.355500007979572,
+        "p95": 12.142594531178474,
+        "p99": 15.885237974580376,
+        "max": 16.07391587458551
       }
     },
     "ablation__directional_collapse__no_tightening": {
@@ -5582,6 +6087,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.0020050881057406236,
       "velocity_successor_defect_peak_linf_mps": 0.001978335489009081,
+      "paired_min_T1_slack_Nm": 2.4877607869861623e-05,
+      "paired_min_T2_slack_Nm": -0.04776013326264872,
+      "paired_max_T3_defect_linf_mps": 0.001978335489009081,
+      "paired_audit_record_count": 79,
+      "paired_audit_passed": false,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -5592,16 +6102,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 135.2705294266343,
-        "p95": 191.23534439131615,
-        "p99": 248.51467460393897,
-        "max": 367.62491799890995
+        "median": 161.79191879928112,
+        "p95": 237.55027214065194,
+        "p99": 354.2491211555898,
+        "max": 2087.5411573797464
       },
       "manager_time_ms": {
-        "median": 2.235020976513624,
-        "p95": 6.745715194847434,
-        "p99": 9.462260194122782,
-        "max": 10.708583984524012
+        "median": 3.4509371034801006,
+        "p95": 8.340472751297055,
+        "p99": 11.400248229037958,
+        "max": 12.926792027428746
       }
     },
     "ablation__model_mismatch__frozen_realization_map": {
@@ -5635,6 +6145,11 @@
       "peak_position_violation_fallback_mode_m": 0.1937525553692933,
       "velocity_successor_defect_peak_mps": 0.019782859281812584,
       "velocity_successor_defect_peak_linf_mps": 0.019777647557661954,
+      "paired_min_T1_slack_Nm": 0.0010564112641732043,
+      "paired_min_T2_slack_Nm": 0.30917197459315915,
+      "paired_max_T3_defect_linf_mps": 0.019777647557661954,
+      "paired_audit_record_count": 36,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": false,
@@ -5645,16 +6160,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 134.54200234264135,
-        "p95": 213.0849868990481,
-        "p99": 305.89515343308443,
-        "max": 525.0000394880772
+        "median": 160.5829456821084,
+        "p95": 234.76862115785477,
+        "p99": 298.8840895704925,
+        "max": 371.83379754424095
       },
       "manager_time_ms": {
-        "median": 3.8611465133726597,
-        "p95": 4.602893756236881,
-        "p99": 4.677739311009645,
-        "max": 4.762500058859587
+        "median": 4.528895951807499,
+        "p95": 4.9445808632299295,
+        "p99": 5.199252946767955,
+        "max": 5.273249931633472
       }
     },
     "ablation__model_mismatch__updated_realization_map": {
@@ -5688,6 +6203,11 @@
       "peak_position_violation_fallback_mode_m": 0.19359770396720205,
       "velocity_successor_defect_peak_mps": 0.019782860123100505,
       "velocity_successor_defect_peak_linf_mps": 0.01977764836042184,
+      "paired_min_T1_slack_Nm": 0.0010568206617316278,
+      "paired_min_T2_slack_Nm": 0.30917198555221304,
+      "paired_max_T3_defect_linf_mps": 0.01977764836042184,
+      "paired_audit_record_count": 36,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": false,
@@ -5698,16 +6218,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 133.041525259614,
-        "p95": 186.95548642426715,
-        "p99": 250.5483198910952,
-        "max": 368.5418050736189
+        "median": 157.4796624481678,
+        "p95": 234.67207793146372,
+        "p99": 285.3334438987076,
+        "max": 348.79217855632305
       },
       "manager_time_ms": {
-        "median": 3.701208042912185,
-        "p95": 4.124054836574942,
-        "p99": 4.406901735346764,
-        "max": 4.4946251437067986
+        "median": 4.409729037433863,
+        "p95": 4.989425127860159,
+        "p99": 5.0932493107393375,
+        "max": 5.2617499604821205
       }
     },
     "ablation__preview_mismatch__full": {
@@ -5741,6 +6261,11 @@
       "peak_position_violation_fallback_mode_m": 0.3441163155130205,
       "velocity_successor_defect_peak_mps": 0.019828765117823537,
       "velocity_successor_defect_peak_linf_mps": 0.01964153412202413,
+      "paired_min_T1_slack_Nm": 2.0285139927526258e-05,
+      "paired_min_T2_slack_Nm": 0.2662906295937608,
+      "paired_max_T3_defect_linf_mps": 0.0016516828069227385,
+      "paired_audit_record_count": 32,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": false,
@@ -5751,16 +6276,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 136.6250216960907,
-        "p95": 215.74532147496936,
-        "p99": 313.7650014832616,
-        "max": 3208.2078978419304
+        "median": 162.29203902184963,
+        "p95": 222.52608323469744,
+        "p99": 302.9296873137354,
+        "max": 425.2081271260977
       },
       "manager_time_ms": {
-        "median": 3.9001875557005405,
-        "p95": 5.480530764907598,
-        "p99": 10.270740555133628,
-        "max": 15.643333084881306
+        "median": 4.4855630258098245,
+        "p95": 5.000420357100666,
+        "p99": 7.212123174685961,
+        "max": 10.216624941676855
       }
     },
     "ablation__preview_mismatch__preview_zoh": {
@@ -5794,6 +6319,11 @@
       "peak_position_violation_fallback_mode_m": 0.34289253589014956,
       "velocity_successor_defect_peak_mps": 0.01983549961880053,
       "velocity_successor_defect_peak_linf_mps": 0.019643083503268877,
+      "paired_min_T1_slack_Nm": 2.0285139927526258e-05,
+      "paired_min_T2_slack_Nm": 0.26296451707258806,
+      "paired_max_T3_defect_linf_mps": 0.0015415118349115797,
+      "paired_audit_record_count": 32,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": false,
@@ -5804,16 +6334,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 135.41709631681442,
-        "p95": 190.22336928173885,
-        "p99": 286.67565900832415,
-        "max": 455.99997974932194
+        "median": 162.37504314631224,
+        "p95": 217.89369639009234,
+        "p99": 279.46550864726305,
+        "max": 357.4579022824764
       },
       "manager_time_ms": {
-        "median": 3.6925419699400663,
-        "p95": 4.395591153297573,
-        "p99": 5.44478873023763,
-        "max": 5.761875072494149
+        "median": 4.484124947339296,
+        "p95": 4.868666979018599,
+        "p99": 5.747986836358899,
+        "max": 6.54750014655292
       }
     },
     "ablation__preview_mismatch__preview_zero_force": {
@@ -5847,6 +6377,11 @@
       "peak_position_violation_fallback_mode_m": 0.8739213506263169,
       "velocity_successor_defect_peak_mps": 0.01224788671944074,
       "velocity_successor_defect_peak_linf_mps": 0.01198113070389728,
+      "paired_min_T1_slack_Nm": 2.0285139927526258e-05,
+      "paired_min_T2_slack_Nm": 0.21741273359523294,
+      "paired_max_T3_defect_linf_mps": 0.004014209984254058,
+      "paired_audit_record_count": 36,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": false,
@@ -5857,16 +6392,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 135.79195365309715,
-        "p95": 196.22372929006815,
-        "p99": 283.6213097907602,
-        "max": 373.2508048415184
+        "median": 165.08297994732857,
+        "p95": 219.76752905175084,
+        "p99": 292.8388025611639,
+        "max": 349.9998711049557
       },
       "manager_time_ms": {
-        "median": 3.763895947486162,
-        "p95": 4.333355883136391,
-        "p99": 4.560581133700906,
-        "max": 4.6854999382048845
+        "median": 4.5172920217737556,
+        "p95": 4.919569008052349,
+        "p99": 5.1857768697664115,
+        "max": 5.527582950890064
       }
     },
     "ablation__preview_mismatch__preview_oracle_force": {
@@ -5900,6 +6435,11 @@
       "peak_position_violation_fallback_mode_m": 0.32992518506691665,
       "velocity_successor_defect_peak_mps": 0.019724138865747826,
       "velocity_successor_defect_peak_linf_mps": 0.019519391444521528,
+      "paired_min_T1_slack_Nm": 2.0285139927526258e-05,
+      "paired_min_T2_slack_Nm": 0.12519294180385754,
+      "paired_max_T3_defect_linf_mps": 0.002112341905260662,
+      "paired_audit_record_count": 33,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": false,
@@ -5910,16 +6450,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": false,
       "fast_time_us": {
-        "median": 135.22955123335123,
-        "p95": 197.4724698811769,
-        "p99": 270.0199722312391,
-        "max": 373.5001664608717
+        "median": 163.1454797461629,
+        "p95": 229.9503539688885,
+        "p99": 290.41497036814684,
+        "max": 395.1669204980135
       },
       "manager_time_ms": {
-        "median": 3.7326874444261193,
-        "p95": 4.371557058766483,
-        "p99": 6.6740386397577245,
-        "max": 14.034667052328587
+        "median": 4.535499960184097,
+        "p95": 4.94273966178298,
+        "p99": 7.419351784046672,
+        "max": 15.960040967911482
       }
     },
     "ablation__slow_saturation__no_smoothing": {
@@ -5953,6 +6493,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.002835908825457137,
       "velocity_successor_defect_peak_linf_mps": 0.0028358595890601024,
+      "paired_min_T1_slack_Nm": 2.357139182349033e-05,
+      "paired_min_T2_slack_Nm": 0.8187920817621833,
+      "paired_max_T3_defect_linf_mps": 0.0028358595890601024,
+      "paired_audit_record_count": 79,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -5963,16 +6508,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 139.72888700664043,
-        "p95": 182.85636324435464,
-        "p99": 233.5323020815849,
-        "max": 288.16587291657925
+        "median": 165.66691920161247,
+        "p95": 234.4808308407663,
+        "p99": 294.5087803527713,
+        "max": 411.74935176968575
       },
       "manager_time_ms": {
-        "median": 2.2469585528597236,
-        "p95": 3.644191427156329,
-        "p99": 3.7860900186933564,
-        "max": 3.957125125452876
+        "median": 2.5866045616567135,
+        "p95": 4.238829796668141,
+        "p99": 4.531349204480647,
+        "max": 4.668249981477857
       }
     },
     "ablation__certificate_margin__constrained": {
@@ -6006,6 +6551,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.003178652738515308,
       "velocity_successor_defect_peak_linf_mps": 0.0031676780078994105,
+      "paired_min_T1_slack_Nm": 1.1836126151090753e-05,
+      "paired_min_T2_slack_Nm": 4.028331607061744,
+      "paired_max_T3_defect_linf_mps": 0.0031676780078994105,
+      "paired_audit_record_count": 79,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -6016,16 +6566,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 138.62503692507744,
-        "p95": 209.65215517207977,
-        "p99": 300.6334346719086,
-        "max": 365.6658809632063
+        "median": 165.0420017540455,
+        "p95": 248.12925839796662,
+        "p99": 314.29878901690245,
+        "max": 402.7499817311764
       },
       "manager_time_ms": {
-        "median": 3.246062435209751,
-        "p95": 4.4250397128053,
-        "p99": 4.746770737692714,
-        "max": 4.749041981995106
+        "median": 3.946958458982408,
+        "p95": 5.142460344359279,
+        "p99": 5.25872690603137,
+        "max": 5.264125065878034
       }
     },
     "ablation__certificate_margin__unconstrained": {
@@ -6059,6 +6609,11 @@
       "peak_position_violation_fallback_mode_m": null,
       "velocity_successor_defect_peak_mps": 0.0043658814884101355,
       "velocity_successor_defect_peak_linf_mps": 0.004357893215887976,
+      "paired_min_T1_slack_Nm": 1.1409868525338873e-05,
+      "paired_min_T2_slack_Nm": 3.9073249344756107,
+      "paired_max_T3_defect_linf_mps": 0.004357893215887976,
+      "paired_audit_record_count": 79,
+      "paired_audit_passed": true,
       "velocity_defect_radius_mps": 0.03,
       "sampled_velocity_defect_check_satisfied": true,
       "sampled_state_check_satisfied": true,
@@ -6069,16 +6624,16 @@
       "torque_error_bound_satisfied": true,
       "sampled_interface_audit_passed": true,
       "fast_time_us": {
-        "median": 140.2089837938547,
-        "p95": 213.84677384048697,
-        "p99": 289.1095681115985,
-        "max": 448.1668584048748
+        "median": 165.5624946579337,
+        "p95": 250.77476166188714,
+        "p99": 306.6075989045202,
+        "max": 420.1659467071295
       },
       "manager_time_ms": {
-        "median": 3.393687540665269,
-        "p95": 4.290249978657811,
-        "p99": 4.501528048422188,
-        "max": 4.541915841400623
+        "median": 3.902625059708953,
+        "p95": 4.897919180803001,
+        "p99": 5.012387402821332,
+        "max": 5.023250123485923
       }
     }
   },
@@ -6100,6 +6655,11 @@
       "minimum_T2_slack_Nm": 0.14375559122012938,
       "all_torque_errors_contained": true,
       "all_sampled_interface_audits_passed": true,
+      "paired_min_T1_slack_Nm": 0.0026368444207315184,
+      "paired_min_T2_slack_Nm": 0.14375559122012938,
+      "paired_max_T3_defect_linf_mps": 0.00681542539437191,
+      "paired_audit_record_count": 316,
+      "all_paired_audits_passed": true,
       "robot_specific_objects": [
         "Pi_v_r",
         "tau_hat_r",
@@ -6125,6 +6685,11 @@
       "minimum_T2_slack_Nm": 0.6466638754929575,
       "all_torque_errors_contained": true,
       "all_sampled_interface_audits_passed": true,
+      "paired_min_T1_slack_Nm": 2.357139182349033e-05,
+      "paired_min_T2_slack_Nm": 0.6466638754929575,
+      "paired_max_T3_defect_linf_mps": 0.0067963110002047245,
+      "paired_audit_record_count": 316,
+      "all_paired_audits_passed": true,
       "robot_specific_objects": [
         "Pi_v_r",
         "tau_hat_r",
@@ -6150,6 +6715,11 @@
       "minimum_T2_slack_Nm": 0.7077482384059494,
       "all_torque_errors_contained": true,
       "all_sampled_interface_audits_passed": true,
+      "paired_min_T1_slack_Nm": 0.0001267396549988649,
+      "paired_min_T2_slack_Nm": 0.7077482384059494,
+      "paired_max_T3_defect_linf_mps": 0.006796314358888861,
+      "paired_audit_record_count": 316,
+      "all_paired_audits_passed": true,
       "robot_specific_objects": [
         "Pi_v_r",
         "tau_hat_r",
@@ -6161,17 +6731,17 @@
   },
   "timing": {
     "manager_ms_across_cases": {
-      "median_of_medians": 1.8475414835847914,
-      "worst_p95": 10.456839541438965,
-      "worst_p99": 13.425367586314676,
-      "worst_max": 17.16083404608071,
+      "median_of_medians": 2.1466250182129443,
+      "worst_p95": 12.142594531178474,
+      "worst_p99": 15.885237974580376,
+      "worst_max": 16.07391587458551,
       "nominal_deadline_ms": 20.0
     },
     "fast_path_us_across_cases": {
-      "median_of_medians": 138.5630457662046,
-      "worst_p95": 265.8107667230069,
-      "worst_p99": 645.3712121583521,
-      "worst_max": 5161.7498975247145,
+      "median_of_medians": 164.46871450170875,
+      "worst_p95": 261.05447905138135,
+      "worst_p99": 584.0791645459828,
+      "worst_max": 968.8751306384802,
       "nominal_deadline_us": 1000.0
     }
   },

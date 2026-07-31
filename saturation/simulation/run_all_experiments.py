@@ -312,6 +312,19 @@ def sampled_interface_audit(cfg, robot_metrics, robots):
             v["minimum_planned_torque_margin_Nm"] for v in selected
         )
         min_t2_slack = min(v["minimum_T2_slack_Nm"] for v in selected)
+        # Paired (T1)/(T2)/(T3) audit: unlike the unpaired aggregates above,
+        # each record here shares the same hat_tau across (T1) and (T2), as
+        # Theorem 1's proof requires (Section VII.D). This is what Table III
+        # reports.
+        paired_min_t1 = min(v["paired_min_T1_slack_Nm"] for v in selected)
+        paired_min_t2 = min(v["paired_min_T2_slack_Nm"] for v in selected)
+        paired_max_t3 = max(v["paired_max_T3_defect_linf_mps"] for v in selected)
+        paired_record_total = sum(v["paired_audit_record_count"] for v in selected)
+        paired_all_passed = all(
+            v["paired_audit_passed"]
+            for v in selected
+            if v["paired_audit_passed"] is not None
+        )
         rows[robot_name] = {
             "shared_audit_config_hash": cfg.audit_config_hash(),
             "shared_velocity_defect_radius_mps": cfg.velocity_defect_radius,
@@ -336,6 +349,11 @@ def sampled_interface_audit(cfg, robot_metrics, robots):
                 v["sampled_interface_audit_passed"]
                 for v in selected
             ),
+            "paired_min_T1_slack_Nm": paired_min_t1,
+            "paired_min_T2_slack_Nm": paired_min_t2,
+            "paired_max_T3_defect_linf_mps": paired_max_t3,
+            "paired_audit_record_count": paired_record_total,
+            "all_paired_audits_passed": paired_all_passed,
             "robot_specific_objects": [
                 "Pi_v_r",
                 "tau_hat_r",
@@ -566,7 +584,10 @@ def make_controller_heatmap(metrics: dict, controllers: dict, output: Path):
 
 def make_robot_transfer_figure(audit: dict, output: Path):
     names = list(audit)
-    required = [audit[n]["required_empirical_radius_mps"] for n in names]
+    # Theorem 1's (T3) is stated in the infinity norm, evaluated on the
+    # paired (T1)/(T2)/(T3) records (Section VII.D) -- not the Euclidean,
+    # unpaired quantity previously plotted here.
+    required = [audit[n]["paired_max_T3_defect_linf_mps"] for n in names]
     shared = [
         audit[n]["shared_velocity_defect_radius_mps"] for n in names
     ]
@@ -575,7 +596,7 @@ def make_robot_transfer_figure(audit: dict, output: Path):
     ax.bar(x, required, color="#2563eb", label="observed successor defect")
     ax.plot(x, shared, "ko--", label="common audit threshold")
     ax.set_xticks(x, [n.replace("_", "\n") for n in names])
-    ax.set_ylabel("velocity-successor defect (m/s)")
+    ax.set_ylabel(r"velocity-successor defect, $\ell_\infty$ (m/s)")
     ax.grid(axis="y", alpha=0.25)
     ax.legend()
     fig.tight_layout()

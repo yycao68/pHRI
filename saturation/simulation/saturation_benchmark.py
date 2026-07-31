@@ -577,6 +577,7 @@ class ManagerResult:
     planned_min_margin: float
     planned_max_violation: float
     planned_min_t2_slack: float
+    first_step_t2_slack: float
     feasible: bool
     solve_time_s: float
     sequence: Array
@@ -849,12 +850,18 @@ class PredictiveManager:
         min_margin = min(margins) if margins else float("nan")
         max_violation = max(violations) if violations else float("nan")
         min_t2_slack = min(t2_slacks) if t2_slacks else float("nan")
+        # The first-horizon-step slack specifically (not the horizon-wide
+        # min above): this is the (T2) value that actually corresponds to
+        # the request that gets executed, so it is the one that can be
+        # paired with a same-instant (T1) check (Section VII.D).
+        first_step_t2_slack = t2_slacks[0] if t2_slacks else float("nan")
         return ManagerResult(
             acceleration=sequence[0].copy(),
             nominal_first=nominal[0].copy(),
             planned_min_margin=min_margin,
             planned_max_violation=max_violation,
             planned_min_t2_slack=min_t2_slack,
+            first_step_t2_slack=first_step_t2_slack,
             feasible=feasible,
             solve_time_s=perf_counter() - started,
             sequence=sequence,
@@ -987,6 +994,20 @@ def run_case(
     previous_slow_time = 0.0
     first_intervention_time: float | None = None
     first_nominal_violation_time: float | None = None
+    # (T1)/(T2)/(T3) paired-record audit: T1 (prediction-accuracy) and T2
+    # (actuator-margin) must refer to the *same* hat-tau for Theorem 1's
+    # proof to apply, and T3 (the successor defect) is the one-step outcome
+    # of that same decision. hat_tau, tau_pre, and the (T1) bound are
+    # captured here only at the manager-tick instant where they are
+    # provably identical to the manager's own first-horizon-step
+    # prediction (state, force, and request all coincide with the
+    # manager's i=0 rollout point at that instant); the (T2) slack is the
+    # first-step-specific value already computed for that same request.
+    # The record is finalized one manager tick later, once the resulting
+    # successor defect (T3) is available. Fallback (non-feasible) ticks are
+    # excluded, since Theorem 1's premise concerns the QP-optimized plan.
+    paired_audit_records: list[dict] = []
+    pending_pair: dict | None = None
 
     for k in range(n_steps):
         t = k * cfg.fast_dt
@@ -1022,6 +1043,7 @@ def run_case(
                     planned_min_margin=float("nan"),
                     planned_max_violation=float("nan"),
                     planned_min_t2_slack=float("nan"),
+                    first_step_t2_slack=float("nan"),
                     feasible=True,
                     solve_time_s=perf_counter() - started,
                     sequence=np.tile(held_alpha * nominal, (cfg.horizon, 1)),
@@ -1172,6 +1194,28 @@ def run_case(
         predicted_tau = robot.predicted_torque(
             state, requested, force, t
         )
+
+        if options.method == "proposed" and k % cfg.fast_per_slow == 0:
+            if pending_pair is not None:
+                paired_audit_records.append(
+                    {
+                        "hat_tau": pending_pair["hat_tau"],
+                        "tau_pre": pending_pair["tau_pre"],
+                        "bound": pending_pair["bound"],
+                        "t2_slack": pending_pair["t2_slack"],
+                        "defect": defect.copy(),
+                    }
+                )
+            if manager_result is not None and manager_result.feasible:
+                pending_pair = {
+                    "hat_tau": predicted_tau.copy(),
+                    "tau_pre": tau_pre.copy(),
+                    "bound": delta_bound.copy(),
+                    "t2_slack": manager_result.first_step_t2_slack,
+                }
+            else:
+                pending_pair = None
+
         true_margin = float(np.min(limits - np.abs(tau_pre)))
         planned_margin = (
             manager_result.planned_min_margin
@@ -1230,6 +1274,7 @@ def run_case(
     arrays = {key: np.asarray(value) for key, value in log.items()}
     arrays["first_intervention_time"] = first_intervention_time
     arrays["first_nominal_violation_time"] = first_nominal_violation_time
+    arrays["paired_audit_records"] = paired_audit_records
     return arrays
 
 
@@ -1275,6 +1320,33 @@ def summarize(log: dict, cfg: BenchmarkConfig) -> dict:
     empirical_defect_linf = float(np.max(np.abs(defects)))
     torque_error = np.abs(torque_pre - torque_predicted)
     torque_bound_residual = log["tightening_bound"] - torque_error
+
+    # Paired (T1)/(T2)/(T3) audit: unlike the unpaired aggregates above --
+    # (T1) over every 1kHz fast-loop step of the whole trajectory, (T2)
+    # over every horizon step of every manager tick -- these records all
+    # share the same hat_tau per Theorem 1's own pairing requirement
+    # (Section VII.D).
+    paired_records = log["paired_audit_records"]
+    if len(paired_records):
+        paired_t1_slacks = [
+            float(np.min(r["bound"] - np.abs(r["tau_pre"] - r["hat_tau"])))
+            for r in paired_records
+        ]
+        paired_t2_slacks = [float(r["t2_slack"]) for r in paired_records]
+        paired_t3_linf = [float(np.max(np.abs(r["defect"]))) for r in paired_records]
+        paired_min_t1_slack = float(np.min(paired_t1_slacks))
+        paired_min_t2_slack = float(np.min(paired_t2_slacks))
+        paired_max_t3_linf = float(np.max(paired_t3_linf))
+        paired_audit_passed = bool(
+            paired_min_t1_slack >= 0.0
+            and paired_min_t2_slack >= 0.0
+            and paired_max_t3_linf <= cfg.velocity_defect_radius
+        )
+    else:
+        paired_min_t1_slack = None
+        paired_min_t2_slack = None
+        paired_max_t3_linf = None
+        paired_audit_passed = None
     first_i = log["first_intervention_time"]
     first_v = log["first_nominal_violation_time"]
     warning = (
@@ -1303,6 +1375,11 @@ def summarize(log: dict, cfg: BenchmarkConfig) -> dict:
     )
     torque_bound_satisfied = bool(
         np.min(torque_bound_residual) >= -1.0e-10
+    )
+    t2_slack_satisfied = (
+        bool(np.min(finite_planned_t2_slack) >= -1.0e-9)
+        if finite_planned_t2_slack.size
+        else True
     )
     manager_satisfied = bool(np.mean(log["manager_feasible"]) >= 0.999)
     feasible_mask = np.asarray(log["manager_feasible"], dtype=bool)
@@ -1380,6 +1457,11 @@ def summarize(log: dict, cfg: BenchmarkConfig) -> dict:
         ),
         "velocity_successor_defect_peak_mps": empirical_defect,
         "velocity_successor_defect_peak_linf_mps": empirical_defect_linf,
+        "paired_min_T1_slack_Nm": paired_min_t1_slack,
+        "paired_min_T2_slack_Nm": paired_min_t2_slack,
+        "paired_max_T3_defect_linf_mps": paired_max_t3_linf,
+        "paired_audit_record_count": len(paired_records),
+        "paired_audit_passed": paired_audit_passed,
         "velocity_defect_radius_mps": cfg.velocity_defect_radius,
         "sampled_velocity_defect_check_satisfied": defect_satisfied,
         "sampled_state_check_satisfied": state_satisfied,
@@ -1400,6 +1482,7 @@ def summarize(log: dict, cfg: BenchmarkConfig) -> dict:
             defect_satisfied
             and state_satisfied
             and torque_bound_satisfied
+            and t2_slack_satisfied
             and realizability_margin_satisfied
             and applied_torque_satisfied
             and manager_satisfied

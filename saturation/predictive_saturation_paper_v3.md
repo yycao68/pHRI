@@ -4,7 +4,7 @@
 
 ## Abstract
 
-When a robot controller asks for more torque than the actuators can deliver, clipping keeps the actuators legal but silently breaks the behavior it was designed for. This paper keeps the controller and adds a slower layer: the nominal controller --- PD, impedance, RL, neural, or conditioned --- runs unchanged at \(1~\mathrm{kHz}\), while a \(50~\mathrm{Hz}\) manager checks whether its request stays inside a robot-specific, uncertainty-tightened feasible set, applies a minimum-cost correction that keeps the predicted request inside that uncertainty-tightened realizability set, and reports directional-authority loss. A theorem gives conditions under which a velocity certificate transfers to a robot: the manager's torque prediction must be accurate, that prediction widened by its error bound must fit the actuator margin, and one-step velocity error must fit the certificate margin. A minimal instance of the certified action set and the tightened predicted-torque condition are enforced directly in the QP by construction; the realization-accuracy conditions remain robot-specific assumptions checked only by sampled audit. A deterministic benchmark matrix spans five controller interfaces, three realization maps, eight stress scenarios, and targeted ablations. Full-horizon enforcement removes a predicted \(3.587~\mathrm{Nm}\) future torque violation a first-step check misses; a cross-realization audit keeps all defects below \(0.0077~\mathrm{m/s}\) against a \(0.03~\mathrm{m/s}\) budget. It prevents violations under slow saturation, directional collapse, and near-boundary braking; disturbance and severe mismatch instead exceed the audit conditions. Only a velocity-restricted certificate is instantiated, not universal safety, a workspace-wide proof, or real-time performance.
+When a robot controller asks for more torque than the actuators can deliver, clipping keeps the actuators legal but silently breaks the behavior it was designed for. This paper keeps the controller and adds a slower layer: the nominal controller --- PD, impedance, trained policy, neural, or conditioned --- runs unchanged at \(1~\mathrm{kHz}\), while a \(50~\mathrm{Hz}\) manager checks whether its request stays inside a robot-specific, uncertainty-tightened feasible set, applies a minimum-cost correction that keeps the predicted request inside that uncertainty-tightened realizability set, and reports directional-authority loss. A theorem gives conditions under which a velocity certificate transfers to a robot: the manager's torque prediction must be accurate, that prediction widened by its error bound must fit the actuator margin, and one-step velocity error must fit the certificate margin. A minimal instance of the certified action set and the tightened predicted-torque condition are enforced directly in the QP by construction; the realization-accuracy conditions remain robot-specific assumptions checked only by sampled audit. A deterministic benchmark matrix spans five controller interfaces, three realization maps, eight stress scenarios, and targeted ablations. Full-horizon enforcement removes a predicted \(3.587~\mathrm{Nm}\) future torque violation a first-step check misses; a cross-realization audit keeps all defects below \(0.0069~\mathrm{m/s}\) against a \(0.03~\mathrm{m/s}\) budget. It prevents violations under slow saturation, directional collapse, and near-boundary braking; disturbance and severe mismatch instead exceed the audit conditions. Only a velocity-restricted certificate is instantiated, not universal safety, a workspace-wide proof, or real-time performance.
 
 **Index Terms—** physical interaction, actuator saturation, predictive constraint management, control refinement.
 
@@ -136,7 +136,7 @@ M(q)\ddot q+h(q,\dot q)=\tau+J(q)^\top F_h,
 
 with \(M(q)\succ0\), \(h\) the modeled gravity/Coriolis/friction terms, and \(F_h\) the measured interaction force (a two-dimensional vector in this benchmark, not a full wrench). Actuator limits are the box \(\tau_{\min}\le\tau\le\tau_{\max}\).
 
-The architecture asks only three things of the nominal controller: its **current command** \(\tau^0\); an optional **preview**, i.e. the ability to be evaluated along a predicted trajectory; and a **bound on how wrong that preview can be**. An analytic PD or impedance law can be evaluated along predicted states directly. A learned policy can be queried on predicted observations. If no validated preview exists, zero-order hold or a learned predictor may be used, but the resulting error must be included in the bound. A black-box controller with neither query access nor a bounded preview error lies outside the certificate.
+The architecture asks only three things of the nominal controller: its **current requested task acceleration** \(a^0\); an optional **preview**, i.e. the ability to be evaluated along a predicted trajectory; and a **bound on how wrong that preview can be**. An analytic PD or impedance law can be evaluated along predicted states directly. A learned policy can be queried on predicted observations. If no validated preview exists, zero-order hold or a learned predictor may be used, but the resulting error must be included in the bound. A black-box controller with neither query access nor a bounded preview error lies outside the certificate. The induced torque \(\tau^0\) is obtained from \(a^0\) through the realization map below.
 
 With task state \(z=[p;v]\) — absolute task position and velocity, propagated directly rather than relative to a possibly time-varying reference — the requested behavior over a local operating region is
 
@@ -215,7 +215,7 @@ Then it is not enough for the *prediction* to sit inside the box; the prediction
 
 and we write \(\mathcal A^{\mathrm{tight}}(x)\) for the accelerations satisfying it. Equation (IV.3) is the whole tightening mechanism: a boundary layer of width \(\bar\delta_\tau\) inside each actuator limit. It is what makes the constraint act *before* the physical limit rather than at it, and Section VII.E shows what happens when it is removed.
 
-The bound \(\bar\delta_\tau\) must cover state-estimation error, interpolation between manager updates, secondary torque, torque-rate limiting, and any other implementation effect that can move the pre-clip torque. The implementation uses two concrete instantiations of it: a conservative, action-independent \(\bar\delta_\tau^{\mathrm{QP}}\), evaluated at the acceleration limit rather than the not-yet-chosen request, inside the QP's own tightening; and a smaller, action-dependent \(\bar\delta_\tau(a,F_h)\), evaluated at the request actually solved for, used in the (T1) audit of Section VII. Since the QP's bound is evaluated at a worst-case acceleration, \(\bar\delta_\tau^{\mathrm{QP}}\ge\bar\delta_\tau(a,F_h)\) over the acceleration box.
+The bound \(\bar\delta_\tau\) must cover state-estimation error, interpolation between manager updates, secondary torque, torque-rate limiting (if present — this implementation has none), and any other implementation effect that can move the pre-clip torque. The implementation uses two concrete instantiations of it: a conservative, action-independent \(\bar\delta_\tau^{\mathrm{QP}}\), evaluated at the acceleration limit rather than the not-yet-chosen request, inside the QP's own tightening; and a smaller, action-dependent \(\bar\delta_\tau(a,F_h)\), evaluated at the request actually solved for, used in the (T1) audit of Section VII. Since the QP's bound is evaluated at a worst-case acceleration, \(\bar\delta_\tau^{\mathrm{QP}}\ge\bar\delta_\tau(a,F_h)\) over the acceleration box.
 
 **Problem statement.** Given a nominal controller supplying \(a^{0}\), find a correction \(\Delta a\) such that:
 
@@ -247,7 +247,7 @@ The decision variable is the *complete* request \(a_i\), not the correction — 
 \qquad
 v_{i+1}=v_i+\Delta t\,a_i,
 &&\text{(prediction)}\\
-& \tau_{\min}+\bar\delta_\tau\le\tau_{\mathrm{base}}(\hat x_i)+H(\hat x_i)\,(a_i-G_F(\hat x_i)\hat F_{h,i})\le\tau_{\max}-\bar\delta_\tau,
+& \tau_{\min}+\bar\delta_{\tau,i}^{\mathrm{QP}}\le\tau_{\mathrm{base}}(\hat x_i)+H(\hat x_i)\,(a_i-G_F(\hat x_i)\hat F_{h,i})\le\tau_{\max}-\bar\delta_{\tau,i}^{\mathrm{QP}},
 &&\text{(realizable)}\\
 & |v_i+\Delta t\,a_i|\le v_{\max}-\epsilon_v,
 &&\text{(velocity certificate)}\\
@@ -256,7 +256,7 @@ v_{i+1}=v_i+\Delta t\,a_i,
 & \|a_i\|_\infty\le a_{\max},
 \quad
 \|a_i-a_{i-1}\|_\infty\le\dot a_{\max}\Delta t.
-&&\text{(actuation rate)}
+&&\text{(request-rate constraint)}
 \end{aligned}
 \]
 
@@ -276,16 +276,13 @@ If the solver reports infeasibility, the implementation instead projects the fir
 
 ## B. What the manager reports
 
-For each joint, the fraction of its torque range still unused; the reported margin is the worst joint:
+For each joint, the raw torque headroom still unused; the reported margin is the worst joint:
 
 \[
-\mu=\min_j\ \min\left\{
-\frac{\tau_{\max,j}-\tau_j}{\tau_{\max,j}-\tau_{\min,j}},\ \
-\frac{\tau_j-\tau_{\min,j}}{\tau_{\max,j}-\tau_{\min,j}}
-\right\}.
+\mu=\min_j\ \bigl(\tau_{\max,j}-|\tau_j|\bigr).
 \]
 
-So \(\mu>0\) means every joint is strictly inside its limits, \(\mu=0\) means some joint is exactly at a limit, and \(\mu<0\) means the request is not realizable. Over the horizon we report the smallest value.
+So \(\mu>0\) means every joint is strictly inside its limits, \(\mu=0\) means some joint is exactly at a limit, and \(\mu<0\) means the request is not realizable. \(\mu\) is reported in newton-metres, not normalized by each joint's own range — a joint with a wider torque range simply has more raw headroom to report, so \(\mu\) is not comparable across robots with different actuator limits. Over the horizon we report the smallest value.
 
 Scalar margin does not reveal whether the robot can still accelerate *in the direction it needs to*. Given a *feasible* current acceleration \(a_c\in\mathcal A^{\mathrm{tight}}(x)\) and a unit direction \(y\), the remaining authority along \(y\) is how far one can move before leaving the tightened feasible set, so the indicator counts the same uncertainty margin the optimizer already enforces:
 
@@ -318,6 +315,8 @@ Theorem 1 says: rule out all three, for whatever request the manager actually pi
 ## B. The certified action set, and why velocity only
 
 Let \(y=v\) be the task velocity and \(F_v(y,a)=y+\Delta t\,a\) its one-step update (the velocity half of the double integrator in Section IV). Define the certified region
+
+with the margin \(\epsilon_v\) satisfying \(0<\epsilon_v<v_{\max}\),
 
 \[
 \mathcal S_v=\{y:\|y\|_\infty\le v_{\max}\},
@@ -463,13 +462,13 @@ Table II. Controller substitution under slow saturation.
 
 | Realization map | Max. T3 defect, \(\ell_\infty\) (m/s) | Min. T1 slack (Nm) | Min. T2 slack (Nm) |
 |---|---:|---:|---:|
-| Planar 2R | 0.006815 | 0.002523 | 0.143756 |
-| FR3-inspired surrogate | 0.006796 | \(8.66\times10^{-6}\) | 0.646664 |
-| Six-axis-arm surrogate | 0.006796 | \(9.96\times10^{-5}\) | 0.707748 |
+| Planar 2R | 0.006815 | 0.002637 | 0.143756 |
+| FR3-inspired surrogate | 0.006796 | \(2.36\times10^{-5}\) | 0.646664 |
+| Six-axis-arm surrogate | 0.006796 | \(1.27\times10^{-4}\) | 0.707748 |
 
 Table III. Sampled cross-realization interface audit, against each of Theorem 1's three conditions directly.
 
-Fig. 5 and Table III show all three slacks positive across all three realization maps: (T3)'s defect stays below the \(0.03~\mathrm{m/s}\) certificate margin, and (T1) and (T2) both have room against \(\bar\delta_\tau(a,F_h)\) (Appendix A). The pass/fail label used elsewhere in this paper additionally requires the realized pre-clip torque to stay inside the untightened box — implied by (T1) and (T2) together, but not itself a direct (T2) test. Because the injected errors are drawn from the same envelope they are checked against, this is a consistency check on the mechanism rather than independent uncertainty validation.
+Each row pairs (T1), (T2), and (T3) at the same manager-tick instant: at the instant a manager plan is published, the manager's own first-horizon-step prediction \(\hat\tau_0\) and the torque actually realized from that same request coincide, so (T1) can be checked there; (T2) uses that same tick's first-step slack (not the horizon-wide minimum reported elsewhere); (T3) uses the resulting successor defect one tick later. Ticks following an infeasible (fallback) solve are excluded, since Theorem 1 concerns the QP-optimized plan. 316 paired records per robot (from the same no-saturation and slow-saturation cross-realization runs used throughout this section). Fig. 5 and Table III show all three slacks positive across all three realization maps: (T3)'s defect stays below the \(0.03~\mathrm{m/s}\) certificate margin, and (T1) and (T2) both have room against \(\bar\delta_\tau(a,F_h)\) (Appendix A). The pass/fail label used elsewhere in this paper (Tables I and II) is a broader, unpaired per-run check over every fast-loop step, not this table's paired one — it additionally requires the realized pre-clip torque to stay inside the untightened box, implied by (T1) and (T2) together but not itself a direct (T2) test. Because the injected errors are drawn from the same envelope they are checked against, this is a consistency check on the mechanism rather than independent uncertainty validation.
 
 ## E. Ablation summary and computation
 
