@@ -49,8 +49,7 @@ first-step-only ablation plans up to 10.739~N$\cdot$m beyond budget; on
 the executed nonlinear plant, where both share the same local-model
 error, the gap is smaller but still favors horizon-wide enforcement
 (0.164 vs.\ 0.383~N$\cdot$m). These results are a focused proof of
-behavior--realization separation, not a universal behavior runtime or
-hardware safety guarantee.
+behavior--realization separation (scope in Section~\ref{sec:scope}).
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -636,21 +635,15 @@ $r_{i|k}=0$, which is why the stronger hypothesis is needed here but not
 in Proposition~\ref{prop:convexity}.
 \end{proof}
 
-With finite scalar weights, effort regularization can intentionally
-introduce a small residual even when exact realization is feasible. The
-present experiment uses small, not zero, secondary weights, so the
-predictive controller's measured residual is not exactly zero even
-during unconstrained intervals (Table~\ref{tab:planar}) --- this is the
-finite-weight case Proposition~\ref{prop:exact} itself distinguishes
-from the idealized zero-weight one, not a violation of it. The reactive
-comparator applies the generator's instantaneous law directly, with no
-horizon and no secondary regularization to trade against; its residual
-sits at numerical-solver tolerance (Table~\ref{tab:planar}) for the
-simpler reason that it is solving a different, unconstrained algebraic
-inversion, not the same QP with different weights. That near-exactness
-is a check that the underlying generator and dynamics model are
-implemented correctly, not a demonstration of Proposition~\ref{prop:exact}
-itself.
+With finite (not zero) secondary weights, predictive realization's
+measured residual is not exactly zero even during unconstrained
+intervals (Table~\ref{tab:planar}), consistent with
+Proposition~\ref{prop:exact}'s zero-weight idealization. The reactive
+comparator instead solves a different, unconstrained algebraic
+inversion of the generator's instantaneous law, so its residual sits at
+numerical-solver tolerance (Table~\ref{tab:planar}) --- a check that the
+underlying generator and dynamics model are implemented correctly, not
+itself an instance of Proposition~\ref{prop:exact}.
 
 \begin{proposition}[One-step constraint inheritance]
 \label{prop:inheritance}
@@ -740,13 +733,10 @@ $^{*}$Realization RMSE, componentwise. State-limit violation reports
 the amount by which the 0.10~m~/~0.22~m/s workspace/speed bound is
 exceeded. Realization RMSE for the reactive comparator is at
 numerical-solver tolerance because it directly inverts the generator's
-instantaneous law for the force that realizes it exactly, with no
-horizon or secondary regularization to trade against; it is not zero
-for predictive realization because the horizon-wide formulation trades a
-small residual for constraint satisfaction and finite secondary weights
-(Proposition~\ref{prop:exact}, Section~\ref{sec:properties}), and
-because the reported metric aggregates over the whole run, not only the
-constrained interval. As in Table~\ref{tab:fr3}, RMSE is
+instantaneous law; predictive realization's nonzero residual reflects
+finite secondary weights and constraint-driven deviation, aggregated
+over the whole run (Proposition~\ref{prop:exact},
+Section~\ref{sec:properties}). As in Table~\ref{tab:fr3}, RMSE is
 \emph{component-wise}: all residual components and time samples are
 pooled into one mean before the square root.
 \end{table*}
@@ -895,14 +885,13 @@ $F_{\mathrm{cmd}}$ is chosen. Thus the manipulator realization map
 changes, but the generator interface does not.
 
 $\bar N_v(q)$ is a dynamically consistent projector for the translation
-task~\cite{ref9}. An earlier implementation projected the null-space
-term with the full 6-row Jacobian and left the orientation term
-unprojected; both leaked into $\ddot e$, so joint drift increased
-auxiliary torque and then the compensating Cartesian command. Projecting
-both terms removes that structural path. Because $\Lambda$ uses Tikhonov
-regularization, $J_vM^{-1}\bar N_v^\top=0$ holds only approximately; the
-remaining leakage and $\dot J_v\dot q$ are therefore retained in
-$d_{\mathrm{known}}$.
+task~\cite{ref9}. Projecting both the orientation and null-space
+auxiliary torques through $\bar N_v(q)$, rather than leaving either
+unprojected, prevents them from leaking into $\ddot e$ and inflating
+joint drift and the compensating Cartesian command. Because $\Lambda$
+uses Tikhonov regularization, $J_vM^{-1}\bar N_v^\top=0$ holds only
+approximately; the remaining leakage and $\dot J_v\dot q$ are therefore
+retained in $d_{\mathrm{known}}$.
 
 A six-second gain sweep over all four conditions
 (\texttt{sweep\_null\_space\_gains.py}) exposed the remaining slow
@@ -992,11 +981,10 @@ $t=3.5$~s. It is applied physically to the MuJoCo end-effector body, not
 only supplied to the controller's model.
 
 The 2~s hold gives the admittance velocity time to approach steady state
-($T_a=0.3$~s). With the earlier 0.5~s hold, the reactive comparator did
-not approach the workspace bound, so that case offered no
-predictive-versus-reactive contrast for admittance. The impedance peak
-is determined by its equilibrium and is reached within 0.5~s at either
-hold length.
+($T_a=0.3$~s), which is needed for the reactive comparator to approach
+the workspace bound and so yield a predictive-versus-reactive contrast
+for admittance. The impedance peak, determined by its equilibrium, is
+reached within 0.5~s regardless of hold length.
 
 The workspace/speed bound is
 \begin{equation}
@@ -1104,9 +1092,9 @@ A dedicated timing study (\texttt{run\_fr3\_timing\_study.py}, 5 full
 6~s benchmark repetitions per condition, 1500 solves each) isolates
 this gap along two independent axes rather than reporting one run's
 mean and max. Warm-starting OSQP from the previous solve's
-primal/dual solution --- previously unused anywhere in this codebase,
-and off by default so no other reported number is affected by its
-existence --- cuts the admittance mean solve time by 47\% (11.7~ms to
+primal/dual solution --- off by default so no other reported number is
+affected by its existence --- cuts the admittance mean solve time by
+47\% (11.7~ms to
 6.2~ms) and its 99th percentile by 43\% (65.0~ms to 37.1~ms); the
 impedance improvement is smaller (4.4~ms to 3.8~ms mean). The
 condensed QP's cost Hessian condition number, computed independently
@@ -1124,14 +1112,6 @@ conditioning.
 These wall-clock measurements are solver effort on the development
 machine, not a real-time guarantee or an exactly reproducible
 hardware-independent value.
-
-An earlier version of this benchmark, run before the null-space
-centering fix described in Section~\ref{sec:fr3-architecture}, showed a
-second issue: slack chattering over a late-time window as the admittance
-condition sat near the workspace bound. That was traced to the same
-slow configuration drift Section~\ref{sec:fr3-architecture} now
-describes and controls; it is not present in the results above
-(Figure~\ref{fig:fr3}), and is not reported as a current limitation.
 
 \subsection{Torque-Active Runtime Intervention}
 \label{sec:torque-activation}
@@ -1313,13 +1293,11 @@ horizon-wide torque enforcement modifies the command, exposes the
 intervention through the residual, and avoids the infeasible future plan
 a first-step-only ablation produces. Together these test both directions
 of the software boundary. The evidence is a reproducible proof of
-concept, not a claim of universal compatibility, passivity, hardware
-safety, or superiority to established predictive interaction
-controllers; future behavior layers may be physics-based,
-optimization-based, or learned only once they expose a compatible
-realization contract. Interaction behavior should specify only desired
-interaction dynamics; physical feasibility should be realized
-independently by the robot.
+concept, scoped in Sections~\ref{sec:scope} and~\ref{sec:limitations};
+future behavior layers may be physics-based, optimization-based, or
+learned only once they expose a compatible realization contract.
+Interaction behavior should specify only desired interaction dynamics;
+physical feasibility should be realized independently by the robot.
 
 \section*{Reproducibility}
 
