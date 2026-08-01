@@ -8,12 +8,11 @@ This script isolates it, along two independent axes:
 
 1. Repeated full-benchmark runs (not a single run) to characterize solve-time
    variability directly with percentiles, rather than one mean/max pair.
-2. Warm-starting (OSQP's own `warm_start(x=, y=)`, previously unused anywhere
-   in this codebase -- FR3MPCConfig.warm_start defaults to False, so every
-   existing benchmark, test, and paper number is unaffected by its
-   existence) on vs. off, since a warm start only changes ADMM's initial
-   iterate, not the QP being solved, so it cannot explain a *generator*-
-   dependent gap if that gap is really about conditioning.
+2. Warm-starting (OSQP's own `warm_start(x=, y=)`) on vs. off. The deployed
+   configuration uses it; the cold condition remains as a matched ablation.
+3. An exact slack-variable reparameterization z=scale*s, used by the deployed
+   QP to reduce the Hessian's dynamic range without changing physical costs,
+   constraints, or reported slack values.
 
 Conditioning is checked directly, not just plausibly invoked: this script
 also computes the condition number of each generator's condensed QP cost
@@ -50,48 +49,28 @@ N_REPEATS = 5
 DURATION_S = 6.0
 
 
-def percentiles(values: np.ndarray, n_solves: int) -> dict:
-    # Duplicating every value by the same held-between-solves factor leaves
-    # the empirical distribution's mean/percentiles/max unchanged (see
-    # solve_time_distribution's docstring), so computing them on the padded
-    # per-tick array is valid; only "n" would be misleading if left as the
-    # padded array's length, so the true solve count is reported separately.
+def percentiles(values: np.ndarray, deadline_s: float) -> dict:
     return {
-        "n_solves": n_solves,
-        "n_ticks_with_recorded_solve_time": int(values.size),
+        "n_solves": int(values.size),
         "mean_ms": float(np.mean(values) * 1e3),
         "p50_ms": float(np.percentile(values, 50) * 1e3),
         "p95_ms": float(np.percentile(values, 95) * 1e3),
         "p99_ms": float(np.percentile(values, 99) * 1e3),
         "max_ms": float(np.max(values) * 1e3),
+        "n_over_deadline": int(np.count_nonzero(values > deadline_s)),
+        "fraction_over_deadline": float(np.mean(values > deadline_s)),
     }
 
 
-def solve_time_distribution(env, generator, cfg: FR3MPCConfig) -> tuple[np.ndarray, int]:
-    """Per-tick solve_time_s values, pooled across repetitions.
-
-    run_case holds each solve's time constant across the ~mpc_every inner
-    ticks until the next solve (the same convention run_fr3_experiments.py's
-    own mean/max_solve_time_ms already use), so this array is the true
-    per-solve value repeated a uniform number of times, not independent
-    per-tick samples. That padding does not bias mean, percentiles, or max
-    -- it preserves the empirical CDF -- but the true number of distinct
-    solve events is also returned for an honest "n".
-    """
+def solve_time_distribution(env, generator, cfg: FR3MPCConfig) -> np.ndarray:
+    """Actual manager-update solve times pooled across repetitions."""
     all_times: list[float] = []
-    n_solves = 0
+    mpc_every = max(1, round(cfg.dt / env.dt))
     for _ in range(N_REPEATS):
         log = run_case(env, generator, "mpc", cfg, duration=DURATION_S)
-        times = log["solve_time_s"]
+        times = np.asarray(log["solve_time_s"])[::mpc_every]
         all_times.extend(t for t in times if t > 0.0)
-        # A new solve event is any tick whose held value differs from the
-        # previous tick's (including the first nonzero value in the run).
-        prev = 0.0
-        for t in times:
-            if t > 0.0 and t != prev:
-                n_solves += 1
-            prev = t
-    return np.asarray(all_times), n_solves
+    return np.asarray(all_times)
 
 
 def hessian_condition_number(env, generator, cfg: FR3MPCConfig) -> float:
@@ -114,24 +93,31 @@ def main() -> None:
     base_cfg = FR3MPCConfig()
 
     report = {
-        "purpose": "isolate the admittance-vs-impedance FR3 QP solve-time gap along the "
-        "warm-start and Hessian-conditioning axes",
+        "purpose": "verify the 20 ms FR3 QP deadline after exact slack scaling, with "
+        "warm-start and unscaled-Hessian ablations",
         "n_repeats_per_condition": N_REPEATS,
         "duration_s": DURATION_S,
+        "deadline_ms": base_cfg.dt * 1e3,
+        "deployed_slack_variable_scale": base_cfg.slack_variable_scale,
+        "osqp_eps_abs_rel": base_cfg.osqp_eps,
         "conditions": {},
         "hessian_condition_number": {},
+        "unscaled_hessian_condition_number": {},
     }
 
     for gen_name, generator in generators.items():
         for warm_start in (False, True):
             cfg = replace(base_cfg, warm_start=warm_start)
             key = f"{gen_name}_warm_start={warm_start}"
-            times, n_solves = solve_time_distribution(env, generator, cfg)
-            report["conditions"][key] = percentiles(times, n_solves)
+            times = solve_time_distribution(env, generator, cfg)
+            report["conditions"][key] = percentiles(times, base_cfg.dt)
             print(key, report["conditions"][key])
 
         report["hessian_condition_number"][gen_name] = hessian_condition_number(
             env, generator, base_cfg
+        )
+        report["unscaled_hessian_condition_number"][gen_name] = hessian_condition_number(
+            env, generator, replace(base_cfg, slack_variable_scale=1.0)
         )
         print(gen_name, "Hessian cond(P) =", report["hessian_condition_number"][gen_name])
 

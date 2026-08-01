@@ -6,6 +6,7 @@
 \usepackage{amsthm}
 \usepackage{graphicx}
 \usepackage{booktabs}
+\usepackage{array}
 \usepackage{cite}
 \usepackage{enumitem}
 \usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
@@ -30,8 +31,10 @@ specification with constrained realization; we treat these as separate
 layers. A \emph{behavior layer} supplies a desired contact-port
 acceleration $a_k^{\mathrm{id}}=f_\theta(e_k,\dot e_k,F_{h,k})$. A
 \emph{realization layer} converts it into constrained robot commands and
-exposes constraint-induced deviation as a realization residual instead of
-hiding it in saturation. This paper implements a receding-horizon
+reports total desired-versus-realized acceleration error instead of hiding
+it in saturation. A same-objective unconstrained counterfactual separates
+regularization from constraint intervention, while plant data expose model
+error. This paper implements a receding-horizon
 quadratic program realizing memoryless affine behaviors. Changing the
 behavior modifies objective coefficients through $(C_\theta,G_\theta)$
 while the robot-command variable and feasible set remain unchanged. A
@@ -44,12 +47,13 @@ sustained 20~N push, it holds a slack-relaxed workspace boundary to
 within approximately 0.1--0.2~mm, versus 4.4~cm (impedance) and 4.7~cm
 (admittance) overshoot from instantaneous clipping. A derated actuator
 budget then activates the torque constraint: horizon-wide enforcement
-keeps its frozen-model plan feasible to 0.003~N$\cdot$m, whereas a
-first-step-only ablation plans up to 10.739~N$\cdot$m beyond budget; on
+keeps its frozen-model plan feasible to $2.1\times10^{-4}$~N$\cdot$m,
+whereas a first-step-only ablation plans up to 11.329~N$\cdot$m beyond budget; on
 the executed nonlinear plant, where both share the same local-model
 error, the gap is smaller but still favors horizon-wide enforcement
-(0.164 vs.\ 0.383~N$\cdot$m). These results are a focused proof of
-behavior--realization separation (scope in Section~\ref{sec:scope}).
+(0.161 vs.\ 0.380~N$\cdot$m). These results are a focused proof of
+behavior--realization separation, not a new MPC or safety-filter principle
+(scope in Section~\ref{sec:scope}).
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -115,8 +119,10 @@ The architecture studied here assigns this conflict to a realization
 layer. Its current predictive implementation constrains the \emph{total
 frozen-model torque} --- feedforward, orientation, null-space, and
 interaction terms --- at every prediction step
-(Section~\ref{sec:fr3-architecture}). Any necessary deviation from the
-behavior specification appears in the realization residual. Because the
+(Section~\ref{sec:fr3-architecture}). Any deviation from the behavior
+specification appears in the total realization residual; a counterfactual
+audit distinguishes constraint intervention from secondary-objective and
+model terms. Because the
 manipulator prediction is frozen at each solve, this remains a
 local-model mechanism rather than a global nonlinear-plant guarantee.
 
@@ -128,16 +134,17 @@ We study a different decomposition:
 \caption{Behavior and realization as separate layers. The behavior
 layer (dashed) supplies $a^{\mathrm{id}}$; the realization runtime
 (blue) converts it into a constrained command and reports
-$r_k=a-a^{\mathrm{id}}$.}
+$r_k=a-a^{\mathrm{id}}$; the audit in
+(\ref{eq:residual-decomposition}) separates its causes.}
 \label{fig:architecture}
 \end{figure}
 
 The behavior layer expresses intent without choosing a robot command. The
 realization runtime handles feasibility, constraint enforcement, and
 command optimization without deciding what stiffness, damping, or
-force-response semantics should mean. When physical limits prevent exact
-execution, the magnitude and timing of the intervention are explicit in
-the \emph{realization residual}.
+force-response semantics should mean. The runtime reports total behavior
+error and a constraint-intervention diagnostic rather than conflating the
+two.
 
 \noindent\textbf{The current executable instance.} For memoryless affine
 behavior models, the predictive runtime retains one decision variable,
@@ -161,8 +168,9 @@ The contributions are:
 \begin{itemize}
 \item a behavior--realization architecture that assigns behavior
 semantics and physical command feasibility to separate software layers;
-\item a precise desired-acceleration interface and realization residual
-that make constraint-induced behavior modification observable;
+\item a precise desired-acceleration interface, a total realization
+residual, and a same-objective constrained/unconstrained audit that makes
+constraint intervention separately observable;
 \item one predictive realization runtime for the memoryless affine
 subclass, with a fixed robot-command variable and feasible set across
 impedance and admittance behavior layers;
@@ -173,13 +181,16 @@ manipulator-level realization under command and torque limits.
 
 We do \textbf{not} claim that architectural separation in the abstract,
 impedance behavior in MPC, or constrained interaction control is new.
-Reference governors and hierarchical robot controllers already separate
-related responsibilities, while model predictive impedance and
+Task-space inverse dynamics, whole-body QPs, reference governors, and
+hierarchical robot controllers already separate related responsibilities,
+while model predictive impedance and
 interaction controllers provide important integrated formulations. The
-narrower claim is a behavior--realization interface at the
-interaction-acceleration level, an explicit residual for runtime
-intervention, and an executable predictive instance for two affine
-behaviors.
+narrower contribution is the four-part combination of (i) an interaction
+law evaluated along predicted states and exchanged at an acceleration-level
+contract, (ii) one fixed robot-command runtime across generators, (iii) a
+same-objective constrained/unconstrained counterfactual that decomposes the
+realization residual, and (iv) live generator substitution without rebuilding
+runtime state. The executable evidence covers two affine behaviors.
 
 \section{Related Work and Positioning}
 \label{sec:related}
@@ -193,7 +204,10 @@ is asked to reproduce.
 \caption{Positioning against related work.}
 \label{tab:related}
 \small
-\begin{tabular}{@{}p{0.19\linewidth}p{0.27\linewidth}p{0.24\linewidth}p{0.16\linewidth}@{}}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.19\linewidth}
+>{\raggedright\arraybackslash}p{0.27\linewidth}
+>{\raggedright\arraybackslash}p{0.24\linewidth}
+>{\raggedright\arraybackslash}p{0.16\linewidth}@{}}
 \toprule
 Class & Behavior representation & Optimized robot-level variable & Role of prediction \\
 \midrule
@@ -202,6 +216,10 @@ Reference-model adaptive impedance & $M_d\ddot e+D_d\dot e+K_de=F_h$ & Adaptive 
 Direct robot MPC & State or tracking-error dynamics & Force, torque, velocity, or acceleration & Optimize robot motion directly \\
 Impedance/interaction MPC & Impedance, force, or coupled interaction model & Robot command and sometimes behavior parameters & Embed interaction objectives and constraints \\
 Reference governor & A single reference/setpoint signal & Filtered reference fed to a fixed inner-loop controller & Supervise a non-predictive inner loop to enforce constraints \\
+Predictive safety filter & Nominal controller input & Minimally modified admissible input & Certify or replace a proposed command \\
+Constrained compliance QP & Desired impedance/compliance response & Torque, velocity, or acceleration & Reproduce compliant behavior under robot constraints \\
+TSID / hierarchical whole-body QP & Desired task accelerations and task priorities & Joint acceleration, contact force, and/or torque & Usually instantaneous constrained realization \\
+Predictive hierarchical task-space control & Task trajectories and acceleration-level errors & Robot state and command trajectories & Extend hierarchical task objectives over a horizon \\
 This work & $a^{\mathrm{id}}=C_\theta x+G_\theta F_h$ & Robot command $u$ & Minimize dynamics-realization error under constraints \\
 \bottomrule
 \end{tabular}
@@ -235,6 +253,21 @@ penalizes interaction error, whereas the present controller penalizes
 disagreement with an independently specified interaction dynamical
 system.
 
+Task-space inverse dynamics and hierarchical whole-body QPs are a more
+fundamental precedent for the interface itself: they already accept desired
+task accelerations as modular objectives and solve for dynamically feasible
+robot accelerations, contact forces, or torques. Del Prete et al.'s TSID, for
+example, treats prioritized motion/force tasks for constrained fully actuated
+robots~\cite{ref19}. Predictive hierarchical task-space control extends
+acceleration-error objectives over a finite horizon for underactuated and
+constrained robots~\cite{ref20}. Thus neither ``desired task acceleration''
+nor ``QP realization under robot constraints'' is claimed as new. Relative
+to these frameworks, the contribution tested here is narrower: the task is
+an interaction dynamical law evaluated along the predicted state; the same
+runtime is retained across impedance and admittance generators; its residual
+is split using a same-objective counterfactual; and the generator is replaced
+online without reconstructing the runtime state.
+
 Closer still is model predictive impedance and interaction control.
 Bednarczyk et al.\ formulate impedance behavior through MPC and handle
 practical constraints such as velocity, energy, and jerk~\cite{ref5}.
@@ -245,9 +278,28 @@ Minniti et al.\ combine whole-body MPC with online adaptation of
 robot--environment interaction models for constrained mobile
 manipulation~\cite{ref7}. These papers are close precedents and make a
 broad ``first constrained interaction-dynamics MPC'' claim untenable.
+Alharbat et al.\ explicitly compare NMPC impedance, cascaded admittance,
+and hybrid position/force paradigms~\cite{ref14}; their later predictive
+admittance controller predicts both robot and desired impedance states,
+respects actuator constraints, and is validated in physical aerial
+interaction~\cite{ref15}. Kumbhar et al.\ pass admittance-generated plans
+to a constrained whole-body QP on Digit hardware~\cite{ref17}. These are
+stronger validation precedents than the present simulation-only study;
+the remaining distinction sought here is the fixed cross-behavior
+desired-acceleration contract, not predictive compliance itself.
 
-Reference governors are the closest architectural relative to this
-paper's separation, from a different literature than the
+QP realization of compliant behavior and residual reporting also predate
+this work. Leboutet et al.\ compute robot commands under kinematic and
+dynamic constraints and propagate generalized-force residuals when a
+limb cannot realize the requested compliance~\cite{ref16}. More recent
+safety-critical adaptive impedance work filters a nominal impedance law
+through a QP with joint-state and torque constraints and provides formal
+invariance and boundedness results~\cite{ref18}. Accordingly, neither
+``QP-constrained compliance'' nor ``an explicit residual'' is claimed
+independently as novel here.
+
+Reference governors and predictive safety filters are the closest
+architectural relatives to this paper's separation, from a different literature than the
 parameter-adaptation and direct-MPC work described above. A reference
 governor sits upstream of a fixed, already-designed inner-loop controller
 and modifies the reference signal so that constraints on the resulting
@@ -259,28 +311,13 @@ and manipulates a reference signal; the realization layer here is itself
 predictive, and the exchanged object is an affine desired-acceleration
 law evaluated over predicted interaction states. The realization residual
 additionally measures the difference between requested and delivered
-dynamics. This connection limits the novelty claim: the contribution is
+dynamics. Predictive safety filters similarly accept an arbitrary
+upstream command and use model-based backup optimization to certify or
+modify it~\cite{ref13}. This connection limits the novelty claim: the contribution is
 not separation in the abstract, but its formulation and measurement at
 the interaction-dynamics level.
 
-\begin{table*}[t]
-\centering
-\caption{Reference governor vs.\ proposed architecture.}
-\label{tab:governor}
-\small
-\begin{tabular}{@{}p{0.24\linewidth}p{0.34\linewidth}p{0.34\linewidth}@{}}
-\toprule
-Architectural question & Reference governor & Behavior--realization architecture \\
-\midrule
-Pipeline & Reference $\rightarrow$ governor $\rightarrow$ fixed controller $\rightarrow$ robot & Interaction state $\rightarrow$ behavior generator $\rightarrow$ predictive realizer $\rightarrow$ robot \\
-Quantity passed downstream & Modified reference signal & Desired behavioral acceleration law \\
-Location of prediction & Supervisory reference filter & Robot-command realization layer \\
-Explicit discrepancy & Original versus governed reference & Desired versus realized acceleration, $r=a-a^{\mathrm{id}}$ \\
-\bottomrule
-\end{tabular}
-\end{table*}
-
-Control barrier function (CBF) quadratic programs are a related
+Control barrier function (CBF) quadratic programs are another related
 architectural pattern from a different literature: a CBF-QP takes a
 nominal control input and projects it, at each tick, onto the
 minimal-deviation admissible set defined by a safety
@@ -288,8 +325,9 @@ constraint~\cite{ref10}. The realization layer here is structurally
 similar --- a minimal-deviation projection of a requested behavior onto
 a robot-feasible set --- but the projected object is a full behavior
 law evaluated over a receding horizon rather than a single nominal
-input, and the deviation itself (the realization residual) is reported
-as a first-class output rather than discarded solver information. We do
+input. The total deviation is reported, and the constrained/unconstrained
+counterfactual identifies its constraint-intervention component rather
+than treating every nonzero residual as safety action. We do
 not compare against a CBF-QP filter or a reference-governor instance in
 this paper; Section~\ref{sec:scope} lists a matched comparison against
 the closest alternative architecture as open.
@@ -307,13 +345,13 @@ read as an instance of that established parametric-QP structure applied
 to the behavior--realization interface, not as a new structural fact
 about quadratic programs.
 
-Every row above except the last two optimizes a quantity tied to one
+Most rows above optimize a quantity tied to one
 behavior representation: impedance parameters, adaptive impedance gains,
 or robot-level tracking against a specific interaction model. The
-reference-governor row is architecturally closest. Our narrower
+reference-governor and safety-filter rows are architecturally closest. Our narrower
 distinction is an interaction-level behavior contract whose desired
-acceleration is separate from robot feasibility, together with a residual
-that exposes runtime intervention. The executable and theoretical
+acceleration is separate from robot feasibility, together with a total
+residual and counterfactual intervention audit. The executable and theoretical
 evidence is limited to memoryless affine impedance and admittance
 behaviors.
 
@@ -407,23 +445,45 @@ a_k^{\mathrm{id}}=C_\theta x_k+G_\theta F_{h,k}.
 \end{equation}
 
 The gap between what a behavior specifies and what the robot delivers is
-the realization residual,
+the \emph{total realization residual},
 \begin{equation}
 r_k=a_k-a_k^{\mathrm{id}}.
 \end{equation}
 If $r_k=0$, the robot exactly realizes the desired behavioral
-acceleration at that sample. If $r_k\ne0$, the robot executes the
-closest feasible dynamics selected by the optimizer. Reporting $r_k$
-distinguishes unavoidable safety intervention from failure to tune the
-reference model. $r_k$ is deliberately a raw physical quantity, not a
-normalized tracking score: its role is to report exactly how much
-commanded acceleration was withheld, in the same units the actuator
-budget is spent in, which is what a downstream safety or logging
-consumer needs. A generator-relative or energy-normalized variant would
-serve a different purpose --- ranking realization quality across
-generators of different characteristic scale --- and is exactly the
-normalization gap Section~\ref{sec:limitations} identifies as open, not a
-defect in $r_k$ itself.
+acceleration at that sample. Nonzero $r_k$ alone, however, does not prove
+that a constraint caused the deviation: the finite force and force-rate
+weights can already shift the unconstrained optimum, and a physical plant
+can differ from the prediction model.
+
+We therefore audit three terms. Let $U_k^{c\star}$ be the deployed
+constrained optimum and $U_k^{0\star}$ the counterfactual optimum of the
+\emph{same} horizon objective at the same state, force forecast, and
+previous command after removing physical constraints. Let $a_k^c$ and
+$a_k^0$ be their first-step model accelerations, and let $a_k^{\rm emp}$
+be the acceleration measured from the plant. Define
+\begin{align}
+r_k^{\rm reg}&=a_k^0-a_k^{\rm id}, &
+r_k^{\rm con}&=a_k^c-a_k^0,\\
+r_k^{\rm mod}&=a_k^{\rm emp}-a_k^c. &&
+\end{align}
+Then the empirical total error closes exactly as
+\begin{equation}
+r_k^{\rm emp}=r_k^{\rm reg}+r_k^{\rm con}+r_k^{\rm mod}.
+\label{eq:residual-decomposition}
+\end{equation}
+Here $r^{\rm reg}$ contains secondary-objective compromise,
+$r^{\rm con}$ is the joint intervention of all enforced constraints, and
+$r^{\rm mod}$ contains frozen-model and acceleration-measurement error.
+The split does not attribute $r^{\rm con}$ to one individual active row;
+that would require a multiplier- or leave-one-constraint-out analysis.
+For the exact planar model $r^{\rm mod}=0$. The FR3 audit evaluates the
+first two terms at 50~Hz manager updates and obtains $r^{\rm mod}$ from
+the following 1~kHz plant sample.
+
+All four quantities retain physical acceleration units. They are logging
+and causal-diagnostic signals, not normalized cross-generator scores; a
+generator-relative or energy-normalized metric would answer a different
+comparison question.
 
 This definition is intentionally stronger than commanding a nominal
 impedance force and penalizing
@@ -488,8 +548,11 @@ U_k= \begin{bmatrix} u_{0|k}^\top&\cdots&u_{N-1|k}^\top \end{bmatrix}^\top.
 The controller solves
 \begin{equation}
 \begin{aligned}
-\min_{U_k}\quad& \sum_{i=0}^{N-1} \|a_{i|k}-a_{i|k}^{\mathrm{id}}\|_W^2
-+\lambda_u\|u_{i|k}\|_2^2 +\lambda_{\Delta u} \|u_{i|k}-u_{i-1|k}\|_2^2\\
+\min_{U_k}\quad& \sum_{i=0}^{N-1}\Big(
+\|a_{i|k}-a_{i|k}^{\mathrm{id}}\|_W^2
++\lambda_u\|u_{i|k}\|_2^2\\
+&\hspace{25mm}+\lambda_{\Delta u}
+\|u_{i|k}-u_{i-1|k}\|_2^2\Big)\\
 \text{s.t.}\quad&x_{i+1|k}=Ax_{i|k}+B(u_{i|k}+\hat F_{h,i|k}),\\
 &a_{i|k}=(u_{i|k}+\hat F_{h,i|k})/m_r,\\
 &a_{i|k}^{\mathrm{id}} =C_\theta x_{i|k}+G_\theta\hat F_{h,i|k},\\
@@ -533,7 +596,7 @@ convexity, exact realization under idealized conditions, and one-step
 constraint inheritance, while Proposition~\ref{prop:inheritance} states
 explicitly what the runtime does not guarantee.
 
-\begin{theorem}[Affine Generator Template Invariance]
+\begin{theorem}[Affine-Generator Template-Invariance Property]
 \label{thm:invariance}
 Fix the plant $(A,B,m_r)$, horizon $N$, weights
 $(W,\lambda_u,\lambda_{\Delta u})$, and bounds
@@ -741,6 +804,28 @@ Section~\ref{sec:properties}). As in Table~\ref{tab:fr3}, RMSE is
 pooled into one mean before the square root.
 \end{table*}
 
+\begin{table}[t]
+\centering
+\caption{Planar residual decomposition (m/s$^2$).}
+\label{tab:planar-decomposition}
+\small
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+Generator & Total & $r^{\rm reg}$ & $r^{\rm con}$ & Closure \\
+\midrule
+Impedance  & 1.351 & 0.0113 & 1.339 & $<9\!\times\!10^{-16}$ \\
+Admittance & 0.405 & 0.00261 & 0.403 & $<3\!\times\!10^{-16}$ \\
+\bottomrule
+\end{tabular}
+
+\vspace{2pt}
+\raggedright\footnotesize
+The first three numerical columns are component-wise RMSE and need not
+add as scalars; (\ref{eq:residual-decomposition}) closes samplewise.
+``Closure'' is its maximum absolute component error. The planar model is
+exact, so $r^{\rm mod}=0$.
+\end{table}
+
 The impedance reference has a static displacement
 $F_h/K_d=12/45=0.267$~m, matching the 0.266~m simulated peak after the
 smooth force ramp. Because this behavior is incompatible with the
@@ -753,8 +838,11 @@ has no restoring spring. Reactive realization therefore accumulates
 0.525~m displacement and retains it after release. The constrained
 controller begins departing from the requested velocity dynamics before
 reaching the workspace boundary and settles at 0.091~m. The generator
-remains unchanged; the behavior modification is entirely attributable to
-the realization layer.
+remains unchanged. Table~\ref{tab:planar-decomposition} shows that the
+observed modification is predominantly constraint intervention rather
+than secondary regularization; the stronger ``entirely
+constraint-induced'' wording would be false because the regularization
+term is small but nonzero.
 
 \subsection{Online Generator Switching}
 \label{sec:switching}
@@ -803,8 +891,9 @@ The results support four limited claims:
 \begin{enumerate}
 \item two qualitatively different affine interaction models use the same
 constrained predictive implementation;
-\item an explicit realization residual identifies when safety requires
-deviation from the desired behavioral acceleration;
+\item a constrained/unconstrained counterfactual separates constraint
+intervention from the small regularization component of total behavior
+error;
 \item horizon-wide state constraints prevent violations that command
 clipping alone cannot prevent in this deterministic model;
 \item a single controller instance accepts a different generator online,
@@ -946,8 +1035,8 @@ closest feasible command and exposes the trade-off through $r_k$.
 The workspace and speed boxes use nonnegative slacks with $\rho=10^8$,
 because the frozen-Jacobian model cannot guarantee recursive feasibility
 for the nonlinear plant. Nontrivial slack occurs in 110 impedance and
-203 admittance solves, with peak position slack of 0.053~mm (impedance)
-and 0.026~mm (admittance) and peak speed slack below $10^{-6}$~m/s in
+186 admittance solves, with peak position slack of 0.077~mm (impedance)
+and 0.027~mm (admittance) and peak speed slack below $10^{-6}$~m/s in
 both conditions. This slack is smaller than Table~\ref{tab:fr3}'s
 executed peak $|e_z|$ violation (0.0002~m impedance, 0.0001~m
 admittance) because the two measure different objects: slack is the
@@ -970,8 +1059,9 @@ common inner-loop rate.
 Mirroring the planar prototype's own story rather than a separate
 benchmark design: the EE holds a fixed nominal pose and orientation
 while a sustained human push toward a workspace/speed boundary is
-applied, and predictive realization is compared against reactive
-clipping under an identical command/rate box. Neither controller has
+applied, and predictive realization is compared against a command/rate-limited
+reactive controller with no predictive workspace handling, under an identical
+command/rate box. Neither controller has
 oracle knowledge of the scripted force; both receive a zero-order-hold
 forecast of the currently measured force, as in Section~\ref{sec:planar}.
 
@@ -1006,9 +1096,11 @@ Each condition runs for 6~s of simulated time.
 \centering
 \includegraphics[width=0.95\linewidth]{results/fr3_interaction_dynamics_results.png}
 \caption{FR3 benchmark: impedance (left) and admittance (right),
-predictive realization (solid) vs.\ reactive clipping (dashed). Dotted
-lines are workspace/speed bounds; bottom row is the empirical residual.
-Predictive realization tracks the bound; reactive clipping overshoots
+predictive realization (solid) vs.\ the command/rate-limited reactive
+controller without predictive workspace handling (dashed). Dotted
+lines are workspace/speed bounds; bottom row is the empirical residual;
+torque does not clip in this primary benchmark. Predictive realization
+tracks the bound; the reactive controller overshoots
 and, for admittance, never recovers.}
 \label{fig:fr3}
 \end{figure}
@@ -1050,6 +1142,29 @@ $|\tau_j|/\tau_{\max,j}$, which avoids comparing unlike 87~N$\cdot$m and
 text below because the reactive comparator does not solve a QP.
 \end{table*}
 
+\begin{table*}[t]
+\centering
+\caption{FR3 manager-update residual audit (component-wise RMSE, m/s$^2$).}
+\label{tab:fr3-decomposition}
+\small
+\begin{tabular}{@{}lrrrrrr@{}}
+\toprule
+Generator & Model total & $r^{\rm reg}$ & $r^{\rm con}$ & $r^{\rm mod}$ & Empirical total & Model closure \\
+\midrule
+Impedance  & 1.448 & 0.285 & 1.205 & 0.199 & 1.395 & $<5\!\times\!10^{-16}$ \\
+Admittance & 0.283 & 0.0958 & 0.356 & 0.153 & 0.211 & $<3\!\times\!10^{-16}$ \\
+\bottomrule
+\end{tabular}
+
+\vspace{2pt}
+\raggedright\footnotesize
+All columns use the 50~Hz manager-update instants; RMSE columns need not
+add because the vector terms can cancel. Model closure is the maximum
+absolute component error in $r^{\rm model}=r^{\rm reg}+r^{\rm con}$.
+$r^{\rm mod}$ then closes (\ref{eq:residual-decomposition}) against the
+finite-difference plant acceleration.
+\end{table*}
+
 No condition violates a per-joint torque limit at the executed sample,
 no solve is reported infeasible, and the torque constraint never binds
 in this primary benchmark: maximum utilization stays below 38\%. This
@@ -1058,9 +1173,8 @@ boundary, not torque intervention. Section~\ref{sec:torque-activation}
 introduces a deliberately derated torque-budget stress case in which the
 constraint activates.
 
-Correct horizon-wide enforcement is also protected by
-\texttt{test\_horizon\_wide\_torque\_feasibility\_binding}, which
-tightens one joint limit until the constraint activates.
+An end-to-end unit test also tightens one joint limit until the
+horizon-wide constraint activates.
 
 The impedance reference has an unconstrained static displacement
 $F_h/K_d=20/200=0.10$~m, which by itself already exceeds the 0.06~m
@@ -1083,35 +1197,41 @@ comparator has no lookahead to anticipate the boundary. Predictive
 realization begins departing from the requested velocity before the
 bound is reached and stays within 0.0601~m.
 
-In the saved benchmark run, the admittance QP's worst solve exceeds the
-nominal 20~ms outer-loop period, whereas the impedance QP remains
-faster. Both have identical dimensions and constraints but different
-objective coefficients.
+Table~\ref{tab:fr3-decomposition} prevents the raw FR3 residual from being
+misread as constraint intervention alone. Constraint intervention is the
+largest component for both generators at manager updates, but finite
+regularization and plant/model terms are material, particularly for the
+admittance condition where vector cancellation makes the empirical total
+smaller than the individual component RMSE values.
 
-A dedicated timing study (\texttt{run\_fr3\_timing\_study.py}, 5 full
-6~s benchmark repetitions per condition, 1500 solves each) isolates
-this gap along two independent axes rather than reporting one run's
-mean and max. Warm-starting OSQP from the previous solve's
-primal/dual solution --- off by default so no other reported number is
-affected by its existence --- cuts the admittance mean solve time by
-47\% (11.7~ms to
-6.2~ms) and its 99th percentile by 43\% (65.0~ms to 37.1~ms); the
-impedance improvement is smaller (4.4~ms to 3.8~ms mean). The
-condensed QP's cost Hessian condition number, computed independently
-of any solve trajectory, is nearly identical between generators
-($4.3\times10^9$ impedance vs.\ $3.8\times10^9$ admittance) and rules
-out static Hessian conditioning as the dominant cause; both are
-severely ill-conditioned in absolute terms. The remaining
-generator-dependent gap after warm-starting is consistent with how
-often each condition's constraints are actively engaged: the
-admittance condition's workspace/speed box binds in 4140 of the main
-benchmark's logged ticks against impedance's 2240, and active-set
-changes are known to slow ADMM convergence independent of Hessian
-conditioning.
+The deployed QP uses the exact variable change $z=10^3s$ for each physical
+state slack $s$. Constraint coefficients use $z/10^3$, the slack Hessian
+weight becomes $\rho/10^6$, and reported values decode $s=z/10^3$; hence
+the physical objective and feasible set are unchanged. A unit test verifies
+this matrix transformation directly. It reduces the condensed Hessian
+condition number from $4.3\times10^9$ to $4.34\times10^3$ for impedance and
+from $3.8\times10^9$ to $3.77\times10^3$ for admittance. The deployed 50~Hz
+configuration also warm-starts OSQP from the preceding primal/dual solution.
 
-These wall-clock measurements are solver effort on the development
-machine, not a real-time guarantee or an exactly reproducible
-hardware-independent value.
+A dedicated timing study (\texttt{run\_fr3\_timing\_study.py}, five full
+6~s repetitions and 1500 actual solves per generator/condition) then measures
+the complete QP construction and solve. In the deployed warm-started
+configuration, impedance has 3.45~ms mean, 6.89~ms 99th-percentile, and
+8.67~ms maximum solve time; admittance has 3.68, 7.28, and 9.73~ms,
+respectively. Thus all 3000 measured warm-started solves meet the 20~ms
+manager period on the development machine. The matched cold-start ablation
+has means of 4.24 and 4.02~ms, 99th percentiles of 7.25 and 8.33~ms, and
+maxima of 17.73 and 14.92~ms; all 3000 cold solves also meet 20~ms in the
+saved scaled-formulation study. Warm-starting is therefore retained for
+additional margin, rather than being credited as the sole deadline fix.
+
+These wall-clock measurements are evidence for the tested machine, not a hard
+real-time or hardware-independent guarantee. They include QP construction
+and OSQP but exclude the post-solve unconstrained counterfactual used only for
+the residual audit. The simulator invokes the solve synchronously and does
+not implement asynchronous late-result discard; deployment on a different
+processor must re-run the timing test and, if overruns occur, hold the last
+applied command and reject stale solutions explicitly.
 
 \subsection{Torque-Active Runtime Intervention}
 \label{sec:torque-activation}
@@ -1152,8 +1272,8 @@ and workspace bound.}
 Enforcement & Planned & Executed & RMSE$^{*}$ & Peak \\
 & viol. (N$\cdot$m) & viol. (N$\cdot$m) & (m/s$^2$) & $|e_z|$ (m) \\
 \midrule
-All 15 steps & 0.003 & 0.164 & 1.399 & 0.0602 \\
-First step only & 10.739 & 0.383 & 1.465 & 0.0618 \\
+All 15 steps & 0.0002 & 0.161 & 1.398 & 0.0603 \\
+First step only & 11.329 & 0.380 & 1.466 & 0.0619 \\
 \bottomrule
 \end{tabular}
 
@@ -1162,7 +1282,7 @@ First step only & 10.739 & 0.383 & 1.465 & 0.0618 \\
 $^{*}$Empirical residual RMSE. The planned violation is evaluated
 against the frozen model used by each QP. The all-step value is
 numerical solver tolerance, whereas the first-step-only runtime plans
-future torque up to 10.739~N$\cdot$m beyond the derated budget.
+future torque up to 11.329~N$\cdot$m beyond the derated budget.
 Executed-sample torque is recomputed from the nonlinear MuJoCo state at
 1~kHz; its smaller nonzero excess in both cases quantifies the
 local-model gap rather than a claimed hard nonlinear-plant guarantee.
@@ -1185,14 +1305,16 @@ This is a focused architecture validation, not a complete manipulator
 evaluation. The implemented behavior layers are impedance and admittance
 only; the scenario is a sustained push rather than a sweep over delay,
 sensor noise, or mass mismatch; and there is no collision constraint.
-Reactive clipping is a mechanism ablation, not a survey-complete
-baseline. The online behavior-layer switching demonstration
+The command/rate-limited reactive controller is a mechanism ablation,
+not a survey-complete baseline. The online behavior-layer switching demonstration
 (Section~\ref{sec:switching}) is planar only; an FR3 counterpart remains
 future work.
 
 Human-participant and hardware validation remain future work, as do a
-matched comparison with the closest alternative architecture and closing
-the admittance solve-time gap identified in Section~\ref{sec:fr3-results}.
+faithful matched implementation of a predictive safety filter,
+predictive admittance controller, or MPIC baseline. Hardware timing and an
+explicit stale-solution policy must also be revalidated for deployment even
+though the warm-started development-machine study meets 20~ms.
 
 \section{Why Behavior--Realization Separation?}
 \label{sec:why}
@@ -1226,8 +1348,9 @@ upstream of an already-designed fixed controller. The realization layer
 here is instead itself the command optimizer, and its input is a
 desired-acceleration law rather than a setpoint for a separate inner
 loop. Both separate intent from constraint handling, so separation alone
-is not the novelty; the distinction is the interface boundary and the
-explicit measurement of desired-versus-realized acceleration.
+is not the novelty; the distinction is the interface boundary, online
+cross-behavior substitution, and the decomposition of
+desired-versus-realized acceleration.
 
 What separation buys, concretely, is controlled substitutability:
 Section~\ref{sec:switching} changes the behavior layer while preserving
@@ -1263,8 +1386,11 @@ scenario. This does not establish a terminal invariant set, quantify
 soft-constraint risk, or validate the untriggered fallback --- a
 deployable system would need all three.
 
-Fourth, the realization residual has physical units and depends on the
-chosen output coordinates. The FR3 study exercises translation only;
+Fourth, the total realization residual has physical units and depends on
+the chosen output coordinates. Equation~(\ref{eq:residual-decomposition})
+now separates regularization, joint constraint intervention, and model
+error, but does not allocate intervention among individual constraint
+rows or provide a normalized severity score. The FR3 study exercises translation only;
 orientation is held by a fixed PD law, not a generator, so extending the
 interface needs a principled or energy-weighted normalization across
 coordinates. Raw RMSE across generators with different scales is not a
@@ -1290,7 +1416,8 @@ planar study swaps impedance for admittance and back while preserving
 the running realization object and its command state. The FR3 study
 instead changes the actuator budget while preserving the behavior layer:
 horizon-wide torque enforcement modifies the command, exposes the
-intervention through the residual, and avoids the infeasible future plan
+intervention through the constrained/unconstrained audit, and avoids the
+infeasible future plan
 a first-step-only ablation produces. Together these test both directions
 of the software boundary. The evidence is a reproducible proof of
 concept, scoped in Sections~\ref{sec:scope} and~\ref{sec:limitations};
@@ -1306,20 +1433,24 @@ verified by an accompanying test suite that runs each scripted benchmark
 end to end and asserts its headline claims directly (torque-limit
 compliance, solver feasibility, workspace-bound margins, and the
 horizon-wide-versus-first-step-only comparison of
-Section~\ref{sec:torque-activation}), rather than relying on inspection
+Section~\ref{sec:torque-activation}). It also asserts samplewise closure
+of the residual decomposition on the planar and frozen FR3 models rather
+than relying on inspection
 of a saved figure. Physical quantities (position, torque, and violation
 counts) are bit-for-bit reproducible from the fixed scenarios; solve
 times are wall-clock and are only ever bounded, never asserted exactly.
 The warm-start/Hessian-conditioning solve-time diagnosis of
 Section~\ref{sec:fr3-results} is produced by a dedicated script
 (\texttt{run\_fr3\_timing\_study.py}) separate from the main benchmark,
-with its own unit tests confirming that warm-starting converges to the
-same command as a cold solve and that resetting a controller clears its
-carried warm-start state. Code, configuration, and saved numerical
+with unit tests checking the exact slack-variable matrix transformation,
+confirming that warm-starting converges to the same command as a cold solve,
+and verifying that resetting a controller clears its carried warm-start
+state. Code, configuration, and saved numerical
 artifacts backing every figure and table in this paper are available in
 the project repository.
 
-\begin{thebibliography}{9}
+\IEEEtriggeratref{11}
+\begin{thebibliography}{99}
 
 \bibitem{ref1}
 A. Anand et al., ``Deep Model Predictive Variable Impedance Control,''
@@ -1379,6 +1510,49 @@ vol.~38, no.~1, pp.~3--20, 2002.
 P. Tondel, T. A. Johansen, and A. Bemporad, ``An algorithm for
 multi-parametric quadratic programming and explicit MPC solutions,''
 \emph{Automatica}, vol.~39, no.~3, pp.~489--497, 2003.
+
+\bibitem{ref13}
+K. P. Wabersich and M. N. Zeilinger, ``A predictive safety filter for
+learning-based control of constrained nonlinear dynamical systems,''
+\emph{Automatica}, vol.~129, Art.~no.~109597, 2021.
+
+\bibitem{ref14}
+A. Alharbat, H. Esmaeeli, D. Bicego, A. Mersha, and A. Franchi,
+``Three fundamental paradigms for aerial physical interaction using
+nonlinear model predictive control,'' in \emph{Proc. Int. Conf. Unmanned
+Aircraft Systems (ICUAS)}, 2022, pp.~39--48.
+
+\bibitem{ref15}
+A. Alharbat, C. Gabellieri, A. Mersha, and A. Franchi, ``Predictive
+admittance control for aerial physical interaction,'' \emph{IEEE Robot.
+Autom. Lett.}, vol.~10, no.~11, pp.~11235--11242, 2025.
+
+\bibitem{ref16}
+Q. Leboutet, E. Dean-Leon, F. Bergner, and G. Cheng, ``Tactile-based
+whole-body compliance with force propagation for mobile manipulators,''
+\emph{IEEE Trans. Robotics}, vol.~35, no.~2, pp.~330--342, 2019.
+
+\bibitem{ref17}
+S. S. Kumbhar, A. M. Kulkarni, and P. Artemiadis, ``Efficient and
+compliant control framework for versatile human--humanoid collaborative
+transportation,'' arXiv:2512.07819, 2025.
+
+\bibitem{ref18}
+F. Lawan, X. Han, J. Carrasco, B. Lennox, and X. Cheng,
+``Safety-critical adaptive impedance control via nonsmooth control
+barrier functions under state and input constraints,'' arXiv:2605.28367,
+2026.
+
+\bibitem{ref19}
+A. Del Prete, F. Nori, G. Metta, and L. Natale, ``Prioritized
+motion--force control of constrained fully-actuated robots: Task Space
+Inverse Dynamics,'' \emph{Robotics and Autonomous Systems}, 2014,
+doi: 10.1016/j.robot.2014.08.016.
+
+\bibitem{ref20}
+J. Lee, S. H. Bang, E. Bakolas, and L. Sentis, ``MPC-based hierarchical
+task space control of underactuated and constrained robots for execution
+of multiple tasks,'' arXiv:2009.05891, 2020.
 
 \end{thebibliography}
 

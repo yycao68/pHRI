@@ -118,6 +118,9 @@ def run_case(
         "human_force": [],
         "reference_acceleration": [],
         "predicted_realization_residual": [],
+        "regularization_residual": [],
+        "constraint_intervention_residual": [],
+        "decomposition_closure_error": [],
         "active": [],
         "solver_status": [],
         "solve_time_s": [],
@@ -145,6 +148,9 @@ def run_case(
 
         # Recomputed every tick for BOTH controllers -- the inner-loop-rate property.
         tau_base, J_v, d_known = compute_tau_base(dyn, state, R_d, imp_params, cfg.K_rot, cfg.D_rot, cfg.lambda_reg)
+        regularization_residual = np.full(3, np.nan)
+        constraint_intervention_residual = np.full(3, np.nan)
+        decomposition_closure_error = np.full(3, np.nan)
 
         if i % mpc_every == 0:
             if controller_kind == "mpc":
@@ -161,6 +167,11 @@ def run_case(
                     last_planned_torque_violation = float(
                         max(0.0, np.max(np.abs(step.horizon_tau) - cfg.tau_max[None, :]))
                     )
+                    regularization_residual = step.regularization_residual
+                    constraint_intervention_residual = (
+                        step.constraint_intervention_residual
+                    )
+                    decomposition_closure_error = step.decomposition_closure_error
                     if step.horizon_slack_max > slack_epsilon:
                         n_solves_with_nontrivial_slack += 1
                 except RuntimeError:
@@ -217,6 +228,13 @@ def run_case(
         log["human_force"].append(force.copy())
         log["reference_acceleration"].append(a_id.copy())
         log["predicted_realization_residual"].append(predicted_residual)
+        log["regularization_residual"].append(regularization_residual.copy())
+        log["constraint_intervention_residual"].append(
+            constraint_intervention_residual.copy()
+        )
+        log["decomposition_closure_error"].append(
+            decomposition_closure_error.copy()
+        )
         log["active"].append(last_active)
         log["solver_status"].append(last_status)
         log["solve_time_s"].append(last_solve_time)
@@ -237,6 +255,9 @@ def run_case(
         "human_force",
         "reference_acceleration",
         "predicted_realization_residual",
+        "regularization_residual",
+        "constraint_intervention_residual",
+        "decomposition_closure_error",
         "slack_position",
         "slack_speed",
         "planned_torque_violation_Nm",
@@ -251,6 +272,13 @@ def run_case(
     log["empirical_acceleration"] = empirical_acceleration
     log["empirical_realization_residual"] = (
         empirical_acceleration - log["reference_acceleration"]
+    )
+    log["model_residual"] = (
+        empirical_acceleration
+        - (
+            log["reference_acceleration"]
+            + log["predicted_realization_residual"]
+        )
     )
     # Backward-compatible name now means the quantity the paper calls the
     # physically realized residual.
@@ -272,6 +300,10 @@ def metrics(log, cfg: FR3MPCConfig) -> dict:
     residual = log["empirical_realization_residual"]
     predicted_residual = log["predicted_realization_residual"]
     valid_empirical = np.all(np.isfinite(residual), axis=1)
+    valid_decomposition = (
+        valid_empirical
+        & np.all(np.isfinite(log["regularization_residual"]), axis=1)
+    )
     meaningful_active_steps = sum(
         any(label != "slack_nonneg" for label in items) for items in log["active"]
     )
@@ -297,6 +329,32 @@ def metrics(log, cfg: FR3MPCConfig) -> dict:
         "predicted_realization_rmse_mps2": float(
             componentwise_rmse(predicted_residual)
         ),
+        "predicted_realization_rmse_at_updates_mps2": float(
+            componentwise_rmse(predicted_residual[valid_decomposition])
+        ) if np.any(valid_decomposition) else None,
+        "empirical_realization_rmse_at_updates_mps2": float(
+            componentwise_rmse(residual[valid_decomposition])
+        ) if np.any(valid_decomposition) else None,
+        "regularization_residual_rmse_at_updates_mps2": float(
+            componentwise_rmse(log["regularization_residual"][valid_decomposition])
+        ) if np.any(valid_decomposition) else None,
+        "constraint_intervention_rmse_at_updates_mps2": float(
+            componentwise_rmse(
+                log["constraint_intervention_residual"][valid_decomposition]
+            )
+        ) if np.any(valid_decomposition) else None,
+        "model_residual_rmse_at_updates_mps2": float(
+            componentwise_rmse(log["model_residual"][valid_decomposition])
+        ) if np.any(valid_decomposition) else None,
+        "model_decomposition_max_closure_error_mps2": float(
+            np.max(
+                np.abs(
+                    predicted_residual[valid_decomposition]
+                    - log["regularization_residual"][valid_decomposition]
+                    - log["constraint_intervention_residual"][valid_decomposition]
+                )
+            )
+        ) if np.any(valid_decomposition) else None,
         "max_position_slack_m": float(np.max(slack_position)) if len(slack_position) else 0.0,
         "max_speed_slack_mps": float(np.max(slack_speed)) if len(slack_speed) else 0.0,
         "n_solves_with_nontrivial_slack": int(log.get("n_solves_with_nontrivial_slack", 0)),

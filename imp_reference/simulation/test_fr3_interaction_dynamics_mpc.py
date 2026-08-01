@@ -1,4 +1,5 @@
 import sys
+from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
@@ -59,6 +60,45 @@ def test_mpc_respects_first_step_limits():
 
     assert np.max(np.abs(step.command)) <= cfg.force_limit + 1e-5
     assert np.all(np.abs(step.tau) <= cfg.tau_max + 1e-5)
+
+
+def test_slack_scaling_is_an_exact_qp_reparameterization():
+    """Changing z=scale*s must improve numerics without changing the
+    physical objective, constraint set, or bounds."""
+    env = _env()
+    dyn, state = env.get_dynamics_and_state()
+    generator = AdmittanceReference3D()
+    physical_cfg = FR3MPCConfig(horizon=6, slack_variable_scale=1.0)
+    scaled_cfg = replace(physical_cfg, slack_variable_scale=1.0e3)
+    forecast = np.tile(np.array([3.0, -2.0, 8.0]), (physical_cfg.horizon, 1))
+
+    args = (dyn, state, state.ee_pos.copy(), state.ee_rot.copy(), forecast)
+    p_1, q_1, a_1, lower_1, upper_1, *_ = FR3RealizationMPC(
+        generator, physical_cfg
+    )._condense(*args)
+    p_s, q_s, a_s, lower_s, upper_s, *_ = FR3RealizationMPC(
+        generator, scaled_cfg
+    )._condense(*args)
+
+    n_i = 3 * physical_cfg.horizon
+    n_s = 2 * physical_cfg.horizon
+    inv_transform = np.diag(
+        np.concatenate(
+            [np.ones(n_i), np.full(n_s, 1.0 / scaled_cfg.slack_variable_scale)]
+        )
+    )
+    np.testing.assert_allclose(p_s, inv_transform.T @ p_1 @ inv_transform)
+    np.testing.assert_allclose(q_s, inv_transform.T @ q_1)
+    expected_a_s = a_1 @ inv_transform
+    # The z>=0 rows are additionally multiplied by the positive scale;
+    # because both bounds are 0/+inf, this is the same half-space.
+    slack_row_start = physical_cfg.horizon * (6 + 6 + 7)
+    expected_a_s[slack_row_start : slack_row_start + n_s] *= (
+        scaled_cfg.slack_variable_scale
+    )
+    np.testing.assert_allclose(a_s, expected_a_s)
+    np.testing.assert_array_equal(lower_s, lower_1)
+    np.testing.assert_array_equal(upper_s, upper_1)
 
 
 def test_horizon_wide_torque_feasibility_nonbinding():
@@ -292,10 +332,9 @@ def test_reactive_baseline_matches_generator_instant_law():
     np.testing.assert_allclose(a_realized, a_id, atol=1e-6)
 
 
-def test_warm_start_disabled_by_default():
-    """warm_start defaults to False so every benchmark/paper number already
-    reported is unaffected by this feature's existence."""
-    assert FR3MPCConfig().warm_start is False
+def test_deployed_runtime_warm_starts_by_default():
+    """The benchmarked 50 Hz runtime uses the deadline-tested warm start."""
+    assert FR3MPCConfig().warm_start is True
 
 
 def test_warm_start_converges_to_the_same_command():

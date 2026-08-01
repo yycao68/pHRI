@@ -33,7 +33,7 @@ python3 -m pytest simulation/test_fr3_interaction_dynamics_mpc.py simulation/tes
 python3 simulation/run_torque_activation_experiment.py
 python3 -m pytest simulation/test_torque_activation_experiment.py -q
 
-# FR3 QP solve-time study (warm-start on/off, Hessian conditioning)
+# FR3 QP solve-time study (warm-start on/off, scaled/unscaled conditioning)
 python3 simulation/run_fr3_timing_study.py
 
 # Paper PDF (local files only; no rendering server)
@@ -56,6 +56,11 @@ The FR3 study imports the shared MuJoCo/operational-space infrastructure from
 than duplicating it.
 
 Required packages are `numpy`, `scipy`, `osqp`, `matplotlib`, `mujoco`, and `pytest`.
+
+The deployed FR3 runtime warm-starts OSQP and uses the exact numerical
+reparameterization `z = 1000 s` for each state slack. Physical slack costs,
+constraints, and reported units are unchanged; the saved timing study also
+reports scaled/unscaled Hessian condition numbers and 20 ms deadline counts.
 
 ## What the prototypes demonstrate
 

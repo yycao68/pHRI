@@ -162,6 +162,13 @@ class FR3MPCConfig:
     # solves the identical "keep the QP always feasible without letting it
     # cheaply ignore the soft constraint" problem.
     slack_weight: float = 1.0e8
+    # Pure numerical reparameterization of the physical slack s as
+    # z = slack_variable_scale * s.  The chosen 1e3 scale reduces the
+    # command/slack Hessian disparity by six orders of magnitude while
+    # retaining numerically strong constraint coefficients. It does not
+    # change the optimization problem in physical units: constraints use
+    # z/scale and diagnostics decode s=z/scale.
+    slack_variable_scale: float = 1.0e3
     K_rot: float = 20.0
     D_rot: float = 6.0
     # 40.0 / 8.0, not 10.0 / 2.0: the weaker gains left the null-space
@@ -188,15 +195,15 @@ class FR3MPCConfig:
     k_null: float = 40.0
     d_null: float = 8.0
     lambda_reg: float = 1.0e-6
-    osqp_eps: float = 1.0e-4
+    # The scaled formulation makes 1e-5 affordable and keeps active torque
+    # constraints and cold/warm solutions consistent to sub-millinewton
+    # command accuracy in the regression tests.
+    osqp_eps: float = 1.0e-5
     osqp_max_iter: int = 20_000
-    # Default False: every existing benchmark, test, and paper number was
-    # generated without warm-starting, and changing this default would
-    # silently change solve times (though not the physical trajectory --
-    # warm-starting only changes ADMM's initial iterate, not the QP being
-    # solved) for every prior result. See run_fr3_timing_study.py for the
-    # warm-start-on/off comparison this flag exists to support.
-    warm_start: bool = False
+    # The deployed 50 Hz runtime warm-starts from the preceding primal/dual
+    # solution. The repeated timing study separately forces this flag off/on
+    # to quantify the effect and verify the warm-started deadline tail.
+    warm_start: bool = True
 
 
 @dataclass(frozen=True)
@@ -204,6 +211,9 @@ class FR3MPCStep:
     command: np.ndarray  # (3,) F_cmd_0, Cartesian correction force
     tau: np.ndarray  # (7,) full joint torque = tau_base + J_v^T @ command
     predicted_residual_rms: float
+    regularization_residual: np.ndarray  # unconstrained optimum minus desired acceleration at i=0
+    constraint_intervention_residual: np.ndarray  # constrained minus unconstrained model acceleration
+    decomposition_closure_error: np.ndarray  # numerical check of r_modelled=r_reg+r_con
     active_constraints: tuple[str, ...]
     status: str
     solve_time_s: float
@@ -348,6 +358,8 @@ class FR3RealizationMPC:
         force_forecast: np.ndarray,
     ):
         cfg = self.cfg
+        if cfg.slack_variable_scale <= 0.0:
+            raise ValueError("slack_variable_scale must be strictly positive")
         dt = cfg.dt
         H = cfg.horizon
         n_i = 3 * H  # F_cmd_0 .. F_cmd_{H-1}
@@ -420,8 +432,9 @@ class FR3RealizationMPC:
             # uses for exactly this problem.
             pos_map = np.zeros((6, n))
             pos_map[:, :n_i] = np.vstack([state_map[:3], state_map[:3]])
-            pos_map[:3, pos_slack_col(k)] = -1.0  # v - s <= upper
-            pos_map[3:, pos_slack_col(k)] = 1.0  # v + s >= lower
+            inv_slack_scale = 1.0 / cfg.slack_variable_scale
+            pos_map[:3, pos_slack_col(k)] = -inv_slack_scale  # v - z/scale <= upper
+            pos_map[3:, pos_slack_col(k)] = inv_slack_scale  # v + z/scale >= lower
             constraint_maps.append(pos_map)
             lowers.append(
                 np.concatenate(
@@ -437,8 +450,8 @@ class FR3RealizationMPC:
 
             speed_map = np.zeros((6, n))
             speed_map[:, :n_i] = np.vstack([state_map[3:], state_map[3:]])
-            speed_map[:3, speed_slack_col(k)] = -1.0
-            speed_map[3:, speed_slack_col(k)] = 1.0
+            speed_map[:3, speed_slack_col(k)] = -inv_slack_scale
+            speed_map[3:, speed_slack_col(k)] = inv_slack_scale
             constraint_maps.append(speed_map)
             lowers.append(
                 np.concatenate(
@@ -496,12 +509,18 @@ class FR3RealizationMPC:
             + cfg.force_rate_weight * (difference_full.T @ difference_full)
         )
         p[:n_i, :n_i] += 2.0 * cfg.force_weight * np.eye(n_i)
-        p[n_i:, n_i:] += 2.0 * cfg.slack_weight * np.eye(n_s)
+        p[n_i:, n_i:] += (
+            2.0 * cfg.slack_weight / cfg.slack_variable_scale**2 * np.eye(n_s)
+        )
         q = 2.0 * (
             cfg.realization_weight * (r_map.T @ r_offset)
             + cfg.force_rate_weight * (difference_full.T @ difference_offset)
         )
-        p += 1.0e-9 * np.eye(n)
+        # Preserve the same physical regularization under z = scale*s.
+        p[:n_i, :n_i] += 1.0e-9 * np.eye(n_i)
+        p[n_i:, n_i:] += (
+            1.0e-9 / cfg.slack_variable_scale**2 * np.eye(n_s)
+        )
 
         identity = np.zeros((n_i, n))
         identity[:, :n_i] = np.eye(n_i)
@@ -584,6 +603,28 @@ class FR3RealizationMPC:
         n_s = 2 * H
         sequence = np.asarray(result.x)
         command = sequence[:3].copy()
+
+        # Same-objective unconstrained counterfactual.  Slack variables are
+        # retained (their optimum is zero) so the only difference from the
+        # deployed solution is removal of the physical constraint rows.
+        # This diagnostic is computed after the timed OSQP solve and does not
+        # alter the command or the reported solver time.
+        unconstrained_sequence = np.linalg.solve(p, -q)
+        unconstrained_command = unconstrained_sequence[:3]
+        x_0 = np.concatenate([state.ee_pos - p_nominal, state.ee_vel[:3]])
+        c_id, g_id = self.generator.affine_law()
+        f_h_0 = force_forecast[0]
+        a_id_0 = c_id @ x_0 + g_id @ f_h_0
+        a_unconstrained_0 = Lam_inv @ (unconstrained_command + f_h_0) + d_known
+        a_constrained_0 = Lam_inv @ (command + f_h_0) + d_known
+        regularization_residual = a_unconstrained_0 - a_id_0
+        constraint_intervention_residual = a_constrained_0 - a_unconstrained_0
+        decomposition_closure_error = (
+            a_constrained_0
+            - a_id_0
+            - regularization_residual
+            - constraint_intervention_residual
+        )
         self.previous_command = command
         tau = combine_full_torque(tau_base, J_v, command)
 
@@ -617,8 +658,8 @@ class FR3RealizationMPC:
             horizon_tau[k] = combine_full_torque(tau_base, J_v, f_k)
             predicted_x = A @ predicted_x + B @ (f_k + fh_k) + B_accel @ d_known
 
-        slack_position = sequence[n_i : n_i + H]
-        slack_speed = sequence[n_i + H : n_i + n_s]
+        slack_position = sequence[n_i : n_i + H] / self.cfg.slack_variable_scale
+        slack_speed = sequence[n_i + H : n_i + n_s] / self.cfg.slack_variable_scale
         slack_max_position = float(np.max(slack_position)) if H > 0 else 0.0
         slack_max_speed = float(np.max(slack_speed)) if H > 0 else 0.0
         slack_max = max(slack_max_position, slack_max_speed)
@@ -627,6 +668,9 @@ class FR3RealizationMPC:
             command=command,
             tau=tau,
             predicted_residual_rms=float(np.sqrt(np.mean(np.square(residuals)))),
+            regularization_residual=regularization_residual,
+            constraint_intervention_residual=constraint_intervention_residual,
+            decomposition_closure_error=decomposition_closure_error,
             active_constraints=tuple(active),
             status=result.info.status,
             solve_time_s=solve_time,

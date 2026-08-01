@@ -83,6 +83,18 @@ def test_reports_empirical_and_model_predicted_residuals_separately():
         assert m["realization_rmse_mps2"] == m["empirical_realization_rmse_mps2"]
 
 
+def test_predictive_model_residual_decomposition_closes_at_manager_updates():
+    """At QP updates, the frozen-model residual must equal the sum of the
+    same-objective unconstrained residual and the constrained-vs-unconstrained
+    intervention.  Plant/model discrepancy is reported separately."""
+    for generator_name in ("impedance", "admittance"):
+        m = _all_conditions()[(generator_name, "mpc")]
+        assert m["regularization_residual_rmse_at_updates_mps2"] is not None
+        assert m["constraint_intervention_rmse_at_updates_mps2"] is not None
+        assert m["model_residual_rmse_at_updates_mps2"] is not None
+        assert m["model_decomposition_max_closure_error_mps2"] <= 1e-10
+
+
 def test_predictive_realization_has_no_unhandled_infeasibility():
     """paper.md Section 6.3: 'no solve is reported infeasible in this
     primary benchmark.' If a future change makes solves infeasible, the

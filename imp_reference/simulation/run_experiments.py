@@ -54,6 +54,9 @@ def run_case(generator, controller_kind: str, cfg: MPCConfig, duration: float = 
         "actual_acceleration": [],
         "reference_acceleration": [],
         "realization_residual": [],
+        "regularization_residual": [],
+        "constraint_intervention_residual": [],
+        "decomposition_closure_error": [],
         "active": [],
         "solver_status": [],
     }
@@ -69,12 +72,18 @@ def run_case(generator, controller_kind: str, cfg: MPCConfig, duration: float = 
             command = decision.command
             active = list(decision.active_constraints)
             status = decision.status
+            regularization_residual = decision.regularization_residual
+            constraint_intervention_residual = decision.constraint_intervention_residual
+            decomposition_closure_error = decision.decomposition_closure_error
         elif controller_kind == "clipped":
             command = clipped_reference_command(
                 generator, state, force, cfg, previous_command
             )
             active = []
             status = "not_applicable"
+            regularization_residual = np.full(2, np.nan)
+            constraint_intervention_residual = np.full(2, np.nan)
+            decomposition_closure_error = np.full(2, np.nan)
         else:
             raise ValueError(controller_kind)
 
@@ -89,6 +98,13 @@ def run_case(generator, controller_kind: str, cfg: MPCConfig, duration: float = 
         log["actual_acceleration"].append(actual_acceleration.copy())
         log["reference_acceleration"].append(reference_acceleration.copy())
         log["realization_residual"].append(residual.copy())
+        log["regularization_residual"].append(regularization_residual.copy())
+        log["constraint_intervention_residual"].append(
+            constraint_intervention_residual.copy()
+        )
+        log["decomposition_closure_error"].append(
+            decomposition_closure_error.copy()
+        )
         log["active"].append(active)
         log["solver_status"].append(status)
 
@@ -105,6 +121,9 @@ def run_case(generator, controller_kind: str, cfg: MPCConfig, duration: float = 
         "actual_acceleration",
         "reference_acceleration",
         "realization_residual",
+        "regularization_residual",
+        "constraint_intervention_residual",
+        "decomposition_closure_error",
     ):
         log[key] = np.asarray(log[key])
     return log
@@ -115,9 +134,25 @@ def metrics(log, cfg: MPCConfig) -> dict[str, float | int]:
     velocity = log["state"][:, 2:]
     command = log["command"]
     residual = log["realization_residual"]
+    valid_decomposition = np.all(
+        np.isfinite(log["regularization_residual"]), axis=1
+    )
     active_steps = sum(bool(items) for items in log["active"])
     return {
         "realization_rmse_mps2": float(np.sqrt(np.mean(residual**2))),
+        "regularization_residual_rmse_mps2": float(
+            np.sqrt(np.mean(log["regularization_residual"][valid_decomposition] ** 2))
+        ) if np.any(valid_decomposition) else None,
+        "constraint_intervention_rmse_mps2": float(
+            np.sqrt(
+                np.mean(
+                    log["constraint_intervention_residual"][valid_decomposition] ** 2
+                )
+            )
+        ) if np.any(valid_decomposition) else None,
+        "decomposition_max_closure_error_mps2": float(
+            np.max(np.abs(log["decomposition_closure_error"][valid_decomposition]))
+        ) if np.any(valid_decomposition) else None,
         "max_abs_position_m": float(np.max(np.abs(position))),
         "max_speed_mps": float(np.max(np.abs(velocity))),
         "max_speed_norm_mps": float(np.max(np.linalg.norm(velocity, axis=1))),

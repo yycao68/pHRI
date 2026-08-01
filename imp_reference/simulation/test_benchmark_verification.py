@@ -86,3 +86,20 @@ def test_impedance_predictive_returns_to_equilibrium_after_release():
         f"impedance predictive: final position {m['final_y_m']:.4f} m did not "
         "return near the origin after force release"
     )
+
+
+def test_predictive_residual_decomposition_is_samplewise_exact():
+    """The diagnostic counterfactual must close algebraically at every tick:
+    total model residual = regularization residual + constraint intervention.
+    This protects the causal wording added to the paper from silently
+    reverting to the ambiguous raw-residual interpretation."""
+    cfg = MPCConfig()
+    for generator in (ImpedanceReference(), AdmittanceReference()):
+        log = run_case(generator, "mpc", cfg)
+        reconstructed = (
+            log["regularization_residual"]
+            + log["constraint_intervention_residual"]
+        )
+        error = log["realization_residual"] - reconstructed
+        assert abs(error).max() <= 1e-10
+        assert abs(log["decomposition_closure_error"]).max() <= 1e-10

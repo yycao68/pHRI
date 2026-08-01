@@ -109,6 +109,9 @@ class MPCConfig:
 class MPCStep:
     command: np.ndarray
     predicted_residual_rms: float
+    regularization_residual: np.ndarray
+    constraint_intervention_residual: np.ndarray
+    decomposition_closure_error: np.ndarray
     active_constraints: tuple[str, ...]
     status: str
 
@@ -262,6 +265,27 @@ class InteractionDynamicsMPC:
 
         sequence = np.asarray(result.x)
         command = sequence[:2].copy()
+
+        # Counterfactual diagnostic, not a second controller: minimize the
+        # identical horizon objective after removing every physical
+        # constraint.  This retains force and slew regularization, including
+        # the same previous-command state, and therefore isolates how much of
+        # the first-step realization residual exists before constraints act.
+        unconstrained_sequence = np.linalg.solve(p, -q)
+        unconstrained_command = unconstrained_sequence[:2]
+        c_id, g_id = self.generator.affine_law()
+        f_0 = force_forecast[0]
+        a_id_0 = c_id @ state + g_id @ f_0
+        a_unconstrained_0 = (unconstrained_command + f_0) / self.cfg.robot_mass
+        a_constrained_0 = (command + f_0) / self.cfg.robot_mass
+        regularization_residual = a_unconstrained_0 - a_id_0
+        constraint_intervention_residual = a_constrained_0 - a_unconstrained_0
+        decomposition_closure_error = (
+            a_constrained_0
+            - a_id_0
+            - regularization_residual
+            - constraint_intervention_residual
+        )
         self.previous_command = command
 
         value = a_con @ sequence
@@ -282,7 +306,6 @@ class InteractionDynamicsMPC:
 
         predicted_state = state.copy()
         residuals = []
-        c_id, g_id = self.generator.affine_law()
         for k in range(self.cfg.horizon):
             u_k = sequence[2 * k : 2 * k + 2]
             f_k = force_forecast[k]
@@ -294,6 +317,9 @@ class InteractionDynamicsMPC:
         return MPCStep(
             command=command,
             predicted_residual_rms=float(np.sqrt(np.mean(np.square(residuals)))),
+            regularization_residual=regularization_residual,
+            constraint_intervention_residual=constraint_intervention_residual,
+            decomposition_closure_error=decomposition_closure_error,
             active_constraints=tuple(active),
             status=result.info.status,
         )

@@ -92,9 +92,9 @@ ax.text(0.2, 6.5, "closes the loop every tick", fontsize=8.8, color=GRAY,
 # --- Residual branch, routed around the right -------------------------------
 
 box((5.6, 8.4), 2.8, 1.0,
-    [("Realization residual", 11, ORANGE, "bold", "normal"),
+    [("Total residual + audit", 11, ORANGE, "bold", "normal"),
      ("$r_k=a-a^{\\mathrm{id}}$", 11, ORANGE, "bold", "normal"),
-     ("reported, not hidden", 9., ORANGE, "normal", "normal")],
+     ("reg. / constraint / model", 8.6, ORANGE, "normal", "normal")],
     fc="white", ec=ORANGE, lw=2.2)
 
 sum_x = 7.1
