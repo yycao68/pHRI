@@ -431,13 +431,13 @@ The framework is one realization, not a replacement for all pHRI modes: for inte
 
 [4] G. Pannocchia and J. B. Rawlings, "Disturbance models for offset-free model-predictive control," *AIChE Journal*, vol. 49, no. 2, pp. 426–437, 2003.
 
-[5] Y. Cao, K. Cheng, and G. Li, "Passive model-predictive impedance control for safe physical human–robot interaction," *IEEE Trans. Cognitive Developmental Syst.*, 2023, doi: 10.1109/TCDS.2023.3275170.
+[5] Y. Cao, K. Cheng, and G. Li, "Passive model-predictive impedance control for safe physical human–robot interaction," *IEEE Trans. Cognitive Developmental Syst.*, 2023, doi: 10.1109/TCDS.2023.3275217.
 
-[6] K. Haninger, M. Hegeler, and L. Peternel, "Model predictive impedance control with Gaussian processes for human and environment interaction," *Robotics Autonomous Syst.*, vol. 165, p. 104431, 2023.
+[6] K. Haninger, C. Hegeler, and L. Peternel, "Model predictive impedance control with Gaussian processes for human and environment interaction," *Robotics Autonomous Syst.*, vol. 165, p. 104431, 2023.
 
-[7] C. Wu *et al.*, "Ensuring safe physical HRI: Integrated MPC and ADRC for interaction control," *Actuators*, vol. 14, no. 12, p. 608, 2025.
+[7] G. Wang, Z. Lin, F. Min, D. Li, and N. Liu, "Ensuring safe physical HRI: Integrated MPC and ADRC for interaction control," *Actuators*, vol. 14, no. 12, p. 608, 2025.
 
-[8] X. Liu *et al.*, "Model predictive variable impedance control towards safe robotic interaction in unknown disturbance-rich environments," *Robotics Autonomous Syst.*, vol. 190, p. 104991, 2025.
+[8] J. Xue, W. Liang, Y. Wu, and T. H. Lee, "Model predictive variable impedance control towards safe robotic interaction in unknown disturbance-rich environments," *Robotics Autonomous Syst.*, vol. 189, p. 104961, 2025.
 
 [9] B. Stellato, G. Banjac, P. Goulart, A. Bemporad, and S. Boyd, "OSQP: An operator splitting solver for quadratic programs," *Math. Program. Comput.*, vol. 12, no. 4, pp. 637–672, 2020.
 
