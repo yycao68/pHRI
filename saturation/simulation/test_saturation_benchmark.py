@@ -188,6 +188,32 @@ def test_t2_slack_subtracts_the_tightening_bound_from_the_raw_margin():
         assert t2_slack < margin - 1.0e-6
 
 
+def test_paired_audit_records_are_nonempty_and_satisfy_all_three_conditions():
+    # Protects the paired (T1)/(T2)/(T3) start/end record logic (Section
+    # VII.D / Table III): each record shares one hat_tau between (T1) and
+    # (T2), with (T3) closed out one manager tick later. Regresses both
+    # "the logic actually produces records" and "the produced records
+    # satisfy Theorem 1's three conditions" for a passing scenario.
+    robots, controllers, scenarios, cfg = _objects()
+    for robot in robots.values():
+        log = run_case(
+            robot,
+            controllers["impedance"],
+            scenarios["slow_saturation"],
+            cfg,
+            RunOptions(method="proposed"),
+        )
+        metrics = summarize(log, cfg)
+        assert metrics["paired_audit_record_count"] > 0
+        assert metrics["paired_min_T1_slack_Nm"] is not None
+        assert metrics["paired_min_T2_slack_Nm"] is not None
+        assert metrics["paired_max_T3_defect_linf_mps"] is not None
+        assert metrics["paired_min_T1_slack_Nm"] >= -1.0e-9
+        assert metrics["paired_min_T2_slack_Nm"] >= -1.0e-9
+        assert metrics["paired_max_T3_defect_linf_mps"] <= cfg.velocity_defect_radius
+        assert metrics["paired_audit_passed"]
+
+
 def test_saved_report_covers_every_required_experiment_family():
     report_path = ROOT / "results" / "all_experiment_metrics.json"
     assert report_path.exists()
