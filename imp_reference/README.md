@@ -13,9 +13,16 @@ are not claimed as validated.
 From this directory:
 
 ```bash
+# Architecture schematic (Figure 1)
+python3 simulation/make_architecture_diagram.py
+
 # Planar point-mass proof of concept
 python3 simulation/run_experiments.py
-python3 -m pytest simulation/test_interaction_dynamics_mpc.py -q
+python3 -m pytest simulation/test_interaction_dynamics_mpc.py simulation/test_benchmark_verification.py -q
+
+# Online generator-switching demonstration (Section 5.3, Figure 3)
+python3 simulation/run_generator_switching_experiment.py
+python3 -m pytest simulation/test_generator_switching.py -q
 
 # FR3/MuJoCo manipulator study
 python3 simulation/run_fr3_experiments.py

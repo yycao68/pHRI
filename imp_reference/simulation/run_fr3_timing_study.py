@@ -1,11 +1,10 @@
-"""Timing study for the FR3 realization QP's solve-time gap (paper.md Section 8.3).
+"""Timing study for the FR3 realization QP's solve-time gap (paper.md Section 6.3).
 
 The main FR3 benchmark (run_fr3_experiments.py) reports a single run's mean
-and max solve time per condition and explicitly declines to isolate why the
-admittance generator's QP is slower than the impedance generator's: "Both
-have identical dimensions and constraints but different objective
-coefficients; conditioning is plausible but has not been isolated." This
-script isolates it, along two independent axes:
+and max solve time per condition, without isolating why the admittance
+generator's QP is slower than the impedance generator's despite both having
+identical dimensions and constraints but different objective coefficients.
+This script isolates it, along two independent axes:
 
 1. Repeated full-benchmark runs (not a single run) to characterize solve-time
    variability directly with percentiles, rather than one mean/max pair.

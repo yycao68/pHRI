@@ -36,7 +36,7 @@ from fr3_interaction_dynamics_mpc import (  # noqa: E402
 )
 from run_fr3_experiments import componentwise_rmse, metrics, run_case  # noqa: E402
 
-_DURATION = 6.0  # matches paper.md Section 8.2; full scenario, not a shortened smoke test
+_DURATION = 6.0  # matches paper.md Section 6.2; full scenario, not a shortened smoke test
 
 
 def test_residual_rmse_uses_componentwise_convention():
@@ -84,10 +84,10 @@ def test_reports_empirical_and_model_predicted_residuals_separately():
 
 
 def test_predictive_realization_has_no_unhandled_infeasibility():
-    """paper.md Section 8.3: 'no solve is reported infeasible in this
-    scenario.' If a future change makes solves infeasible, the reactive
-    fallback keeps the sim running (Section 8.1) but the paper's claim would
-    silently become false -- this must fail loudly instead."""
+    """paper.md Section 6.3: 'no solve is reported infeasible in this
+    primary benchmark.' If a future change makes solves infeasible, the
+    reactive fallback keeps the sim running (Section 6.1) but the paper's
+    claim would silently become false -- this must fail loudly instead."""
     for generator_name in ("impedance", "admittance"):
         m = _all_conditions()[(generator_name, "mpc")]
         assert m["n_infeasible_solves"] == 0, (
@@ -116,7 +116,7 @@ def test_predictive_realization_respects_workspace_bound():
 
 
 def test_slack_usage_is_logged_small_and_controller_specific():
-    """Section 8.1 reports that predictive solves genuinely use small state
+    """Section 6.1 reports that predictive solves genuinely use small state
     slack, while the reactive comparator has no QP slack. Protect the saved
     evidence itself, not only the resulting physical workspace envelope."""
     for generator_name in ("impedance", "admittance"):
@@ -146,24 +146,25 @@ def test_reactive_clipping_overshoots_predictive_realization():
             f"did not overshoot predictive realization ({predictive['max_abs_position_m']:.4f} m) -- "
             "the paper's headline predictive-vs-reactive contrast does not hold"
         )
-        # Table 2 shows roughly 1.7x-2.3x; require at least a 1.3x margin so the
-        # test fails on a genuine erosion of the effect, not on noise.
+        # Table 2 shows roughly 1.7x for both generators; require at least a
+        # 1.3x margin so the test fails on a genuine erosion of the effect,
+        # not on noise.
         assert reactive["max_abs_position_m"] >= 1.3 * predictive["max_abs_position_m"], (
             f"{generator_name}: reactive overshoot margin over predictive has shrunk "
             f"to {reactive['max_abs_position_m'] / predictive['max_abs_position_m']:.2f}x, "
-            "well below the reported ~1.7-2.3x -- re-check before citing Table 2's numbers"
+            "well below the reported ~1.7x -- re-check before citing Table 2's numbers"
         )
 
 
 def test_admittance_never_recovers_displacement_reactively():
-    """Section 8.3: the admittance generator has no position-restoring term
-    (Section 4.2), so reactive clipping should retain most of its peak
+    """Section 6.3: the admittance generator has no position-restoring term
+    (Section 3.2), so reactive clipping should retain most of its peak
     displacement after the force releases, unlike impedance which returns
     toward its equilibrium. Checked via final vs. peak displacement."""
     m = _all_conditions()[("admittance", "clipped")]
     assert abs(m["final_z_m"]) >= 0.9 * abs(m["peak_z_m"]), (
         "admittance reactive clipping recovered displacement after force release "
-        "-- contradicts the generator's no-restoring-term property (Section 4.2)"
+        "-- contradicts the generator's no-restoring-term property (Section 3.2)"
     )
 
 

@@ -186,6 +186,47 @@ def test_first_step_only_ablation_leaves_future_torque_infeasible():
     )
 
 
+def test_genuinely_infeasible_qp_raises_and_fallback_is_well_defined():
+    """Section 6.1 states the reactive fallback for solver infeasibility "is
+    implemented but is not exercised" in the reported benchmark
+    (n_infeasible_solves == 0 throughout). That leaves the fallback path
+    itself -- run_fr3_experiments.py's except RuntimeError branch, which
+    calls fr3_clipped_reference_command -- with no direct test coverage.
+    This forces genuine infeasibility (tau_max pinned far below what the
+    frozen-model base torque alone requires, confirmed empirically: the
+    tightened-but-feasible test above uses 5 Nm on joint 4 against a ~26 Nm
+    natural command, this uses 0.5 Nm on every joint) and checks both
+    halves of the contract: control() raises, and the fallback command
+    run_fr3_experiments.py switches to is itself finite and within bound."""
+    env = _env()
+    dyn, state = env.get_dynamics_and_state()
+    p_nominal = state.ee_pos.copy()
+    R_d = state.ee_rot.copy()
+
+    tiny_tau_max = np.full(7, 0.5)
+    cfg = FR3MPCConfig(horizon=5, tau_max=tiny_tau_max)
+    generator = ImpedanceReference3D(stiffness=400.0, damping=40.0)
+    controller = FR3RealizationMPC(generator, cfg)
+    forecast = np.tile(np.array([15.0, -10.0, 25.0]), (cfg.horizon, 1))
+
+    raised = False
+    try:
+        controller.control(dyn, state, p_nominal, R_d, forecast)
+    except RuntimeError:
+        raised = True
+    assert raised, "expected OSQP infeasibility with tau_max pinned to 0.5 Nm on every joint"
+
+    imp_params = make_default_impedance_params(cfg)
+    tau_base, J_v, d_known = compute_tau_base(
+        dyn, state, R_d, imp_params, cfg.K_rot, cfg.D_rot, cfg.lambda_reg
+    )
+    fallback = fr3_clipped_reference_command(
+        generator, dyn, state, p_nominal, np.array([15.0, -10.0, 25.0]), cfg, np.zeros(3), d_known
+    )
+    assert np.all(np.isfinite(fallback))
+    assert np.all(np.abs(fallback) <= cfg.force_limit + 1.0e-6)
+
+
 def test_invalid_forecast_shape_is_rejected():
     env = _env()
     dyn, state = env.get_dynamics_and_state()

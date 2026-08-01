@@ -1,4 +1,4 @@
-"""End-to-end verification of the planar benchmark's headline claims (paper.md Section 7).
+"""End-to-end verification of the planar benchmark's headline claims (paper.md Section 5).
 
 Mirrors ``test_fr3_benchmark_verification.py``'s reasoning: the unit tests in
 ``test_interaction_dynamics_mpc.py`` check the QP on hand-picked single
@@ -67,18 +67,18 @@ def test_reactive_clipping_violates_bounds_predictive_does_not():
 
 
 def test_admittance_never_recovers_displacement_reactively():
-    """Section 7.2: admittance has no position-restoring term, so reactive
+    """Section 5.2: admittance has no position-restoring term, so reactive
     clipping should retain its peak displacement after force release, unlike
     impedance which returns toward its equilibrium at the origin."""
     m = _all_conditions()[("admittance", "clipped")]
     assert abs(m["final_y_m"]) >= 0.9 * abs(m["peak_y_m"]), (
         "admittance reactive clipping recovered displacement after force release "
-        "-- contradicts the generator's no-restoring-term property (Section 4.2)"
+        "-- contradicts the generator's no-restoring-term property (Section 3.2)"
     )
 
 
 def test_impedance_predictive_returns_to_equilibrium_after_release():
-    """Section 7.2: after the force releases, predictive realization should
+    """Section 5.2: after the force releases, predictive realization should
     return to the impedance equilibrium at the origin (final position near
     zero), unlike the reactive comparator (checked separately above)."""
     m = _all_conditions()[("impedance", "mpc")]

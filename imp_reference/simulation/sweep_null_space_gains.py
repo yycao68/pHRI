@@ -1,6 +1,6 @@
-"""Null-space centering gain sweep backing the claim in paper.md Section 8.1.
+"""Null-space centering gain sweep backing the claim in paper.md Section 6.1.
 
-Section 8.1 states that the original k_null=10, d_null=2 gains let joint
+Section 6.1 states that the original k_null=10, d_null=2 gains let joint
 configuration drift more than a radian from Q_NEUTRAL over a full 6 s
 benchmark run -- in every one of the four conditions, not three -- and that
 k_null=40, d_null=8 substantially controls it. That claim was previously
@@ -11,7 +11,7 @@ benchmark.
 
 For each (k_null, d_null) pair and each condition, this script tracks:
   - max_q_dev: the largest ||q - Q_NEUTRAL|| observed over the full run,
-    the quantity Section 8.1's claim is directly about;
+    the quantity Section 6.1's claim is directly about;
   - max_abs_position_m: a coarse proxy for whether a stronger gain
     suppresses the generator's own requested displacement as a side
     effect (it does, visibly, at k_null=100/d_null=20 for admittance).
@@ -30,7 +30,7 @@ For each (k_null, d_null) pair and each condition, this script tracks:
     the reactive impedance condition at the original k_null=10, d_null=2
     gains is actuator-infeasible, exceeding tau_max by about 1.6 Nm. This
     sweep does not soften or hide that: it is direct evidence for why a
-    hard, QP-enforced torque constraint (Section 8.1) is not a
+    hard, QP-enforced torque constraint (Section 6.1) is not a
     formality -- an under-tuned auxiliary term can push an unconstrained
     reactive law past the actuator limit even when the interaction task
     itself is unremarkable.

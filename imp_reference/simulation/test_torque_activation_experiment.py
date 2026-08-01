@@ -1,4 +1,4 @@
-"""End-to-end checks for paper.md Section 8.4's torque-active ablation."""
+"""End-to-end checks for paper.md Section 6.4's torque-active ablation."""
 
 from functools import lru_cache
 
