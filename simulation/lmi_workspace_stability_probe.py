@@ -38,7 +38,7 @@ def sample_lambda_inv():
     env = FR3MuJoCoEnv(timestep=0.001)
     env.reset()
     R_d = np.eye(3)
-    ctrl = EpisodeController("Double-Integrator MPC + Kalman 100 Hz",
+    ctrl = EpisodeController("DI-MPC + Kalman 100 Hz",
                              env, dt_mpc=MPC_DT_SLOW)
     S = []
     for i in range(int(3 * PERIOD / env.dt)):
@@ -69,7 +69,12 @@ def build_box(S):
         return M
 
     verts = [mat(np.where(m, hi, lo)) for m in itertools.product([0, 1], repeat=6)]
-    return [V for V in verts if np.all(np.linalg.eigvalsh(V) > 1e-6)]
+    sample_entries = np.column_stack([S[:, a, b] for a, b in IDX])
+    containment_violation = max(
+        float(np.maximum(lo - sample_entries, 0.0).max()),
+        float(np.maximum(sample_entries - hi, 0.0).max()),
+    )
+    return verts, containment_violation
 
 
 def solve_mincond(verts, B_of_L, rho_target=0.996):
@@ -98,7 +103,8 @@ def solve_mincond(verts, B_of_L, rho_target=0.996):
     for L in verts:
         AB = A_d @ Q + B_of_L(L) @ Y
         cons.append(cp.bmat([[gamma * Q, AB.T], [AB, Q]]) >> 1e-6 * np.eye(12))
-    cp.Problem(cp.Minimize(t), cons).solve(solver=cp.CLARABEL)
+    problem = cp.Problem(cp.Minimize(t), cons)
+    problem.solve(solver=cp.CLARABEL)
     Qv = Q.value
     P = np.linalg.inv(Qv)
     P = 0.5 * (P + P.T)
@@ -106,18 +112,32 @@ def solve_mincond(verts, B_of_L, rho_target=0.996):
     rho = max(max(abs(np.linalg.eigvals(A_d + B_of_L(L) @ K))) for L in verts)
     incr = max(max(np.linalg.eigvalsh((A_d + B_of_L(L) @ K).T @ P @ (A_d + B_of_L(L) @ K) - P))
                for L in verts)
-    return np.linalg.cond(P), rho, incr
+    gamma_incr = max(max(np.linalg.eigvalsh(
+        (A_d + B_of_L(L) @ K).T @ P @ (A_d + B_of_L(L) @ K) - gamma * P))
+        for L in verts)
+    block_min_eig = min(float(np.linalg.eigvalsh(np.block([
+        [gamma * Qv, (A_d @ Qv + B_of_L(L) @ Y.value).T],
+        [A_d @ Qv + B_of_L(L) @ Y.value, Qv],
+    ])).min()) for L in verts)
+    return np.linalg.cond(P), rho, incr, gamma_incr, block_min_eig, problem.status
 
 
 if __name__ == "__main__":
     S = sample_lambda_inv()
     eig = np.concatenate([np.linalg.eigvalsh(L) for L in S])
     print(f"{len(S)} samples   eig(Lambda^-1) in [{eig.min():.3f}, {eig.max():.3f}] kg^-1")
-    verts = build_box(S)
-    print(f"{len(verts)}-vertex entry-wise box   (dt = {DT*1e3:.0f} ms)\n")
+    verts, containment_violation = build_box(S)
+    min_vertex_eig = min(float(np.linalg.eigvalsh(V).min()) for V in verts)
+    print(f"{len(verts)}-vertex entry-wise box   (dt = {DT*1e3:.0f} ms)")
+    print(f"sample containment violation={containment_violation:.2e}   "
+          f"min vertex eigenvalue={min_vertex_eig:.3f} kg^-1\n")
+    if containment_violation > 1e-12 or min_vertex_eig <= 0:
+        raise RuntimeError("Sampled inverse inertias are not certified inside an SPD vertex box")
     B_euler = lambda L: np.vstack([np.zeros((3, 3)), -L * DT])
     B_zoh = lambda L: np.vstack([-0.5 * DT * DT * L, -L * DT])
     for name, B in [("Forward-Euler B_v", B_euler), ("Exact-ZOH   B_v", B_zoh)]:
-        c, r, d = solve_mincond(verts, B, rho_target=0.996)
+        c, r, d, gd, block_eig, status = solve_mincond(verts, B, rho_target=0.996)
         print(f"{name:18s}  cond(P)={c:7.2f}   spectral_radius<={r:.4f}   "
-              f"maxeig(Acl'PAcl-P)={d:+.2e}")
+              f"maxeig(Acl'PAcl-P)={d:+.2e}   gamma_residual={gd:+.2e}   "
+              f"min_block_eig={block_eig:+.2e}   "
+              f"status={status}")

@@ -1,0 +1,274 @@
+{
+  "protocol": {
+    "calibration_cycles": 1,
+    "test_cycles": 3,
+    "inner_rate_hz": 1000,
+    "mpc_rate_hz": 100,
+    "force_N": [
+      0.0,
+      0.0,
+      -15.0
+    ],
+    "joint_torque_limits_Nm": [
+      87.0,
+      87.0,
+      87.0,
+      87.0,
+      12.0,
+      12.0,
+      12.0
+    ],
+    "matched_impedance": {
+      "equilibrium_stiffness_guess_N_per_m": 5441.038711145031,
+      "selected_stiffness_N_per_m": 5441.038711145031,
+      "selected_damping_ratio": 1.3,
+      "calibration_shape_rmse_m": 0.000720239014435375,
+      "calibration_steady_gap_m": 0.00016197571945552594,
+      "grid": [
+        {
+          "score_m": 0.0018951180362137847,
+          "stiffness_N_per_m": 4352.830968916025,
+          "damping_ratio": 0.7,
+          "shape_rmse_m": 0.0014196103701220924,
+          "steady_gap_m": 0.00047550766609169223
+        },
+        {
+          "score_m": 0.0017497327297374223,
+          "stiffness_N_per_m": 4352.830968916025,
+          "damping_ratio": 1.0,
+          "shape_rmse_m": 0.001289846258096521,
+          "steady_gap_m": 0.0004598864716409013
+        },
+        {
+          "score_m": 0.001704663777233379,
+          "stiffness_N_per_m": 4352.830968916025,
+          "damping_ratio": 1.3,
+          "shape_rmse_m": 0.001196394619798045,
+          "steady_gap_m": 0.0005082691574353339
+        },
+        {
+          "score_m": 0.0010549672907162536,
+          "stiffness_N_per_m": 5441.038711145031,
+          "damping_ratio": 0.7,
+          "shape_rmse_m": 0.0009178222960186793,
+          "steady_gap_m": 0.00013714499469757438
+        },
+        {
+          "score_m": 0.000979528350354387,
+          "stiffness_N_per_m": 5441.038711145031,
+          "damping_ratio": 1.0,
+          "shape_rmse_m": 0.0007995679782014867,
+          "steady_gap_m": 0.00017996037215290035
+        },
+        {
+          "score_m": 0.0008822147338909009,
+          "stiffness_N_per_m": 5441.038711145031,
+          "damping_ratio": 1.3,
+          "shape_rmse_m": 0.000720239014435375,
+          "steady_gap_m": 0.00016197571945552594
+        },
+        {
+          "score_m": 0.0011960535526219728,
+          "stiffness_N_per_m": 6529.246453374037,
+          "damping_ratio": 0.7,
+          "shape_rmse_m": 0.0006368761001352632,
+          "steady_gap_m": 0.0005591774524867097
+        },
+        {
+          "score_m": 0.0011291461195477358,
+          "stiffness_N_per_m": 6529.246453374037,
+          "damping_ratio": 1.0,
+          "shape_rmse_m": 0.0005347906098270014,
+          "steady_gap_m": 0.0005943555097207343
+        },
+        {
+          "score_m": 0.0010690597912161605,
+          "stiffness_N_per_m": 6529.246453374037,
+          "damping_ratio": 1.3,
+          "shape_rmse_m": 0.0004668436118904045,
+          "steady_gap_m": 0.0006022161793257561
+        }
+      ]
+    },
+    "antiwindup_pi": {
+      "selected_integral_gain": 120.0,
+      "selected_integral_limit_m_s": 0.02,
+      "back_calculation_gain": 0.7,
+      "grid": [
+        {
+          "score_m": 0.026368727318494392,
+          "integral_gain": 120.0,
+          "integral_limit_m_s": 0.02
+        },
+        {
+          "score_m": 0.22516415927478395,
+          "integral_gain": 120.0,
+          "integral_limit_m_s": 0.06
+        },
+        {
+          "score_m": 0.22531799429971272,
+          "integral_gain": 120.0,
+          "integral_limit_m_s": 0.12
+        },
+        {
+          "score_m": 0.0546057925738904,
+          "integral_gain": 300.0,
+          "integral_limit_m_s": 0.02
+        },
+        {
+          "score_m": 0.4923212244483844,
+          "integral_gain": 300.0,
+          "integral_limit_m_s": 0.06
+        },
+        {
+          "score_m": 0.28982057900804736,
+          "integral_gain": 300.0,
+          "integral_limit_m_s": 0.12
+        },
+        {
+          "score_m": 0.19778515299360705,
+          "integral_gain": 700.0,
+          "integral_limit_m_s": 0.02
+        },
+        {
+          "score_m": 0.589346754149742,
+          "integral_gain": 700.0,
+          "integral_limit_m_s": 0.06
+        },
+        {
+          "score_m": 0.5999220005114093,
+          "integral_gain": 700.0,
+          "integral_limit_m_s": 0.12
+        }
+      ]
+    }
+  },
+  "results": {
+    "Nominal impedance": {
+      "metrics": {
+        "rms_total": 0.035559421899927085,
+        "rms_contact": 0.041072963971245026,
+        "peak_defl": 0.05177068674737348,
+        "ss_err": 0.04481529607469624,
+        "z_ss_error": 0.0377442449878782,
+        "clip_sample_fraction": 0.0,
+        "max_command_excess_Nm": 0.0,
+        "clip_excess_threshold_Nm": 0.001,
+        "peak_applied_torque": 27.532655172614767,
+        "rms_applied_torque": 10.842836455894771,
+        "peak_positive_joint_power": 22.53896585057323,
+        "positive_joint_energy": 91.3304962564256,
+        "qp_solve_count": 0,
+        "qp_failure_count": 0,
+        "qp_failure_fraction": null,
+        "magnitude_clip_fraction_at_qp_update": null,
+        "magnitude_clip_fraction_between_qp_updates": null
+      }
+    },
+    "Response-matched impedance": {
+      "metrics": {
+        "rms_total": 0.01076899017562488,
+        "rms_contact": 0.0023840254282366104,
+        "peak_defl": 0.0029044914621936574,
+        "ss_err": 0.002594123925523407,
+        "z_ss_error": 0.0022491943319345492,
+        "clip_sample_fraction": 0.004541666666666667,
+        "max_command_excess_Nm": 349.6104085735698,
+        "clip_excess_threshold_Nm": 0.001,
+        "peak_applied_torque": 87.0,
+        "rms_applied_torque": 11.28282666227578,
+        "peak_positive_joint_power": 378.1664251355875,
+        "positive_joint_energy": 124.13882044701727,
+        "qp_solve_count": 0,
+        "qp_failure_count": 0,
+        "qp_failure_fraction": null,
+        "magnitude_clip_fraction_at_qp_update": null,
+        "magnitude_clip_fraction_between_qp_updates": null
+      }
+    },
+    "Tuned anti-windup PI": {
+      "metrics": {
+        "rms_total": 0.036721880386570364,
+        "rms_contact": 0.0271019863827174,
+        "peak_defl": 0.04932714897385571,
+        "ss_err": 0.020379926627469392,
+        "z_ss_error": 0.018348924451632883,
+        "clip_sample_fraction": 0.0,
+        "max_command_excess_Nm": 0.0,
+        "clip_excess_threshold_Nm": 0.001,
+        "peak_applied_torque": 54.20757031320431,
+        "rms_applied_torque": 11.249080496802762,
+        "peak_positive_joint_power": 58.29544062581676,
+        "positive_joint_energy": 142.42256529131905,
+        "qp_solve_count": 0,
+        "qp_failure_count": 0,
+        "qp_failure_fraction": null,
+        "magnitude_clip_fraction_at_qp_update": null,
+        "magnitude_clip_fraction_between_qp_updates": null
+      }
+    },
+    "Matched impedance + measured-force cancellation": {
+      "metrics": {
+        "rms_total": 0.010703749516586055,
+        "rms_contact": 0.0013955705711913393,
+        "peak_defl": 0.0019253244991118748,
+        "ss_err": 0.0013895136410819846,
+        "z_ss_error": 0.0005000551295155052,
+        "clip_sample_fraction": 0.004541666666666667,
+        "max_command_excess_Nm": 349.6104085735698,
+        "clip_excess_threshold_Nm": 0.001,
+        "peak_applied_torque": 87.0,
+        "rms_applied_torque": 11.285111118134502,
+        "peak_positive_joint_power": 378.1664251355875,
+        "positive_joint_energy": 124.01943915566714,
+        "qp_solve_count": 0,
+        "qp_failure_count": 0,
+        "qp_failure_fraction": null,
+        "magnitude_clip_fraction_at_qp_update": null,
+        "magnitude_clip_fraction_between_qp_updates": null
+      }
+    },
+    "DI-MPC 100 Hz": {
+      "metrics": {
+        "rms_total": 0.011417117064787832,
+        "rms_contact": 0.002195474753688534,
+        "peak_defl": 0.002924261332162882,
+        "ss_err": 0.0027661807898022245,
+        "z_ss_error": 0.002168880583761251,
+        "clip_sample_fraction": 0.0,
+        "max_command_excess_Nm": 3.1572787264622093e-06,
+        "clip_excess_threshold_Nm": 0.001,
+        "peak_applied_torque": 82.69334089192361,
+        "rms_applied_torque": 11.093912667358078,
+        "peak_positive_joint_power": 113.15262982541488,
+        "positive_joint_energy": 103.0380280244891,
+        "qp_solve_count": 2400,
+        "qp_failure_count": 0,
+        "qp_failure_fraction": 0.0,
+        "magnitude_clip_fraction_at_qp_update": 0.0,
+        "magnitude_clip_fraction_between_qp_updates": 0.0
+      }
+    },
+    "DI-MPC + Kalman 100 Hz": {
+      "metrics": {
+        "rms_total": 0.011417028544657449,
+        "rms_contact": 0.0005289720556920744,
+        "peak_defl": 0.002581783850119938,
+        "ss_err": 4.202819826923087e-05,
+        "z_ss_error": 2.1579510346318812e-05,
+        "clip_sample_fraction": 0.0,
+        "max_command_excess_Nm": 1.926239092853166e-05,
+        "clip_excess_threshold_Nm": 0.001,
+        "peak_applied_torque": 82.69334089259279,
+        "rms_applied_torque": 11.126466597545658,
+        "peak_positive_joint_power": 113.14498104077177,
+        "positive_joint_energy": 102.58005864297611,
+        "qp_solve_count": 2400,
+        "qp_failure_count": 0,
+        "qp_failure_fraction": 0.0,
+        "magnitude_clip_fraction_at_qp_update": 0.0,
+        "magnitude_clip_fraction_between_qp_updates": 0.0
+      }
+    }
+  }
+}
