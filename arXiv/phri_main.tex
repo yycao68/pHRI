@@ -1211,60 +1211,45 @@ The comparison isolates five mechanisms:
 \item \textbf{Kalman augmentation removes steady-state error (C4 vs.\
 C5).} With QP rate and horizon held fixed, folding $\hat d$ into the
 free response drives steady-state error below 0.05\,mm --- down from
-2.8\,mm over C4 and 44.8\,mm over C1. This is the cleanest isolated
-comparison in the table: the only thing that changes between C4 and C5
-is whether the disturbance estimate is used, so the improvement is
-attributable to offset-free cancellation itself, not a confounded gain
-change.
+2.8\,mm over C4 and 44.8\,mm over C1; only the disturbance estimate
+differs between C4 and C5, isolating offset-free cancellation directly.
 \item \textbf{A large early gain, but gain-confounded (C1 vs.\ C4).}
 With no disturbance model at all, C4's QP still cuts contact-window RMS
 from 41.1 to 2.2\,mm ($19\times$) and peak deflection from 51.8 to
-2.9\,mm. However, C1's nominal $K_d=300$\,N/m is a design choice, not
-C4's realized closed-loop gain (Remark~\ref{rem:gains}), so unlike the
-C4-vs-C5 comparison above, this one does not separate how much of the
-improvement is predictive look-ahead versus a stiffer realized gain at
-the same horizon; a matched-gain, horizon-length ablation is left to
-future work.
+2.9\,mm. C1's nominal $K_d=300$\,N/m is a design choice, not C4's
+realized closed-loop gain (Remark~\ref{rem:gains}), so this comparison
+does not separate predictive look-ahead from a stiffer realized gain; a
+matched-gain, horizon-length ablation is left to future work.
 \item \textbf{Adapting stiffness alone is not enough (MPVIC vs.\ C5).}
 MPVIC uses the \emph{same} $\hat d$ as C5 but only to schedule
 stiffness, cutting contact RMS to 4.5\,mm --- better than every
 reactive baseline --- yet it retains a 4.8\,mm steady-state error,
 since a finite apparent stiffness can only bound deflection at
 $e_\infty=-K^{\star-1}\hat d\neq0$. Offset-free cancellation
-(Theorem~\ref{thm:zss}) removes this residual entirely
-($\sim$140$\times$): the concrete separation between the proposed
-controller and the predictive variable-impedance methods
-\cite{liu2025model,roveda2019optimal} it generalizes. MPVIC here is our
-own discrete-stiffness scheduler in that family, not a reproduction of
-a specific published algorithm, and its candidate stiffness set and
-force penalty have not been swept for sensitivity; the comparison shows
-one representative instance of the class, not an upper bound on it.
+(Theorem~\ref{thm:zss}) removes this residual entirely ($\sim$140$\times$).
+MPVIC is our own discrete-stiffness scheduler in the family of
+\cite{liu2025model,roveda2019optimal}, not a reproduction of a specific
+published algorithm; its stiffness set and force penalty have not been
+swept for sensitivity.
 \item \textbf{Rate and estimation are largely orthogonal (C4--C7).}
 Raising the QP rate from 100 to 500\,Hz mainly shrinks the
 zero-order-hold transient; adding the Kalman estimator mainly removes
 the steady-state error. C7 combines both and gives the lowest
 contact-window RMS, peak deflection, and steady-state error of any
-controller, though its total RMS (12.6\,mm, averaged over the whole
-cycle including the force-free majority of it) is marginally higher
-than C4/C5's (11.4\,mm) --- the faster QP rate sharpens the contact
-transient without improving free-motion tracking, so it is not simply
-better on every metric.
+controller; its total RMS (12.6\,mm, averaged over the whole cycle) is
+marginally higher than C4/C5's (11.4\,mm), since the faster rate
+sharpens the contact transient without improving free-motion tracking.
 \item \textbf{Admittance yields by design (C2).} Its 174.7\,mm
-contact-window RMS matches the equilibrium prediction $15/100=150$\,mm
---- the expected behavior of intentional compliance, not a controller
-failure.
+contact-window RMS is close to the equilibrium prediction
+$15/100=150$\,mm, the expected behavior of intentional compliance.
 \end{itemize}
 
 \textbf{Empirical joint-limit avoidance by the dual soft barrier
 (boundary test).}
 A 20\,cm radius circle pushes the arm toward its workspace boundary
-(Table~\ref{tab:safety}, Fig.~\ref{fig:safety}). This test exercises
-the soft null-space barrier and workspace projection only, not the
-final one-step CBF safety filter of
-Theorem~\ref{thm:invariance} --- no CBF residual or slack is logged
-here, so the result below is empirical joint-limit avoidance by the
-dual soft barrier, not a demonstration of the theorem's sampled-data
-invariance certificate.
+(Table~\ref{tab:safety}, Fig.~\ref{fig:safety}), exercising the soft
+null-space barrier and workspace projection only; the final CBF filter
+(Theorem~\ref{thm:invariance}) is not engaged or logged here.
 
 \begin{itemize}[leftmargin=*,itemsep=1pt,topsep=2pt]
 \item Classical impedance violates the 5\% margin; the dual-barrier MPC
@@ -1388,11 +1373,9 @@ benchmark, a disturbance-rate sweep, and an impedance-backbone ablation
 (Sec.~S8) that degrades gracefully rather than collapsing when the
 optimizer's corrective authority is curtailed.
 
-The framework is one realization, not a replacement for all pHRI modes:
-for intentional co-manipulation, admittance control remains the
-appropriate paradigm, and near the workspace boundary joint-limit
-regulation needs the task-space projection alongside the null-space
-barrier. Because the interface needs only $M$, $C\dot q+G$, and $J_v$,
+The framework is one realization, not a universal replacement for
+admittance-style co-manipulation. Because the interface needs only
+$M$, $C\dot q+G$, and $J_v$,
 it ports across torque-controlled arms by substituting the robot model
 and joint-limit parameters; and because it reduces contact to an
 analytic linear model with a fixed transition matrix, it may serve as a
