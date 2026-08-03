@@ -44,8 +44,8 @@ from so3_utils import rotation_error_matrix  # noqa: E402
 class Config:
     duration: float = 4.0
     dt: float = 0.001
-    manager_dt: float = 0.02
-    horizon: int = 10
+    manager_dt: float = 0.01
+    horizon: int = 20
     stiffness: float = 180.0
     damping: float = 28.0
     rotation_stiffness: float = 18.0

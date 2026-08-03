@@ -7,7 +7,7 @@ header-includes:
 
 ## Abstract
 
-Residual model predictive control (MPC) can improve disturbance rejection around a compliant robot, but its corrective wrench is an active interaction port. A passivity check performed only when the MPC updates does not authorize the wrench held between updates, and strict time-domain passivity control can remove most of the predictive correction. We study a rate-separated architecture in which a motion-to-wrench impedance remains the physical nominal controller, a 50 Hz MPC proposes only a translational residual wrench, and a 1 kHz projection jointly enforces a residual-energy budget and the complete joint-torque envelope. This is not presented as the first combination of impedance, MPC, and passivity: passive model-predictive impedance, predictive variable-impedance/admittance, and energy-tank controllers are established. The investigated contribution is the explicit residual-port authorization and its inter-update realization. A continuous-time composition proposition and a fast-sample energy-floor lemma state the certificate boundary. An equation-faithful translational generalization of the Hannaford--Ryu time-domain passivity observer/controller provides an external baseline. In a torque-controlled 7-DoF Franka FR3 MuJoCo benchmark, 20 matched trials randomize passive-wall properties, disturbance amplitude, and phase. The proposed method has zero tank-floor violations, zero nominal-torque infeasibilities, and zero QP failures. It reduces residual-position RMS by 23.3% relative to passive impedance and by 34.5% relative to strict time-domain passivity control, while remaining 16.3% worse than energetically unguarded MPC. A force-separation study shows that 50% leakage of intentional force into the disturbance estimate increases intentional-axis fidelity error by 29.3%; adding estimator delay, colored noise, and a constant velocity-estimate bias leaves the safety certificates untouched but still degrades task fidelity, most from the velocity bias. The results support the two-rate authorization mechanism in full rigid-body simulation, but not hardware-level safety or universal superiority.
+Residual model predictive control (MPC) can improve disturbance rejection around a compliant robot, but its corrective wrench is an active interaction port. A passivity check performed only when the MPC updates does not authorize the wrench held between updates, and strict time-domain passivity control can remove most of the predictive correction. We study a rate-separated architecture in which a motion-to-wrench impedance remains the physical nominal controller, a 100 Hz MPC proposes only a translational residual wrench, and a 1 kHz projection jointly enforces a residual-energy budget and the complete joint-torque envelope. This is not presented as the first combination of impedance, MPC, and passivity: passive model-predictive impedance, predictive variable-impedance/admittance, and energy-tank controllers are established. The investigated contribution is the explicit residual-port authorization and its inter-update realization. A continuous-time composition proposition and a fast-sample energy-floor lemma state the certificate boundary. An equation-faithful translational generalization of the Hannaford--Ryu time-domain passivity observer/controller provides an external baseline. In a torque-controlled 7-DoF Franka FR3 MuJoCo benchmark, 20 matched trials randomize passive-wall properties, disturbance amplitude, and phase. The proposed method has zero tank-floor violations, zero nominal-torque infeasibilities, and zero QP failures. It reduces residual-position RMS by 23.7% relative to passive impedance and by 35.4% relative to strict time-domain passivity control, while remaining 19.5% worse than energetically unguarded MPC. A force-separation study shows that 50% leakage of intentional force into the disturbance estimate increases intentional-axis fidelity error by 28.2%; adding estimator delay, colored noise, and a constant velocity-estimate bias leaves the safety certificates untouched but still degrades task fidelity, most from the velocity bias. A manager-rate sweep (20/50/100 Hz, fixed 0.20 s lookahead) finds no universal best rate: the slower manager reduces correction chatter and wins under oscillatory wall-contact disturbance, while the faster manager wins at tracking a sustained intentional push; safety invariants hold at every rate tested. The results support the two-rate authorization mechanism in full rigid-body simulation, but not hardware-level safety or universal superiority.
 
 **Keywords:** impedance control, residual model predictive control, passivity, energy tank, multi-rate control, physical human--robot interaction
 
@@ -15,20 +15,13 @@ Residual model predictive control (MPC) can improve disturbance rejection around
 
 Impedance control exposes a desired motion-to-wrench relation at the robot's physical interaction port [1]. Predictive control offers complementary benefits: disturbance preview, finite-horizon allocation, and explicit actuator constraints. The difficulty is energetic. An additive predictive wrench can inject energy even when the nominal impedance is passive, and a decision made at the slow optimizer rate need not remain admissible as velocity and actuator headroom evolve during the held interval.
 
-The causal direction matters. Integrating
-
-\[
-M_I\ddot x_I+D_I\dot x_I+K_Ix_I=F_h
-\tag{1}
-\]
-
-as a force-to-motion reference and regulating \(x-x_I\) can expose a convenient double-integrator residual after inverse-dynamics cancellation. It is nevertheless an admittance-causal construction. In this paper the physical nominal is instead an impedance-causal mapping from motion error to wrench. Equation (1) is retained only as an analytical intentional-response reference. This choice yields a clean physical-port power decomposition but makes the residual prediction matrices depend on the rendered stiffness, damping, and operational inertia. We do not claim gain-independent QP reuse.
-
 The architecture contains three components:
 
 1. a 1 kHz Cartesian impedance that produces the complete nominal joint torque;
-2. a 50 Hz MPC that proposes an additive translational residual wrench; and
+2. a 100 Hz MPC that proposes an additive translational residual wrench; and
 3. a 1 kHz realization layer that scales the held proposal against measured velocity, tank energy, and complete joint-torque headroom.
+
+Section 2 walks through this loop once in plain language before any equations. Section 4 then builds the physical model the loop runs on: robot dynamics, the impedance law that is the actual physical nominal, the admittance law used only as an analytical reference, and the error dynamics the MPC predicts. Section 5 gives the MPC itself and the two ways its proposal is authorized before reaching the actuator.
 
 The contributions are:
 
@@ -40,7 +33,17 @@ The contributions are:
 
 The paper remains a simulation study. Its claim is a reusable realization interface and evidence for inter-update authorization, not a new passivity or MPC principle.
 
-## 2. Relation to Existing Work
+## 2. How the Two-Rate Loop Works
+
+This section describes the loop once, in words, before any of it is formalized in Section 4 and Section 5.
+
+**Fast loop, at the robot's own servo rate, 1 kHz.** The physical nominal controller is an impedance law: it looks at the current position and velocity error and computes a wrench directly, the way a stiff spring-damper would. This wrench is converted to joint torque and, added to it, the *residual* wrench the slow loop most recently published (converted to torque at the *current* configuration, not cached from when it was computed). The result is scaled if needed so it never asks for more torque or more stored energy than is available, and only then sent to the robot. This last step is the fast authorization; it runs every 1 kHz tick regardless of what the slow loop is doing.
+
+**Slow loop, every manager period, 100 Hz, much slower than the fast loop but still ten times a second.** The manager does not touch the impedance law. Instead it asks: if the impedance controller keeps doing what it's doing, and a human keeps pushing the way they currently appear to be pushing, will the resulting torque and stored energy stay legal over the next few fast-loop ticks? It rolls the impedance law's own behavior forward, and if that rollout would leave the actuator or the energy budget, it solves a small optimization for the smallest additive wrench correction that keeps the rollout legal. If nothing is about to go wrong, the correction is exactly zero and the impedance law runs unmodified.
+
+**Why two rates, and why authorize twice.** The manager is slow because predicting several steps ahead and solving an optimization problem costs computation; running it at the full 1 kHz servo rate would be wasteful when the physical dynamics only drift meaningfully over tens of milliseconds. But a wrench correction computed once and held for several fast-loop ticks is a promise made about the future — by the time it is actually applied, the measured velocity or the remaining energy may have moved. The fast authorization is what keeps that promise honest between manager updates: it recomputes the torque conversion, the energy ledger, and the actuator margin every single tick, and scales the held correction down (never up) if reality has moved since the manager last checked. Sections 4 and 5 give the exact equations behind each of these three pieces; Section 6 shows what changes when the fast authorization is switched off.
+
+## 3. Relation to Existing Work
 
 The broad combination of impedance, MPC, and passivity is established. Cao, Cheng, and Li use a bottom variable-impedance controller and a top MPC that computes complementary torque under a stored-energy constraint; they prove passivity and feasibility and validate on a Franka Panda [2]. This is the closest architectural precedent and rules out novelty claims based only on stacking an impedance loop and predictive correction.
 
@@ -58,93 +61,129 @@ Energy supervision predates all of these predictive controllers. Hannaford and R
 | Predictive impedance/VIC [3]--[5] | trajectory and/or impedance | task-specific constraints/passivity | robot experiments |
 | Predictive admittance [6] | admittance parameters | embedded passivity constraint | Jaco-2, seven participants |
 | Ultimate passivity [10] | controller mode | ultimate energy bound | impedance/admittance robots |
-| **This study** | additive residual wrench | 50 Hz proposal, 1 kHz energy/torque projection | 7-DoF rigid-body simulation |
+| **This study** | additive residual wrench | 100 Hz proposal, 1 kHz energy/torque projection | 7-DoF rigid-body simulation |
 
 The remaining question is therefore narrow: can a predictive residual wrench be given a finite, replenishable energy budget and realized at a faster rate without altering the nominal impedance or violating the complete torque interface?
 
-## 3. Robot and Causal Decomposition
+## 4. Robot Dynamics and Control Architecture
 
-### 3.1 Joint and task dynamics
+This section builds the physical model underneath Section 2's informal walkthrough, in the order the loop actually needs it: the robot's own dynamics first (4.A), then the impedance law that is the real physical controller (4.B), then the admittance law that is *not* used physically but supplies the analytical reference the residual tracks (4.C), and finally the error-coordinate model the MPC of Section 5 actually predicts (4.D). Table 0 collects every symbol introduced along the way.
+
+**Table 0. Notation.**
+
+| Symbol | Meaning | Units |
+|---|---|---|
+| \(q,\dot q\) | joint position, velocity | rad, rad/s |
+| \(M(q),h(q,\dot q)\) | joint mass matrix, gravity/Coriolis bias | kg·m², N·m |
+| \(J_v(q),J_\omega(q)\) | translational, rotational task Jacobian | — |
+| \(\tau\) | commanded joint torque | N·m |
+| \(F=F_h+d+F_e\) | total task-space force: intentional, rejectable, environment | N |
+| \(\Lambda\) | translational operational (task-space) inertia | kg |
+| \(p,v=J_v\dot q\) | task position, velocity | m, m/s |
+| \(e=p-p_0\) | position error against the fixed nominal pose \(p_0\) | m |
+| \(K_I,D_I\) | rendered impedance stiffness, damping | N/m, N·s/m |
+| \(F_I\) | impedance-law wrench (the physical nominal) | N |
+| \(\tau_I\) | complete nominal joint torque (impedance + orientation + posture) | N·m |
+| \(x_I\) | admittance-law reference trajectory (analytical only, never commanded) | m |
+| \(z=e-x_I\) | residual: how far the real error is from the admittance reference | m |
+| \(F_r\) | MPC's proposed residual wrench | N |
+| \(H\) | impedance storage (energy-like Lyapunov function) | J |
+| \(E\) | residual-energy tank ledger | J |
+
+### 4.A Joint and task dynamics
 
 For the 7-DoF arm,
 
 \[
 M(q)\ddot q+h(q,\dot q)=\tau+J_v(q)^\top F,
 \qquad F=F_h+d+F_e,
+\tag{1}
+\]
+
+*in words:* joint torque and task-space force together produce joint acceleration through the usual rigid-body dynamics; \(h\) is the complete gravity/Coriolis bias, \(F_h\) is intentional human force, \(d\) is a rejectable force component, and \(F_e\) is the passive environment wrench. The translational operational inertia is
+
+\[
+\Lambda=(J_vM^{-1}J_v^\top)^{-1},
 \tag{2}
 \]
 
-where \(h\) is the complete gravity/Coriolis bias, \(F_h\) is intentional human force, \(d\) is a rejectable force component, and \(F_e\) is the passive environment wrench. The translational operational inertia is
+*in words:* \(\Lambda\) is how much task-space mass the robot presents at the end-effector once the whole arm's inertia is projected through the current Jacobian — it is what converts a task-space force into a task-space acceleration, and it changes with configuration. The MuJoCo implementation evaluates \(M,h,J_v\), and the rotational Jacobian \(J_\omega\) from the current nonlinear state at every 1 kHz sample.
 
-\[
-\Lambda=(J_vM^{-1}J_v^\top)^{-1}.
-\tag{3}
-\]
+### 4.B Impedance control: the physical nominal
 
-The MuJoCo implementation evaluates \(M,h,J_v\), and the rotational Jacobian \(J_\omega\) from the current nonlinear state at every 1 kHz sample.
-
-### 3.2 Physical nominal impedance
-
-For fixed nominal position \(p_0\) and orientation \(R_0\), define \(e=p-p_0\), \(v=J_v\dot q\), and
+Impedance control commands a wrench directly from the measured motion error — it is *error-to-force* causal. For fixed nominal position \(p_0\) and orientation \(R_0\), define \(e=p-p_0\), \(v=J_v\dot q\), and
 
 \[
 F_I=-K_Ie-D_Iv.
-\tag{4}
+\tag{3}
 \]
 
-The complete nominal torque is
+*in words:* the physical nominal controller behaves like a spring-damper bolted between the end-effector and the fixed nominal pose — the further away or the faster it moves, the harder it pulls back. This is the actual physical controller running at 1 kHz; nothing else in this paper commands the robot directly. The complete nominal torque is
 
 \[
 \tau_I=h+J_v^\top F_I+J_\omega^\top F_R+N_v^\top\tau_0,
-\tag{5}
+\tag{4}
 \]
 
-where \(F_R\) holds orientation and the dynamically consistent translational null-space projector \(N_v\) contains posture regulation. The residual wrench is applied through the same physical channel,
+where \(F_R\) holds orientation and the dynamically consistent translational null-space projector \(N_v\) contains posture regulation. The residual wrench proposed by the MPC (Section 5) is added through the same physical channel, never a separate one:
 
 \[
 \tau=\tau_I+J_v^\top F_r.
-\tag{6}
+\tag{5}
 \]
 
 Ignoring the disclosed auxiliary-task leakage, the translational storage
 
 \[
 H=\tfrac12v^\top\Lambda v+\tfrac12e^\top K_Ie
-\tag{7}
+\tag{6}
 \]
 
-has the familiar local power form
+*in words:* \(H\) is the impedance law's own energy-like quantity — kinetic energy in the task-space inertia plus potential energy in the virtual spring — and it has the familiar local power form
 
 \[
 \dot H\le F^\top v-v^\top D_Iv+F_r^\top v.
+\tag{7}
+\]
+
+*in words:* storage grows from external work \(F^\top v\), shrinks from the impedance law's own damping \(-v^\top D_Iv\), and the last term, \(F_r^\top v\), is the power the residual wrench injects or removes — this is the port that Section 5.2's tank must authorize, because nothing about the impedance law itself limits it. Equation (7) is used for controller construction; the paper does not elevate the varying-\(\Lambda\), regularized, sampled implementation to an exact global storage identity.
+
+### 4.C Admittance control and the analytical intentional reference
+
+A different, and in this literature very common, way to structure a compliant controller is *admittance* control: instead of mapping error to force, integrate a force-to-motion law forward to get a reference trajectory, then have an inner loop track that trajectory. Concretely,
+
+\[
+M_I\ddot x_I+D_I\dot x_I+K_Ix_I=F_h,
 \tag{8}
 \]
 
-The last term is the residual port that must be authorized. Equation (8) is used for controller construction; the paper does not elevate the varying-\(\Lambda\), regularized, sampled implementation to an exact global storage identity.
+*in words:* \(x_I\) is a virtual mass-spring-damper being pushed around by the measured human force \(F_h\) — it is the trajectory a compliant admittance-causal robot would follow, computed by integrating this ODE forward rather than commanding a wrench directly. Regulating \(p-x_I\) with an inner tracking loop, after canceling the robot's own dynamics, can expose a convenient double-integrator residual model. It is nevertheless *admittance-causal*: motion is the commanded quantity, force only drives the reference.
 
-### 3.3 Analytical intentional reference and residual model
+This paper does **not** use (8) as the physical controller — Section 4.B's impedance law is the actual commanded wrench, chosen specifically because it gives the clean physical-port power decomposition of Equation (7), which the energy-tank authorization of Section 5.2 depends on. Equation (8) is retained only as an **analytical intentional-response reference**: a stand-in for "how the interaction ought to feel," against which the impedance law's actual behavior is compared. This choice has a real cost: because the physical nominal is impedance-causal, the residual model that Section 5's MPC predicts against depends on the rendered stiffness, damping, and operational inertia (Section 4.D below), rather than being a gain-independent double integrator the way a literal admittance controller's residual would be. We do not claim gain-independent QP reuse.
 
-The reference state is driven only by \(F_h\):
+### 4.D Error-based residual dynamics
+
+The admittance reference (8) is driven only by \(F_h\); written directly in task coordinates,
 
 \[
 \ddot x_I=\Lambda^{-1}(F_h-D_I\dot x_I-K_Ix_I).
 \tag{9}
 \]
 
-With \(z=e-x_I\), the frozen local residual model used at each manager update is
+*in words:* this is Equation (8), just expressed with the task-space inertia \(\Lambda\) already inverted through, so it can be integrated alongside the real robot state at every fast tick without ever being commanded to it. With \(z=e-x_I\) — how far the impedance law's actual error is from where the admittance reference thinks it should be — the frozen local residual model used at each manager update is
 
 \[
 \ddot z=\Lambda^{-1}(-K_Iz-D_I\dot z+F_r+\hat d).
 \tag{10}
 \]
 
-Unlike the earlier admittance-reference construction, (10) explicitly depends on \(K_I,D_I\), and \(\Lambda(q)\). That is the computational cost of retaining an impedance-causal physical nominal.
+*in words:* \(z\) drifts according to the same impedance stiffness/damping, plus whatever residual wrench the MPC adds, plus the estimated disturbance \(\hat d\) it is trying to reject. Unlike a literal admittance-reference construction, (10) explicitly depends on \(K_I,D_I\), and \(\Lambda(q)\) — the computational cost, flagged in 4.C, of retaining an impedance-causal physical nominal.
 
-## 4. Predictive Proposal and Two Fast Authorizers
+## 5. Predictive Proposal and Two Fast Authorizers
 
-### 4.1 Residual MPC
+### 5.1 Residual MPC
 
-At \(T_m=20\) ms, (10) is zero-order-hold discretized as
+At \(T_m=10\) ms, (10) is zero-order-hold discretized as
 
 \[
 \xi_{k+1}=A_k\xi_k+B_k(F_{r,k}+\hat d_k),
@@ -171,7 +210,7 @@ subject to a Cartesian wrench box and the current-model torque envelope
 
 The 28% envelope represents a deliberately derated continuous budget, chosen before the accepted run to keep the nominal torque feasible while preserving headroom pressure for the residual; it is not a manufacturer continuous-duty specification, and the absolute FR3 limits remain the MuJoCo safety backstop regardless. The benchmark rejects any trial in which \(\tau_I\) itself is infeasible. Because (13) freezes \(J_v\) and \(\tau_I\), only the fast layer certifies the realized nonlinear sample.
 
-### 4.2 Proposed finite-energy authorization
+### 5.2 Proposed finite-energy authorization
 
 Let the tank obey, away from its upper cap,
 
@@ -181,14 +220,14 @@ Let the tank obey, away from its upper cap,
 \tag{14}
 \]
 
-**Proposition 1 (ideal composition).** If (8) holds, the realized residual wrench is the same \(F_r\) used in (14), and an authorization mechanism maintains \(E\ge E_{\min}\), then
+**Proposition 1 (ideal composition).** If (7) holds, the realized residual wrench is the same \(F_r\) used in (14), and an authorization mechanism maintains \(E\ge E_{\min}\), then
 
 \[
 \dot H+\dot E\le F^\top v.
 \tag{15}
 \]
 
-*Proof.* Add (8) and (14). Residual power and nominal damping cancel. Energy discarded at the tank cap adds only nonnegative dissipation. \(\square\)
+*Proof.* Add (7) and (14). Residual power and nominal damping cancel. Energy discarded at the tank cap adds only nonnegative dissipation. \(\square\)
 
 At fast sample \(\ell\), the torque-feasible scale \(\alpha_{\tau,\ell}\) is the largest value in \([0,1]\) satisfying
 
@@ -224,14 +263,11 @@ E_{\ell+1}=\min\{E_{\max},E_\ell+h(v_\ell^\top D_Iv_\ell-F_{r,\ell}^\top v_\ell)
 \tag{19}
 \]
 
-**Lemma 1 (fast-sample interface invariant).** If \(E_0\ge E_{\min}\) and the nominal torque satisfies \(|\tau_I|\le\rho\tau_{\max}\), then (16)--(19) ensure
-\(E_\ell\ge E_{\min}\) and
-\(|\tau_{I,\ell}+J_{v,\ell}^\top F_{r,\ell}|
-\le\rho\tau_{\max}\) at every fast sample.
+**Lemma 1 (fast-sample interface invariant).** If \(E_0\ge E_{\min}\) and the nominal torque satisfies \(|\tau_I|\le\rho\tau_{\max}\), then (16)--(19) ensure \(E_\ell\ge E_{\min}\) and \(|\tau_{I,\ell}+J_{v,\ell}^\top F_{r,\ell}| \le\rho\tau_{\max}\) at every fast sample.
 
 *Proof.* Equation (16) constructs a feasible line segment from the feasible nominal torque. Further scaling by \(\alpha_E\in[0,1]\) remains on that segment. For nonpositive residual power, (19) cannot reduce the ledger. For positive power, (17) limits withdrawal to the available energy above \(E_{\min}\) plus the current damping contribution. \(\square\)
 
-### 4.3 External Hannaford--Ryu PO/PC baseline
+### 5.3 External Hannaford--Ryu PO/PC baseline
 
 The external baseline shares the same \(F_r^{\rm raw}\), nominal torque, torque scaling, estimator, and sample rate. Following the impedance-causal series PO/PC in [7], generalized from a scalar to the 3-D translational port, define
 
@@ -252,20 +288,20 @@ F_{r,\ell}=\bar F_{r,\ell}-\gamma_\ell v_\ell;
 
 otherwise \(\gamma_\ell=0\). A final torque-feasible scalar is applied and the observer is updated from the actual wrench. This is an equation-faithful translational generalization of [7], with two disclosed adaptations: the published scalar port is extended by \(\|v\|^2\), and all output is passed through the same FR3 torque interface. It has zero initial energy reference, whereas the proposed tank permits finite stored energy and harvesting of nominal damping. This is the intended scientific comparison.
 
-## 5. Benchmark Design
+## 6. Benchmark Design
 
-### 5.1 Plant, controllers, and signals
+### 6.1 Plant, controllers, and signals
 
 The plant is the torque-controlled Franka FR3 model from MuJoCo Menagerie, integrated at 1 kHz. Built-in position actuators are disabled; the benchmark applies joint torque directly. The four controllers are:
 
-- **B1 Passive impedance:** equations (4)--(5), \(F_r=0\);
+- **B1 Passive impedance:** equations (3)--(4), \(F_r=0\);
 - **B2 Unguarded MPC:** equations (11)--(13), with fast torque scaling but no residual-energy restriction;
 - **B3 Hannaford--Ryu PO/PC:** the same raw MPC plus (20)--(21);
 - **B4 Two-rate tank:** the same raw MPC plus (16)--(19).
 
-All controllers use \(K_I=180\) N/m, \(D_I=28\) N s/m, a 50 Hz manager, a 1 kHz torque loop, \(N=10\) (0.20 s), \(E_0=0.08\) J, \(E_{\min}=0.02\) J, and \(E_{\max}=0.30\) J. The intentional force contains an 8 N push along \(x\) and a -5 N push along \(z\). Rejectable force contains three sinusoids and a 12 N, 7 ms pulse beginning at 1.507 s, between manager ticks. A unilateral passive wall starts 35 mm from the nominal pose.
+All controllers use \(K_I=180\) N/m, \(D_I=28\) N s/m, a 100 Hz manager, a 1 kHz torque loop, \(N=20\) (0.20 s), \(E_0=0.08\) J, \(E_{\min}=0.02\) J, and \(E_{\max}=0.30\) J. The intentional force contains an 8 N push along \(x\) and a -5 N push along \(z\). Rejectable force contains three sinusoids and a 12 N, 7 ms pulse beginning at 1.507 s, between manager ticks. A unilateral passive wall starts 35 mm from the nominal pose.
 
-### 5.2 Matched randomized protocol
+### 6.2 Matched randomized protocol
 
 Twenty matched trials randomize:
 
@@ -276,7 +312,7 @@ Twenty matched trials randomize:
 
 Every controller receives identical realization parameters for each seed. Main metrics are 3-D residual-position RMS/peak, minimum energy ledger, PO energy, authorization activity, peak fraction of the derated joint-torque envelope, nominal infeasibility, and QP failures. Paired statistics are computed over seeds. Solver timing covers only `OSQP.solve`, not model construction, sensing, or torque communication.
 
-### 5.3 Force-separation leakage test
+### 6.3 Force-separation leakage test
 
 The main benchmark assumes exact force labels. The leakage test directly relaxes that assumption:
 
@@ -288,71 +324,97 @@ The main benchmark assumes exact force labels. The leakage test directly relaxes
 
 To isolate leakage from disturbance rejection, this test disables \(d\) and the wall, retains 0.05 N estimator noise, and runs five matched seeds per level. It reports RMS error along the intentional-force axis and the ratio between realized and reference mean displacement during the sustained push.
 
-A second, satellite sweep at a fixed mid-range leakage (\(\lambda=0.25\)) adds three sensing imperfections the main sweep above holds at their simplest setting: a one-manager-tick (20 ms) estimator delay, AR(1) colored noise (\(\phi=0.9\), same stationary standard deviation as the white-noise baseline so only temporal correlation is varied), and a constant 5 mm/s velocity-estimate bias along the intentional-force axis, applied only to the state fed to the residual MPC (the torque loop itself still uses the true measured velocity). Each is toggled individually and then combined, five matched seeds per condition.
+A second, satellite sweep at a fixed mid-range leakage (\(\lambda=0.25\)) adds three sensing imperfections the main sweep above holds at their simplest setting: a one-manager-tick (10 ms) estimator delay, AR(1) colored noise (\(\phi=0.9\), same stationary standard deviation as the white-noise baseline so only temporal correlation is varied), and a constant 5 mm/s velocity-estimate bias along the intentional-force axis, applied only to the state fed to the residual MPC (the torque loop itself still uses the true measured velocity). Each is toggled individually and then combined, five matched seeds per condition.
 
-## 6. Results
+## 7. Results
 
 ![Torque-controlled FR3 response, energy audit, torque utilization, and force-separation leakage.](simulation/fr3_two_rate_results.png)
 
 \FloatBarrier
 
-### 6.1 Matched FR3 benchmark
+### 7.1 Matched FR3 benchmark
 
 **Table 2. Twenty matched FR3 trials, mean ± sample standard deviation. Torque ratio is relative to the derated 28% continuous envelope.**
 
 | Controller | residual RMS (mm) | residual peak (mm) | minimum ledger/PO (J) | authorization active | peak torque ratio |
 |---|---:|---:|---:|---:|---:|
 | Passive impedance | 25.42 ± 0.76 | 37.07 ± 1.44 | 0.0800 ± 0.0000 | 0% | 0.853 ± 0.002 |
-| Unguarded MPC | **16.78 ± 0.91** | **29.15 ± 1.65** | -0.0325 ± 0.0143 | 0% | 0.875 ± 0.005 |
-| Hannaford--Ryu PO/PC | 29.77 ± 0.97 | 43.33 ± 1.90 | \(-1.3\times10^{-19}\) PO | 84.56 ± 1.53% | 0.867 ± 0.006 |
-| **Two-rate tank** | 19.50 ± 0.70 | 31.58 ± 1.71 | **0.0200 ± 0.0000** | 27.38 ± 4.45% | 0.868 ± 0.011 |
+| Unguarded MPC | **16.23 ± 0.92** | **28.42 ± 1.68** | -0.0424 ± 0.0137 | 0% | 0.875 ± 0.005 |
+| Hannaford--Ryu PO/PC | 30.00 ± 0.92 | 43.62 ± 1.79 | \(-1.3\times10^{-19}\) PO | 83.36 ± 1.79% | 0.867 ± 0.006 |
+| **Two-rate tank** | 19.39 ± 0.61 | 31.21 ± 1.80 | **0.0200 ± 0.0000** | 29.79 ± 4.46% | 0.865 ± 0.010 |
 
 The unguarded controller's counterfactual common ledger crosses the 0.02 J floor in 20/20 trials. This does not mean a physical tank becomes negative; it measures energy the controller would withdraw without authorization. The PO/PC observer remains nonnegative to numerical precision in every trial, and the proposed tank never crosses its floor.
 
-The proposed controller reduces residual RMS by 23.3% relative to passive impedance (paired difference -5.914 mm, 95% CI [-6.430, -5.398], \(p=1.12\times10^{-15}\)). It reduces RMS by 34.5% relative to strict PO/PC (difference -10.267 mm, 95% CI [-10.696, -9.837], \(p=1.21\times10^{-21}\)). Unguarded MPC remains 16.3% better than the proposed method (proposed-minus-unguarded +2.727 mm, 95% CI [2.154, 3.300], \(p=5.59\times10^{-9}\)). Thus, finite energy storage recovers much of the performance removed by zero-reference PO/PC but does not eliminate the energetic cost of passivity-oriented authorization.
+The proposed controller reduces residual RMS by 23.7% relative to passive impedance (paired difference -6.024 mm, 95% CI [-6.500, -5.549], \(p=1.80\times10^{-16}\)). It reduces RMS by 35.4% relative to strict PO/PC (difference -10.605 mm, 95% CI [-10.985, -10.225], \(p=6.61\times10^{-23}\)). Unguarded MPC remains 19.5% better than the proposed method (proposed-minus-unguarded +3.166 mm, 95% CI [2.637, 3.695], \(p=1.25\times10^{-10}\)). Thus, finite energy storage recovers much of the performance removed by zero-reference PO/PC but does not eliminate the energetic cost of passivity-oriented authorization.
 
-Every accepted trial has zero nominal-torque infeasibility and zero QP failure. The largest torque ratio is below 0.889 for the proposed controller. Mean solver-core time is 0.0810 ms; the mean per-run 95th percentile is 0.0897 ms and the largest recorded solve is 0.284 ms. The 50 Hz deadline is therefore met by the solver core, but this is not an end-to-end timing certificate.
+Every accepted trial has zero nominal-torque infeasibility and zero QP failure. The largest torque ratio is below 0.889 for the proposed controller. Mean solver-core time is 0.159 ms; the mean per-run 95th percentile is 0.179 ms and the largest recorded solve is 0.399 ms. The 100 Hz deadline is therefore met by the solver core, but this is not an end-to-end timing certificate.
 
-### 6.2 Force-separation leakage
+### 7.2 Force-separation leakage
 
 **Table 3. Intentional-force leakage, five matched noise seeds per level.**
 
 | leakage \(\lambda\) | intentional-axis error RMS (mm) | realized/reference response ratio | minimum tank (J) |
 |---:|---:|---:|---:|
-| 0 | 12.061 ± 0.010 | 0.733 | 0.020 |
-| 0.10 | 12.743 ± 0.010 | 0.715 | 0.020 |
-| 0.25 | 13.793 ± 0.011 | 0.688 | 0.020 |
-| 0.50 | 15.598 ± 0.012 | 0.642 | 0.020 |
+| 0 | 11.759 ± 0.007 | 0.741 | 0.020 |
+| 0.10 | 12.399 ± 0.007 | 0.724 | 0.020 |
+| 0.25 | 13.383 ± 0.007 | 0.698 | 0.020 |
+| 0.50 | 15.073 ± 0.006 | 0.655 | 0.020 |
 
-At 50% leakage, fidelity error is 29.3% higher than at zero leakage and the mean response ratio falls by 9.10 percentage points. The tank and torque invariants still hold; the failure is semantic rather than numerical. The controller safely does the wrong thing because part of the intentional human input is mislabeled as a disturbance. This result makes force decomposition a first-order interface requirement rather than a footnote.
+At 50% leakage, fidelity error is 28.2% higher than at zero leakage and the mean response ratio falls by 8.6 percentage points. The tank and torque invariants still hold; the failure is semantic rather than numerical. The controller safely does the wrong thing because part of the intentional human input is mislabeled as a disturbance. This result makes force decomposition a first-order interface requirement rather than a footnote.
 
 **Table 4. Sensing-realism sweep at fixed \(\lambda=0.25\) leakage, five matched seeds per condition.**
 
 | Condition | intentional-axis error RMS (mm) | response ratio | minimum tank (J) |
 |---|---:|---:|---:|
-| Baseline (\(\lambda=0.25\), no added realism) | 13.796 ± 0.011 | 0.688 | 0.020 |
-| Delay only (20 ms) | 13.755 ± 0.011 | 0.689 | 0.020 |
-| Colored noise only | 13.796 ± 0.041 | 0.688 | 0.020 |
-| Velocity bias only (5 mm/s) | 14.146 ± 0.011 | 0.679 | 0.020 |
-| All combined | 14.107 ± 0.041 | 0.680 | 0.020 |
+| Baseline (\(\lambda=0.25\), no added realism) | 13.384 ± 0.008 | 0.698 | 0.020 |
+| Delay only (10 ms) | 13.368 ± 0.008 | 0.699 | 0.020 |
+| Colored noise only | 13.374 ± 0.039 | 0.699 | 0.020 |
+| Velocity bias only (5 mm/s) | 13.730 ± 0.008 | 0.690 | 0.020 |
+| All combined | 13.704 ± 0.039 | 0.690 | 0.020 |
 
-The baseline row is this sweep's own \(\lambda=0.25\) draw (different seeds from, but statistically consistent with, Table 3's 13.793 mm). None of the three individually degrades fidelity error by more than 2.5% relative to baseline, and the tank floor and torque envelope hold in every condition -- the safety certificates are not sensitive to these particular sensing imperfections at these levels. The one-tick estimator delay and the colored-noise correlation structure leave the mean essentially unchanged; colored noise instead widens the across-seed standard deviation roughly fourfold (0.011 to 0.041 mm), because temporally correlated noise resists the horizon's implicit averaging. The velocity-estimate bias is the dominant of the three, degrading fidelity error by 2.5% and the response ratio by 0.9 percentage points, because it corrupts the state the residual MPC itself feeds back on, not merely the disturbance estimate. The combined condition tracks the velocity-bias-only condition closely rather than summing the three effects, mirroring the leakage sweep's own message: safety (tank, torque) survives these corruptions, but task fidelity degrades in proportion to which channel is corrupted, and no causal claim beyond the tabulated numbers is made for why the combined condition does not exceed the velocity-bias-only one.
+The baseline row is this sweep's own \(\lambda=0.25\) draw (different seeds from, but statistically consistent with, Table 3's 13.383 mm). None of the three individually degrades fidelity error by more than 2.6% relative to baseline, and the tank floor and torque envelope hold in every condition -- the safety certificates are not sensitive to these particular sensing imperfections at these levels. The one-tick estimator delay and the colored-noise correlation structure leave the mean essentially unchanged; colored noise instead widens the across-seed standard deviation roughly fivefold (0.008 to 0.039 mm), because temporally correlated noise resists the horizon's implicit averaging. The velocity-estimate bias is the dominant of the three, degrading fidelity error by 2.6% and the response ratio by 0.9 percentage points, because it corrupts the state the residual MPC itself feeds back on, not merely the disturbance estimate. The combined condition tracks the velocity-bias-only condition closely rather than summing the three effects, mirroring the leakage sweep's own message: safety (tank, torque) survives these corruptions, but task fidelity degrades in proportion to which channel is corrupted, and no causal claim beyond the tabulated numbers is made for why the combined condition does not exceed the velocity-bias-only one.
 
-### 6.3 Interpretation
+### 7.3 Manager-rate sensitivity: no universal winner
 
-The benchmark supports three claims. First, finite-horizon residual correction can improve the realized intentional impedance response under disturbances. Second, strict zero-reference PO/PC is substantially more conservative than a finite tank that can spend initial and dissipated energy. Third, the fast layer can preserve its explicit tank and torque interfaces even when the force classifier is wrong, so those certificates must not be confused with task or intent correctness.
+Sections 6-7 fix the manager at 100 Hz. To check whether that choice was load-bearing, the main matched benchmark, the leakage sweep, and the sensing-realism sweep were rerun at 20 Hz and 50 Hz as well, holding the horizon duration fixed at 0.20 s throughout -- only the re-check interval changes (50, 20, or 10 ms), not the manager's lookahead.
+
+**Table 5. Manager-rate sweep, main matched benchmark, two-rate controller only (20 seeds).**
+
+| Manager rate | RMS (mm) | Peak (mm) | Authorization active | vs. unguarded MPC | Solve max / period |
+|---|---:|---:|---:|---:|---:|
+| 20 Hz | 18.96 ± 0.53 | 30.71 | 17.2% | +5.1% | 0.140 ms / 50 ms |
+| 50 Hz | 19.50 ± 0.70 | 31.58 | 27.4% | +16.3% | 0.169 ms / 20 ms |
+| 100 Hz | 19.39 ± 0.61 | 31.21 | 29.8% | +19.5% | 0.285 ms / 10 ms |
+
+In this oscillatory wall-contact-plus-disturbance scenario, 20 Hz gives the lowest RMS, the least-frequent intervention, and (in this run) the smallest computational burden relative to its own deadline; solve-time maxima are wall-clock and have been observed to vary run-to-run by 2-3\(\times\) at a fixed rate, so `rate_sweep.py`'s own output is the source of record rather than this table's specific figures. A representative trial's diagnostics explain the ranking, not just describe it: at 20 Hz the applied correction has a total variation of 12.9 N/s and 0.75 activation events per second, versus 34.6 N/s and 4.25 events per second at 100 Hz -- almost triple the chatter. More tellingly, at 20 Hz tracking is *better* while the tank is active than while idle (15.2 versus 18.3 mm RMS); at 100 Hz this reverses (20.6 versus 16.1 mm). A slower manager commits to fewer, larger, apparently more coherent corrections in this scenario; a faster one re-solves before the previous correction has had time to act, producing more frequent, less decisive adjustments -- a genuine chatter mechanism, not a fluke of one metric.
+
+**Table 6. Manager-rate sweep, force-separation leakage (5 seeds per level).**
+
+| Manager rate | \(\lambda=0\) (mm) | \(\lambda=0.5\) (mm) | % degradation |
+|---|---:|---:|---:|
+| 20 Hz | 13.01 ± 0.03 | 17.21 ± 0.03 | 32.3% |
+| 50 Hz | 12.06 ± 0.01 | 15.60 ± 0.01 | 29.3% |
+| 100 Hz | 11.76 ± 0.01 | 15.07 ± 0.01 | 28.2% |
+
+Under this different scenario -- a sustained intentional push with no wall or oscillatory disturbance -- the ranking **reverses**: 100 Hz gives the lowest error at every leakage level and 20 Hz the highest. Tracking a step-like sustained push is a settling-time problem rather than a disturbance-rejection problem, so a slower supervisory loop is plausibly sluggish to lock onto the correct steady correction -- the opposite failure mode from the oscillatory-disturbance case above. The sensing-realism sweep shows the same qualitative pattern (velocity bias dominant, colored noise widens variance, delay negligible) at all three rates, only shifted to each rate's own baseline; that shift is consistent with, not independent evidence for, the ranking in this table.
+
+**No manager rate dominates in both regimes tested, and neither compromises safety.** Zero tank violations, zero QP failures, and zero nominal infeasibilities hold at every rate in every scenario reported in this paper. The 100 Hz design point used throughout Sections 6-7.2 is the better choice for the sustained-push/leakage regime this paper otherwise emphasizes, but Table 5 shows it is not the best choice for the oscillatory wall-contact scenario, where a slower manager measurably reduces both intervention frequency and tracking error. Matching manager rate to the anticipated disturbance's own time scale -- rather than assuming faster is always safer -- is a real design question this benchmark exposes rather than resolves.
+
+### 7.4 Interpretation
+
+The benchmark supports three claims. First, finite-horizon residual correction can improve the realized intentional impedance response under disturbances. Second, strict zero-reference PO/PC is substantially more conservative than a finite tank that can spend initial and dissipated energy. Third, the fast layer can preserve its explicit tank and torque interfaces even when the force classifier is wrong, so those certificates must not be confused with task or intent correctness. A fourth, unplanned finding (Section 7.3) is that no single manager rate is best across scenario types -- the right rate depends on whether the disturbance is oscillatory or a sustained step, and the paper's own headline rate is a choice for one of those regimes, not a universal optimum.
 
 The comparison does not establish superiority over passive model-predictive impedance [2], predictive variable-impedance methods [3]--[5], or predictive admittance [6]. Those controllers optimize different quantities and several have physical experiments. Table 1 is a representation comparison, not a numerical ranking.
 
-## 7. Scope and Limitations
+## 8. Scope and Limitations
 
-Validation is nonlinear 7-DoF rigid-body simulation, not hardware, and contact is a virtual unilateral passive wall rather than measured material interaction; there are no human participants, contact-force safety thresholds, or claims of clinical/industrial readiness. Proposition 1 is an ideal continuous-time composition statement, and Lemma 1 certifies the implemented energy and torque interfaces at fast samples, not a global sampled-data passivity theorem for the entire robot, orientation task, null-space controller, estimator, and environment; similarly, the MPC horizon freezes the current Jacobian, operational inertia, and nominal torque, so the fast projection enforces realized input feasibility but recursive MPC feasibility and state constraints are not proved. The Hannaford--Ryu baseline is equation-faithful at the translational port but necessarily generalized from a scalar haptic interface and passed through the same FR3 torque projection, so it is not a reproduction on the original Excalibur device. The main force labels are exact; the leakage study quantifies one failure mode, and Section 6.2 additionally tests estimator delay, colored noise, and a constant velocity-estimate bias, individually and combined, at one representative leakage level -- but not as a learned human-intent estimator, and not swept jointly across every leakage level.
+Validation is nonlinear 7-DoF rigid-body simulation, not hardware, and contact is a virtual unilateral passive wall rather than measured material interaction; there are no human participants, contact-force safety thresholds, or claims of clinical/industrial readiness. Proposition 1 is an ideal continuous-time composition statement, and Lemma 1 certifies the implemented energy and torque interfaces at fast samples, not a global sampled-data passivity theorem for the entire robot, orientation task, null-space controller, estimator, and environment; similarly, the MPC horizon freezes the current Jacobian, operational inertia, and nominal torque, so the fast projection enforces realized input feasibility but recursive MPC feasibility and state constraints are not proved. The Hannaford--Ryu baseline is equation-faithful at the translational port but necessarily generalized from a scalar haptic interface and passed through the same FR3 torque projection, so it is not a reproduction on the original Excalibur device. The main force labels are exact; the leakage study quantifies one failure mode, and Section 7.2 additionally tests estimator delay, colored noise, and a constant velocity-estimate bias, individually and combined, at one representative leakage level -- but not as a learned human-intent estimator, and not swept jointly across every leakage level.
 
-## 8. Conclusion
+## 9. Conclusion
 
-This paper retains an impedance-causal physical nominal and assigns MPC only an additive residual-wrench port. The structure sacrifices gain-independent residual matrices but exposes the exact power that must be authorized. A 50 Hz predictive proposal is therefore paired with a 1 kHz projection that accounts for measured residual power and complete joint-torque headroom.
+This paper retains an impedance-causal physical nominal and assigns MPC only an additive residual-wrench port. The structure sacrifices gain-independent residual matrices but exposes the exact power that must be authorized. A 100 Hz predictive proposal is therefore paired with a 1 kHz projection that accounts for measured residual power and complete joint-torque headroom.
 
-The torque-controlled FR3 study adds two pieces of evidence absent from the earlier low-order verification: an external, equation-faithful time-domain passivity baseline and a direct intent/disturbance leakage test. The finite tank occupies a useful middle ground between unguarded MPC and strict zero-reference PO/PC, while the leakage results show that energy correctness cannot substitute for correct interpretation of human input. The next decisive validation is a torque-controlled FR3/Panda contact experiment with measured wrench, velocity noise, latency, and complete end-to-end timing.
+The torque-controlled FR3 study adds two pieces of evidence absent from the earlier low-order verification: an external, equation-faithful time-domain passivity baseline and a direct intent/disturbance leakage test. The finite tank occupies a useful middle ground between unguarded MPC and strict zero-reference PO/PC, while the leakage results show that energy correctness cannot substitute for correct interpretation of human input. A manager-rate sweep (Section 7.3) further shows that the 100 Hz design point used throughout is a choice suited to sustained-push tracking, not a universally optimal rate: an oscillatory-disturbance scenario is better served by a slower, less chatter-prone manager, and the two regimes disagree on which rate wins. The next decisive validation is a torque-controlled FR3/Panda contact experiment with measured wrench, velocity noise, latency, and complete end-to-end timing.
 
 ## Reproducibility
 
@@ -365,13 +427,16 @@ MPLCONFIGDIR=/tmp/phri_impedance_fr3_mpl \
 XDG_CACHE_HOME=/tmp/phri_impedance_fr3_mpl \
 python3 verify_fr3_two_rate_benchmark.py --seeds 20 --leakage-seeds 5 --realism-seeds 5
 
+python3 rate_sweep.py --leakage-seeds 5 --realism-seeds 5
+
 python3 -m pytest -q \
   test_fr3_two_rate_benchmark.py \
   test_two_rate_passive_residual.py \
-  test_residual_mpc.py
+  test_residual_mpc.py \
+  test_rate_sweep.py
 ```
 
-All simulation, verification, and test scripts live in `simulation/`. The primary script writes `simulation/fr3_two_rate_results.json` and `simulation/fr3_two_rate_results.png`. The earlier 1-DoF benchmark remains available as a secondary algebra and inter-update audit. `state_of_art_search_log.md` records the literature-search scope and novelty decision.
+All simulation, verification, and test scripts live in `simulation/`. The primary script writes `simulation/fr3_two_rate_results.json` and `simulation/fr3_two_rate_results.png`. `rate_sweep.py` produces `simulation/rate_sweep_results.json`, the source for Table 5/6 and the manager-rate diagnostics of Section 7.3. The earlier 1-DoF benchmark remains available as a secondary algebra and inter-update audit. `state_of_art_search_log.md` records the literature-search scope and novelty decision.
 
 ## References
 

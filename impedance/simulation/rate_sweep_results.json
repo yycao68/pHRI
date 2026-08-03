@@ -1,0 +1,566 @@
+{
+  "20Hz": {
+    "manager_dt_ms": 50.0,
+    "horizon_s": 0.2,
+    "main_benchmark_summary": {
+      "residual_rms_mm": {
+        "mean": 18.960702220471557,
+        "std": 0.53343104565801,
+        "min": 18.18486643843478,
+        "max": 20.01982910684852
+      },
+      "residual_peak_mm": {
+        "mean": 30.70757967084861,
+        "std": 1.5723684651979986,
+        "min": 28.822439384489222,
+        "max": 33.83134235121444
+      },
+      "minimum_tank_j": {
+        "mean": 0.021076339281973912,
+        "std": 0.0027739575146846188,
+        "min": 0.02,
+        "max": 0.03013539597998093
+      },
+      "tank_violation_j": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "minimum_po_energy_j": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "projection_active_fraction": {
+        "mean": 0.1721375,
+        "std": 0.09265763506331422,
+        "min": 0.0,
+        "max": 0.30325
+      },
+      "maximum_torque_ratio": {
+        "mean": 0.8727044828041233,
+        "std": 0.006222662494156652,
+        "min": 0.8604608239711654,
+        "max": 0.8840361880066885
+      },
+      "nominal_infeasible_samples": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "maximum_absolute_energy_balance_residual_j": {
+        "mean": 0.5367419921473536,
+        "std": 0.0353656601262387,
+        "min": 0.48720660836053914,
+        "max": 0.5997664086143187
+      },
+      "qp_failures": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "solve_ms_mean": {
+        "mean": 0.03885773624999999,
+        "std": 0.0008313045732966237,
+        "min": 0.036903074999999994,
+        "max": 0.040496374999999994
+      },
+      "solve_ms_p95": {
+        "mean": 0.04613615249999999,
+        "std": 0.001562073867068274,
+        "min": 0.04414584999999999,
+        "max": 0.04958924999999999
+      },
+      "solve_ms_max": {
+        "mean": 0.06524375000000002,
+        "std": 0.02387696982201843,
+        "min": 0.04575,
+        "max": 0.140084
+      }
+    },
+    "main_benchmark_vs_unguarded_pct": 5.12565905461594,
+    "diagnostic": {
+      "total_variation_of_applied_residual_N": 51.77209612779245,
+      "tv_per_second_N_per_s": 12.946260597098453,
+      "activation_events": 3,
+      "activation_events_per_second": 0.7501875468867835,
+      "manager_updates_total": 80,
+      "rms_position_mm_when_active": 15.225012237365513,
+      "rms_position_mm_when_inactive": 18.28920739932078,
+      "fraction_active": 0.25725
+    },
+    "leakage_sweep": {
+      "seeds_per_level": 5,
+      "rows": [
+        {
+          "leakage": 0.0,
+          "intentional_axis_error_rms_mm_mean": 13.009514053933227,
+          "intentional_axis_error_rms_mm_std": 0.025652261882836223,
+          "intentional_response_ratio_mean": 0.7090427261886422,
+          "minimum_tank_j_min": 0.02,
+          "maximum_torque_ratio": 0.86084274705043,
+          "qp_failures": 0
+        },
+        {
+          "leakage": 0.1,
+          "intentional_axis_error_rms_mm_mean": 13.818616182930853,
+          "intentional_axis_error_rms_mm_std": 0.0259061846216433,
+          "intentional_response_ratio_mean": 0.68787599173953,
+          "minimum_tank_j_min": 0.02,
+          "maximum_torque_ratio": 0.8670545746698185,
+          "qp_failures": 0
+        },
+        {
+          "leakage": 0.25,
+          "intentional_axis_error_rms_mm_mean": 15.065347369108665,
+          "intentional_axis_error_rms_mm_std": 0.026176263494087595,
+          "intentional_response_ratio_mean": 0.6560697964383311,
+          "minimum_tank_j_min": 0.020000000000000018,
+          "maximum_torque_ratio": 0.8647767422247119,
+          "qp_failures": 0
+        },
+        {
+          "leakage": 0.5,
+          "intentional_axis_error_rms_mm_mean": 17.21001981875648,
+          "intentional_axis_error_rms_mm_std": 0.026450248930879102,
+          "intentional_response_ratio_mean": 0.6029662438625876,
+          "minimum_tank_j_min": 0.03710762945920884,
+          "maximum_torque_ratio": 0.8615045828233353,
+          "qp_failures": 0
+        }
+      ]
+    },
+    "sensing_realism_sweep": {
+      "leakage": 0.25,
+      "seeds_per_level": 5,
+      "rows": [
+        {
+          "condition": "baseline",
+          "intentional_axis_error_rms_mm_mean": 15.080230443008105,
+          "intentional_axis_error_rms_mm_std": 0.006857172363841217,
+          "intentional_response_ratio_mean": 0.6557788233197854,
+          "minimum_tank_j_min": 0.020000000000000018,
+          "maximum_torque_ratio": 0.864273040474728,
+          "qp_failures": 0
+        },
+        {
+          "condition": "delay only",
+          "intentional_axis_error_rms_mm_mean": 14.91854931696891,
+          "intentional_axis_error_rms_mm_std": 0.006874788039494387,
+          "intentional_response_ratio_mean": 0.6594394292879606,
+          "minimum_tank_j_min": 0.02000000000000002,
+          "maximum_torque_ratio": 0.8627782308767598,
+          "qp_failures": 0
+        },
+        {
+          "condition": "colored noise only",
+          "intentional_axis_error_rms_mm_mean": 15.080887380573945,
+          "intentional_axis_error_rms_mm_std": 0.015102968490647737,
+          "intentional_response_ratio_mean": 0.6556508359984577,
+          "minimum_tank_j_min": 0.020000000000000018,
+          "maximum_torque_ratio": 0.8648459335418736,
+          "qp_failures": 0
+        },
+        {
+          "condition": "velocity bias only",
+          "intentional_axis_error_rms_mm_mean": 15.443199865030135,
+          "intentional_axis_error_rms_mm_std": 0.007016779280085549,
+          "intentional_response_ratio_mean": 0.6467924536120295,
+          "minimum_tank_j_min": 0.020000000000000018,
+          "maximum_torque_ratio": 0.8643394159200207,
+          "qp_failures": 0
+        },
+        {
+          "condition": "all combined",
+          "intentional_axis_error_rms_mm_mean": 15.284489014421194,
+          "intentional_axis_error_rms_mm_std": 0.015423925099123255,
+          "intentional_response_ratio_mean": 0.6502919291081961,
+          "minimum_tank_j_min": 0.020000000000000018,
+          "maximum_torque_ratio": 0.8619239100586233,
+          "qp_failures": 0
+        }
+      ]
+    },
+    "wall_clock_s": 189.48880195617676
+  },
+  "50Hz": {
+    "manager_dt_ms": 20.0,
+    "horizon_s": 0.2,
+    "main_benchmark_summary": {
+      "residual_rms_mm": {
+        "mean": 19.50408588592682,
+        "std": 0.6987556602481411,
+        "min": 18.534464906555222,
+        "max": 20.543840917414865
+      },
+      "residual_peak_mm": {
+        "mean": 31.575084002968474,
+        "std": 1.7098478001803543,
+        "min": 29.42249240593757,
+        "max": 34.9953213142781
+      },
+      "minimum_tank_j": {
+        "mean": 0.020000000000000007,
+        "std": 4.431638206809537e-18,
+        "min": 0.02,
+        "max": 0.020000000000000014
+      },
+      "tank_violation_j": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "minimum_po_energy_j": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "projection_active_fraction": {
+        "mean": 0.2738375,
+        "std": 0.04450859430610299,
+        "min": 0.199,
+        "max": 0.347
+      },
+      "maximum_torque_ratio": {
+        "mean": 0.8677463200157115,
+        "std": 0.010580650322530773,
+        "min": 0.8511623188660934,
+        "max": 0.8887963646061755
+      },
+      "nominal_infeasible_samples": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "maximum_absolute_energy_balance_residual_j": {
+        "mean": 0.5031421750513327,
+        "std": 0.026139195379960744,
+        "min": 0.4727270493610443,
+        "max": 0.5634527044143052
+      },
+      "qp_failures": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "solve_ms_mean": {
+        "mean": 0.06766655375,
+        "std": 0.0016045982521317944,
+        "min": 0.063541715,
+        "max": 0.07009979
+      },
+      "solve_ms_p95": {
+        "mean": 0.07771430999999998,
+        "std": 0.0029764673389156447,
+        "min": 0.07031904999999998,
+        "max": 0.08212919999999999
+      },
+      "solve_ms_max": {
+        "mean": 0.11743534999999998,
+        "std": 0.03054809589255157,
+        "min": 0.08437499999999999,
+        "max": 0.16924999999999998
+      }
+    },
+    "main_benchmark_vs_unguarded_pct": 16.25718541699474,
+    "diagnostic": {
+      "total_variation_of_applied_residual_N": 110.41467606691862,
+      "tv_per_second_N_per_s": 27.61057165964684,
+      "activation_events": 13,
+      "activation_events_per_second": 3.2508127031760616,
+      "manager_updates_total": 200,
+      "rms_position_mm_when_active": 19.79519383794801,
+      "rms_position_mm_when_inactive": 16.600243100931625,
+      "fraction_active": 0.347
+    },
+    "leakage_sweep": {
+      "seeds_per_level": 5,
+      "rows": [
+        {
+          "leakage": 0.0,
+          "intentional_axis_error_rms_mm_mean": 12.060523739793366,
+          "intentional_axis_error_rms_mm_std": 0.00997753422345474,
+          "intentional_response_ratio_mean": 0.7334341360190493,
+          "minimum_tank_j_min": 0.02,
+          "maximum_torque_ratio": 0.8517387173865736,
+          "qp_failures": 0
+        },
+        {
+          "leakage": 0.1,
+          "intentional_axis_error_rms_mm_mean": 12.742780117036137,
+          "intentional_axis_error_rms_mm_std": 0.01040687475710278,
+          "intentional_response_ratio_mean": 0.7152587618838728,
+          "minimum_tank_j_min": 0.02,
+          "maximum_torque_ratio": 0.849679017210163,
+          "qp_failures": 0
+        },
+        {
+          "leakage": 0.25,
+          "intentional_axis_error_rms_mm_mean": 13.792582611337744,
+          "intentional_axis_error_rms_mm_std": 0.010988544530304713,
+          "intentional_response_ratio_mean": 0.6879672469935704,
+          "minimum_tank_j_min": 0.02,
+          "maximum_torque_ratio": 0.8530180726107611,
+          "qp_failures": 0
+        },
+        {
+          "leakage": 0.5,
+          "intentional_axis_error_rms_mm_mean": 15.597605788389467,
+          "intentional_axis_error_rms_mm_std": 0.011683073527555972,
+          "intentional_response_ratio_mean": 0.6424280713430642,
+          "minimum_tank_j_min": 0.020000000000000007,
+          "maximum_torque_ratio": 0.8675640997226393,
+          "qp_failures": 0
+        }
+      ]
+    },
+    "sensing_realism_sweep": {
+      "leakage": 0.25,
+      "seeds_per_level": 5,
+      "rows": [
+        {
+          "condition": "baseline",
+          "intentional_axis_error_rms_mm_mean": 13.795777822823425,
+          "intentional_axis_error_rms_mm_std": 0.011177134900943634,
+          "intentional_response_ratio_mean": 0.6878883385961474,
+          "minimum_tank_j_min": 0.02,
+          "maximum_torque_ratio": 0.8528399848096073,
+          "qp_failures": 0
+        },
+        {
+          "condition": "delay only",
+          "intentional_axis_error_rms_mm_mean": 13.755282900924817,
+          "intentional_axis_error_rms_mm_std": 0.011144516069744074,
+          "intentional_response_ratio_mean": 0.6888040813479959,
+          "minimum_tank_j_min": 0.02,
+          "maximum_torque_ratio": 0.8528528482825537,
+          "qp_failures": 0
+        },
+        {
+          "condition": "colored noise only",
+          "intentional_axis_error_rms_mm_mean": 13.796309368518715,
+          "intentional_axis_error_rms_mm_std": 0.040540643192545765,
+          "intentional_response_ratio_mean": 0.6878834154754705,
+          "minimum_tank_j_min": 0.02,
+          "maximum_torque_ratio": 0.853395264010297,
+          "qp_failures": 0
+        },
+        {
+          "condition": "velocity bias only",
+          "intentional_axis_error_rms_mm_mean": 14.14622923887713,
+          "intentional_axis_error_rms_mm_std": 0.011321248386484198,
+          "intentional_response_ratio_mean": 0.6790535793418473,
+          "minimum_tank_j_min": 0.02,
+          "maximum_torque_ratio": 0.8524594823650262,
+          "qp_failures": 0
+        },
+        {
+          "condition": "all combined",
+          "intentional_axis_error_rms_mm_mean": 14.10736060542898,
+          "intentional_axis_error_rms_mm_std": 0.04088944402431786,
+          "intentional_response_ratio_mean": 0.6799424938504544,
+          "minimum_tank_j_min": 0.02,
+          "maximum_torque_ratio": 0.8530002868831963,
+          "qp_failures": 0
+        }
+      ]
+    },
+    "wall_clock_s": 209.0106418132782
+  },
+  "100Hz": {
+    "manager_dt_ms": 10.0,
+    "horizon_s": 0.2,
+    "main_benchmark_summary": {
+      "residual_rms_mm": {
+        "mean": 19.39362422780205,
+        "std": 0.6087549368339399,
+        "min": 18.534628036696507,
+        "max": 20.282288169218646
+      },
+      "residual_peak_mm": {
+        "mean": 31.20996927920471,
+        "std": 1.7966342511875317,
+        "min": 28.587017877880946,
+        "max": 34.60017524109147
+      },
+      "minimum_tank_j": {
+        "mean": 0.020000000000000007,
+        "std": 4.502548920669662e-18,
+        "min": 0.02,
+        "max": 0.02000000000000001
+      },
+      "tank_violation_j": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "minimum_po_energy_j": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "projection_active_fraction": {
+        "mean": 0.2979124999999999,
+        "std": 0.04459394835920181,
+        "min": 0.22675,
+        "max": 0.38525
+      },
+      "maximum_torque_ratio": {
+        "mean": 0.8654143676557176,
+        "std": 0.010350753029609945,
+        "min": 0.8500802658982801,
+        "max": 0.8880561577845801
+      },
+      "nominal_infeasible_samples": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "maximum_absolute_energy_balance_residual_j": {
+        "mean": 0.49869004551807616,
+        "std": 0.022262307870624158,
+        "min": 0.47527610775050166,
+        "max": 0.5542191500950603
+      },
+      "qp_failures": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "solve_ms_mean": {
+        "mean": 0.15777922775,
+        "std": 0.0009417777937416088,
+        "min": 0.15560053749999997,
+        "max": 0.159378035
+      },
+      "solve_ms_p95": {
+        "mean": 0.17164400249999998,
+        "std": 0.0033531997478243474,
+        "min": 0.16698929999999998,
+        "max": 0.1781333
+      },
+      "solve_ms_max": {
+        "mean": 0.24656889999999998,
+        "std": 0.031126798771781004,
+        "min": 0.19633399999999998,
+        "max": 0.285458
+      }
+    },
+    "main_benchmark_vs_unguarded_pct": 19.512971323351216,
+    "diagnostic": {
+      "total_variation_of_applied_residual_N": 138.16700157023863,
+      "tv_per_second_N_per_s": 34.550387989559894,
+      "activation_events": 17,
+      "activation_events_per_second": 4.251062765691773,
+      "manager_updates_total": 400,
+      "rms_position_mm_when_active": 20.560878912614015,
+      "rms_position_mm_when_inactive": 16.067634142561385,
+      "fraction_active": 0.3545
+    },
+    "leakage_sweep": {
+      "seeds_per_level": 5,
+      "rows": [
+        {
+          "leakage": 0.0,
+          "intentional_axis_error_rms_mm_mean": 11.758606766950372,
+          "intentional_axis_error_rms_mm_std": 0.007446119297326087,
+          "intentional_response_ratio_mean": 0.7412261206617992,
+          "minimum_tank_j_min": 0.02,
+          "maximum_torque_ratio": 0.8516490917053653,
+          "qp_failures": 0
+        },
+        {
+          "leakage": 0.1,
+          "intentional_axis_error_rms_mm_mean": 12.398850411792264,
+          "intentional_axis_error_rms_mm_std": 0.007170097827376758,
+          "intentional_response_ratio_mean": 0.7240664671669705,
+          "minimum_tank_j_min": 0.02,
+          "maximum_torque_ratio": 0.8500956612828173,
+          "qp_failures": 0
+        },
+        {
+          "leakage": 0.25,
+          "intentional_axis_error_rms_mm_mean": 13.382896327050313,
+          "intentional_axis_error_rms_mm_std": 0.006801258842418407,
+          "intentional_response_ratio_mean": 0.6983212766594897,
+          "minimum_tank_j_min": 0.02,
+          "maximum_torque_ratio": 0.8476495232088186,
+          "qp_failures": 0
+        },
+        {
+          "leakage": 0.5,
+          "intentional_axis_error_rms_mm_mean": 15.072592349024537,
+          "intentional_axis_error_rms_mm_std": 0.006315464370436212,
+          "intentional_response_ratio_mean": 0.6554134464837931,
+          "minimum_tank_j_min": 0.020000000000000004,
+          "maximum_torque_ratio": 0.8577209642763675,
+          "qp_failures": 0
+        }
+      ]
+    },
+    "sensing_realism_sweep": {
+      "leakage": 0.25,
+      "seeds_per_level": 5,
+      "rows": [
+        {
+          "condition": "baseline",
+          "intentional_axis_error_rms_mm_mean": 13.384187922396759,
+          "intentional_axis_error_rms_mm_std": 0.007890260286048313,
+          "intentional_response_ratio_mean": 0.6982953732828028,
+          "minimum_tank_j_min": 0.02,
+          "maximum_torque_ratio": 0.8475662780322422,
+          "qp_failures": 0
+        },
+        {
+          "condition": "delay only",
+          "intentional_axis_error_rms_mm_mean": 13.367713607970435,
+          "intentional_axis_error_rms_mm_std": 0.007813058183887835,
+          "intentional_response_ratio_mean": 0.6986685549126402,
+          "minimum_tank_j_min": 0.02,
+          "maximum_torque_ratio": 0.8475022300537278,
+          "qp_failures": 0
+        },
+        {
+          "condition": "colored noise only",
+          "intentional_axis_error_rms_mm_mean": 13.374293409489633,
+          "intentional_axis_error_rms_mm_std": 0.039146380685880056,
+          "intentional_response_ratio_mean": 0.6985352766325016,
+          "minimum_tank_j_min": 0.02,
+          "maximum_torque_ratio": 0.8477947935184901,
+          "qp_failures": 0
+        },
+        {
+          "condition": "velocity bias only",
+          "intentional_axis_error_rms_mm_mean": 13.729879590059642,
+          "intentional_axis_error_rms_mm_std": 0.008063455615297485,
+          "intentional_response_ratio_mean": 0.6895211265350691,
+          "minimum_tank_j_min": 0.02,
+          "maximum_torque_ratio": 0.847875978643723,
+          "qp_failures": 0
+        },
+        {
+          "condition": "all combined",
+          "intentional_axis_error_rms_mm_mean": 13.704066710276749,
+          "intentional_axis_error_rms_mm_std": 0.03931899081184556,
+          "intentional_response_ratio_mean": 0.6901222952045473,
+          "minimum_tank_j_min": 0.02,
+          "maximum_torque_ratio": 0.8479749851201762,
+          "qp_failures": 0
+        }
+      ]
+    },
+    "wall_clock_s": 286.64689803123474
+  }
+}
