@@ -171,6 +171,7 @@ class RobotModel:
     base_error_bound: Array
     true_h_error_fn: Callable[[float], Array]
     true_base_error_fn: Callable[[float], Array]
+    heldout_perturbation_seed: int
 
     def h_nominal(self, state: Array, t: float) -> Array:
         return np.asarray(self.h_nominal_fn(state, t), dtype=float)
@@ -291,15 +292,39 @@ def make_robots() -> dict[str, RobotModel]:
 
         return base
 
-    def error_matrix(h: Array, fraction: float) -> Array:
-        return fraction * np.maximum(np.abs(h), 0.25)
+    def heldout_error_functions(
+        reference_h: Array,
+        n_act: int,
+        seed: int,
+    ) -> tuple[Callable[[float], Array], Callable[[float], Array]]:
+        """Create plant perturbations independently of the manager's bounds.
 
-    def true_error_factory(bound: Array, phases: Array) -> Callable[[float], Array]:
-        return lambda t: bound * np.sin(1.7 * t + phases[:, None])
+        The manager knows only the declared coefficient boxes used below in
+        ``h_bound`` and ``b_bound``.  A separate deterministic seed selects
+        held-out coefficients, phases, and frequencies; none of those realized
+        values are supplied to prediction or tightening.  Their amplitudes are
+        strictly inside the declared boxes, so this remains a synthetic robust-
+        set validation rather than system identification.
+        """
 
-    def true_base_factory(bound: Array) -> Callable[[float], Array]:
-        phases = np.arange(bound.size) * 0.71
-        return lambda t: bound * np.sin(2.1 * t + phases)
+        rng = np.random.default_rng(seed)
+        h_magnitude = np.maximum(np.abs(reference_h), 0.25)
+        h_coefficients = rng.uniform(-0.0065, 0.0065, size=reference_h.shape)
+        h_phases = rng.uniform(-np.pi, np.pi, size=reference_h.shape)
+        h_frequencies = rng.uniform(1.1, 2.3, size=reference_h.shape)
+        base_amplitudes = rng.uniform(0.012, 0.027, size=n_act)
+        base_phases = rng.uniform(-np.pi, np.pi, size=n_act)
+        base_frequencies = rng.uniform(1.4, 2.6, size=n_act)
+
+        def h_error(t: float) -> Array:
+            return h_magnitude * h_coefficients * np.sin(
+                h_frequencies * t + h_phases
+            )
+
+        def base_error(t: float) -> Array:
+            return base_amplitudes * np.sin(base_frequencies * t + base_phases)
+
+        return h_error, base_error
 
     specs = [
         (
@@ -308,6 +333,7 @@ def make_robots() -> dict[str, RobotModel]:
             2.2,
             planar_h,
             np.array([1.1, 0.9]),
+            31,
         ),
         (
             "fr3_surrogate",
@@ -315,6 +341,7 @@ def make_robots() -> dict[str, RobotModel]:
             3.0,
             fr3_h,
             np.array([2.5, 2.0, 1.8, 2.4, 1.1, 1.0, 0.7]),
+            37,
         ),
         (
             "arm6_surrogate",
@@ -322,14 +349,21 @@ def make_robots() -> dict[str, RobotModel]:
             2.6,
             arm6_h,
             np.array([1.8, 1.5, 1.3, 1.2, 0.9, 0.7]),
+            41,
         ),
     ]
     robots: dict[str, RobotModel] = {}
-    for name, limits, mass, h_fn, base_scale in specs:
+    for name, limits, mass, h_fn, base_scale, perturbation_seed in specs:
         h0 = h_fn(np.zeros(4), 0.0)
-        h_bound = error_matrix(h0, 0.008)
+        # These declared coefficient boxes define the manager's analytical
+        # uncertainty envelope.  The true perturbation below is sampled once
+        # from a separate held-out parameterization and is not constructed by
+        # multiplying these bound arrays by a waveform.
+        h_bound = 0.008 * np.maximum(np.abs(h0), 0.25)
         b_bound = 0.03 * np.ones(limits.size)
-        phases = np.arange(limits.size, dtype=float) * 0.37
+        true_h_error, true_base_error = heldout_error_functions(
+            h0, limits.size, perturbation_seed
+        )
         robots[name] = RobotModel(
             name=name,
             n_act=limits.size,
@@ -339,8 +373,9 @@ def make_robots() -> dict[str, RobotModel]:
             base_nominal_fn=base_factory(base_scale),
             h_error_bound=h_bound,
             base_error_bound=b_bound,
-            true_h_error_fn=true_error_factory(h_bound, phases),
-            true_base_error_fn=true_base_factory(b_bound),
+            true_h_error_fn=true_h_error,
+            true_base_error_fn=true_base_error,
+            heldout_perturbation_seed=perturbation_seed,
         )
     return robots
 
@@ -879,7 +914,15 @@ def governor_scale(
     *,
     tightening: bool = True,
 ) -> float:
-    """Horizon reference governor using one scalar command multiplier."""
+    """Matched horizon trajectory-reference governor using one scalar multiplier.
+
+    This ERG-style comparison baseline shares the proposed manager's plant
+    model, update rate, horizon, scheduled actuator limits, and uncertainty
+    tightening.  It is intentionally not an exact implementation of any cited
+    Lyapunov/dynamic-safety-margin ERG: the admissible scalar is found directly
+    by rolling out the governed reference and testing the same finite-horizon
+    torque and state constraints used elsewhere in this benchmark.
+    """
 
     dt = cfg.slow_dt
 

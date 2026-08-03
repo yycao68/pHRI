@@ -24,7 +24,7 @@ def _find_existing(candidates: list[Path], description: str) -> Path:
     raise FileNotFoundError(f"Could not find {description}. Tried:\n  {tried}")
 
 
-def _wait_for_stable_file(path: Path, timeout_s: float = 30.0) -> None:
+def _wait_for_stable_file(path: Path, timeout_s: float = 90.0) -> None:
     deadline = time.monotonic() + timeout_s
     last_size = -1
     stable_checks = 0

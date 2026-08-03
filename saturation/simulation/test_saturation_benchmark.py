@@ -11,6 +11,7 @@ from saturation_benchmark import (
     BenchmarkConfig,
     RunOptions,
     Scenario,
+    governor_scale,
     make_controllers,
     make_robots,
     make_scenarios,
@@ -78,6 +79,39 @@ def test_horizon_wide_rows_prevent_infeasible_future_plan():
     assert full["maximum_planned_torque_violation_Nm"] < 1.0e-4
     assert first["maximum_planned_torque_violation_Nm"] > 1.0
     assert full["peak_position_violation_m"] < first["peak_position_violation_m"]
+
+
+def test_matched_reference_governor_uses_future_limit_schedule():
+    """The numerical comparator must be predictive, not a current-step filter."""
+    robots, controllers, scenarios, _cfg = _objects()
+    robot = robots["fr3_surrogate"]
+    controller = controllers["impedance"]
+    scenario = scenarios["horizon_ramp"]
+    state = np.asarray(scenario.initial_state, dtype=float)
+    t = 0.62
+    force = scenario.human_force(t)
+
+    current_step_alpha = governor_scale(
+        controller,
+        robot,
+        state,
+        scenario,
+        t,
+        force,
+        BenchmarkConfig(horizon=1),
+    )
+    horizon_alpha = governor_scale(
+        controller,
+        robot,
+        state,
+        scenario,
+        t,
+        force,
+        BenchmarkConfig(horizon=12),
+    )
+
+    assert current_step_alpha == 1.0
+    assert horizon_alpha < 0.9
 
 
 def test_uncertainty_tightening_removes_preclip_excess():
@@ -163,6 +197,29 @@ def test_same_sampled_interface_audit_holds_across_robots():
         metrics = summarize(log, cfg)
         assert metrics["torque_error_bound_satisfied"]
         assert metrics["sampled_interface_audit_passed"]
+
+
+def test_heldout_true_plant_coefficients_stay_inside_declared_boxes():
+    """Held-out plants must be reproducible without reusing bound waveforms."""
+    robots, _controllers, _scenarios, _cfg = _objects()
+    assert {robot.heldout_perturbation_seed for robot in robots.values()} == {
+        31,
+        37,
+        41,
+    }
+    for robot in robots.values():
+        normalized_h_samples = []
+        for t in np.linspace(0.0, 1.6, 41):
+            h_error = robot.true_h_error_fn(float(t))
+            base_error = robot.true_base_error_fn(float(t))
+            assert np.all(np.abs(h_error) <= robot.h_error_bound + 1.0e-12)
+            assert np.all(np.abs(base_error) <= robot.base_error_bound + 1.0e-12)
+            normalized_h_samples.append(h_error / robot.h_error_bound)
+
+        # A bound-scaled common sinusoid would give the same normalized value
+        # across all entries.  The held-out coefficient/phase/frequency draw
+        # deliberately does not have that construction.
+        assert any(np.std(sample) > 1.0e-3 for sample in normalized_h_samples)
 
 
 def test_t2_slack_subtracts_the_tightening_bound_from_the_raw_margin():

@@ -68,7 +68,7 @@ METHOD_LABELS = {
     "nominal_unbounded": "nominal diagnostic (no torque projection)",
     "clipping": "clipping",
     "reactive_filter": "reactive projection",
-    "reference_governor": "scalar reference governor + projection",
+    "reference_governor": "matched horizon reference governor + projection",
     "proposed": "proposed",
 }
 
@@ -798,6 +798,13 @@ def main() -> None:
             "deterministic reduced-order 2-D simulation; FR3/arm6 cases are "
             "actuator-geometry surrogates, not rigid-body or hardware validation"
         ),
+        "comparison_scope": (
+            "The reference_governor channel is a matched ERG-style trajectory-"
+            "reference baseline: it uses the same model, 20 ms update period, "
+            "0.24 s horizon, limit schedule, tightening, and 1 kHz final "
+            "projection as the proposed method. It is not a reproduction of "
+            "the Lyapunov/dynamic-safety-margin algorithm in reference [17]."
+        ),
         "configuration": serializable_config(cfg),
         "shared_audit_config_hash": cfg.audit_config_hash(),
         "robots": {
@@ -805,6 +812,7 @@ def main() -> None:
                 "n_act": robot.n_act,
                 "torque_limits": robot.torque_limits.tolist(),
                 "mass": robot.mass,
+                "heldout_perturbation_seed": robot.heldout_perturbation_seed,
             }
             for name, robot in robots.items()
         },
