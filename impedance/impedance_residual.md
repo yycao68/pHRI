@@ -51,44 +51,32 @@ Predictive impedance adaptation is also mature. Haninger, Hegeler, and Peternel 
 
 Energy supervision predates all of these predictive controllers. Hannaford and Ryu's time-domain PO/PC measures sampled port energy and adds exactly the damping required to eliminate generated energy [7]. Ferraguti, Secchi, and Fantuzzi use energy tanks to render time-varying stiffness passively [8], and related layered energy-tank architectures have been demonstrated in robotic surgery [9]. Guo *et al.* introduce ultimate passivity, switching between performance and conservative modes while retaining an ultimate energy bound [10].
 
-**Table 1. Closest architectures and the remaining distinction.**
-
-| Method | Optimized or supervised quantity | Energy mechanism | Validation |
-|---|---|---|---|
-| Hannaford--Ryu [7] | arbitrary sampled port | zero-reference PO/PC damping | haptic hardware |
-| Tank-based impedance [8], [9] | time-varying interaction behavior | stored energy | robot prototypes |
-| Passive MP impedance [2] | complementary torque | predicted stored-energy constraint | Franka experiment |
-| Predictive impedance/VIC [3]--[5] | trajectory and/or impedance | task-specific constraints/passivity | robot experiments |
-| Predictive admittance [6] | admittance parameters | embedded passivity constraint | Jaco-2, seven participants |
-| Ultimate passivity [10] | controller mode | ultimate energy bound | impedance/admittance robots |
-| **This study** | additive residual wrench | 100 Hz proposal, 1 kHz energy/torque projection | 7-DoF rigid-body simulation |
+These closest architectures differ along the same three axes: what quantity is optimized or supervised, what mechanism enforces energy safety, and how the method was validated. Hannaford and Ryu's PO/PC [7] supervises an arbitrary sampled port with zero-reference damping, validated on haptic hardware. Tank-based impedance methods [8], [9] instead supervise time-varying interaction behavior through stored energy, validated on robot prototypes. Passive model-predictive impedance [2] optimizes complementary torque under a predicted stored-energy constraint, validated on a Franka experiment. Predictive impedance/variable-impedance methods [3]--[5] optimize the trajectory and/or impedance itself under task-specific constraints or passivity, validated on robot experiments. Predictive admittance [6] optimizes admittance parameters under an embedded passivity constraint, validated with a Jaco-2 and seven participants. Ultimate passivity [10] instead switches controller mode to retain an ultimate energy bound, validated on impedance/admittance robots. This study optimizes an additive residual wrench through a 100 Hz proposal and a 1 kHz energy/torque projection, validated in 7-DoF rigid-body simulation.
 
 The remaining question is therefore narrow: can a predictive residual wrench be given a finite, replenishable energy budget and realized at a faster rate without altering the nominal impedance or violating the complete torque interface?
 
 ## 4. Robot Dynamics and Control Architecture
 
-This section builds the physical model underneath Section 2's informal walkthrough, in the order the loop actually needs it: the robot's own dynamics first (4.A), then the impedance law that is the real physical controller (4.B), then the admittance law that is *not* used physically but supplies the analytical reference the residual tracks (4.C), and finally the error-coordinate model the MPC of Section 5 actually predicts (4.D). Table 0 collects every symbol introduced along the way.
+This section builds the physical model underneath Section 2's informal walkthrough, in the order the loop actually needs it: the robot's own dynamics first (4.A), then the impedance law that is the real physical controller (4.B), then the admittance law that is *not* used physically but supplies the analytical reference the residual tracks (4.C), and finally the error-coordinate model the MPC of Section 5 actually predicts (4.D). The notation below collects every symbol introduced along the way.
 
-**Table 0. Notation.**
+**Notation.**
 
-| Symbol | Meaning | Units |
-|---|---|---|
-| \(q,\dot q\) | joint position, velocity | rad, rad/s |
-| \(M(q),h(q,\dot q)\) | joint mass matrix, gravity/Coriolis bias | kg·m², N·m |
-| \(J_v(q),J_\omega(q)\) | translational, rotational task Jacobian | — |
-| \(\tau\) | commanded joint torque | N·m |
-| \(F=F_h+d+F_e\) | total task-space force: intentional, rejectable, environment | N |
-| \(\Lambda\) | translational operational (task-space) inertia | kg |
-| \(p,v=J_v\dot q\) | task position, velocity | m, m/s |
-| \(e=p-p_0\) | position error against the fixed nominal pose \(p_0\) | m |
-| \(K_I,D_I\) | rendered impedance stiffness, damping | N/m, N·s/m |
-| \(F_I\) | impedance-law wrench (the physical nominal) | N |
-| \(\tau_I\) | complete nominal joint torque (impedance + orientation + posture) | N·m |
-| \(x_I\) | admittance-law reference trajectory (analytical only, never commanded) | m |
-| \(z=e-x_I\) | residual: how far the real error is from the admittance reference | m |
-| \(F_r\) | MPC's proposed residual wrench | N |
-| \(H\) | impedance storage (energy-like Lyapunov function) | J |
-| \(E\) | residual-energy tank ledger | J |
+- \(q,\dot q\) -- joint position, velocity (rad, rad/s)
+- \(M(q),h(q,\dot q)\) -- joint mass matrix, gravity/Coriolis bias (kg·m², N·m)
+- \(J_v(q),J_\omega(q)\) -- translational, rotational task Jacobian
+- \(\tau\) -- commanded joint torque (N·m)
+- \(F=F_h+d+F_e\) -- total task-space force: intentional, rejectable, environment (N)
+- \(\Lambda\) -- translational operational (task-space) inertia (kg)
+- \(p,v=J_v\dot q\) -- task position, velocity (m, m/s)
+- \(e=p-p_0\) -- position error against the fixed nominal pose \(p_0\) (m)
+- \(K_I,D_I\) -- rendered impedance stiffness, damping (N/m, N·s/m)
+- \(F_I\) -- impedance-law wrench, the physical nominal (N)
+- \(\tau_I\) -- complete nominal joint torque: impedance + orientation + posture (N·m)
+- \(x_I\) -- admittance-law reference trajectory, analytical only, never commanded (m)
+- \(z=e-x_I\) -- residual: how far the real error is from the admittance reference (m)
+- \(F_r\) -- MPC's proposed residual wrench (N)
+- \(H\) -- impedance storage, an energy-like Lyapunov function (J)
+- \(E\) -- residual-energy tank ledger (J)
 
 ### 4.A Joint and task dynamics
 
@@ -334,7 +322,7 @@ A second, satellite sweep at a fixed mid-range leakage (\(\lambda=0.25\)) adds t
 
 ### 7.1 Matched FR3 benchmark
 
-**Table 2. Twenty matched FR3 trials, mean ± sample standard deviation. Torque ratio is relative to the derated 28% continuous envelope.**
+**Table 1. Twenty matched FR3 trials, mean ± sample standard deviation. Torque ratio is relative to the derated 28% continuous envelope.**
 
 | Controller | residual RMS (mm) | residual peak (mm) | minimum ledger/PO (J) | authorization active | peak torque ratio |
 |---|---:|---:|---:|---:|---:|
@@ -351,7 +339,7 @@ Every accepted trial has zero nominal-torque infeasibility and zero QP failure. 
 
 ### 7.2 Force-separation leakage
 
-**Table 3. Intentional-force leakage, five matched noise seeds per level.**
+**Table 2. Intentional-force leakage, five matched noise seeds per level.**
 
 | leakage \(\lambda\) | intentional-axis error RMS (mm) | realized/reference response ratio | minimum tank (J) |
 |---:|---:|---:|---:|
@@ -362,7 +350,7 @@ Every accepted trial has zero nominal-torque infeasibility and zero QP failure. 
 
 At 50% leakage, fidelity error is 28.2% higher than at zero leakage and the mean response ratio falls by 8.6 percentage points. The tank and torque invariants still hold; the failure is semantic rather than numerical. The controller safely does the wrong thing because part of the intentional human input is mislabeled as a disturbance. This result makes force decomposition a first-order interface requirement rather than a footnote.
 
-**Table 4. Sensing-realism sweep at fixed \(\lambda=0.25\) leakage, five matched seeds per condition.**
+**Table 3. Sensing-realism sweep at fixed \(\lambda=0.25\) leakage, five matched seeds per condition.**
 
 | Condition | intentional-axis error RMS (mm) | response ratio | minimum tank (J) |
 |---|---:|---:|---:|
@@ -372,13 +360,13 @@ At 50% leakage, fidelity error is 28.2% higher than at zero leakage and the mean
 | Velocity bias only (5 mm/s) | 13.730 ± 0.008 | 0.690 | 0.020 |
 | All combined | 13.704 ± 0.039 | 0.690 | 0.020 |
 
-The baseline row is this sweep's own \(\lambda=0.25\) draw (different seeds from, but statistically consistent with, Table 3's 13.383 mm). None of the three individually degrades fidelity error by more than 2.6% relative to baseline, and the tank floor and torque envelope hold in every condition -- the safety certificates are not sensitive to these particular sensing imperfections at these levels. The one-tick estimator delay and the colored-noise correlation structure leave the mean essentially unchanged; colored noise instead widens the across-seed standard deviation roughly fivefold (0.008 to 0.039 mm), because temporally correlated noise resists the horizon's implicit averaging. The velocity-estimate bias is the dominant of the three, degrading fidelity error by 2.6% and the response ratio by 0.9 percentage points, because it corrupts the state the residual MPC itself feeds back on, not merely the disturbance estimate. The combined condition tracks the velocity-bias-only condition closely rather than summing the three effects, mirroring the leakage sweep's own message: safety (tank, torque) survives these corruptions, but task fidelity degrades in proportion to which channel is corrupted, and no causal claim beyond the tabulated numbers is made for why the combined condition does not exceed the velocity-bias-only one.
+The baseline row is this sweep's own \(\lambda=0.25\) draw (different seeds from, but statistically consistent with, Table 2's 13.383 mm). None of the three individually degrades fidelity error by more than 2.6% relative to baseline, and the tank floor and torque envelope hold in every condition -- the safety certificates are not sensitive to these particular sensing imperfections at these levels. The one-tick estimator delay and the colored-noise correlation structure leave the mean essentially unchanged; colored noise instead widens the across-seed standard deviation roughly fivefold (0.008 to 0.039 mm), because temporally correlated noise resists the horizon's implicit averaging. The velocity-estimate bias is the dominant of the three, degrading fidelity error by 2.6% and the response ratio by 0.9 percentage points, because it corrupts the state the residual MPC itself feeds back on, not merely the disturbance estimate. The combined condition tracks the velocity-bias-only condition closely rather than summing the three effects, mirroring the leakage sweep's own message: safety (tank, torque) survives these corruptions, but task fidelity degrades in proportion to which channel is corrupted, and no causal claim beyond the tabulated numbers is made for why the combined condition does not exceed the velocity-bias-only one.
 
 ### 7.3 Manager-rate sensitivity: no universal winner
 
 Sections 6-7 fix the manager at 100 Hz. To check whether that choice was load-bearing, the main matched benchmark, the leakage sweep, and the sensing-realism sweep were rerun at 20 Hz and 50 Hz as well, holding the horizon duration fixed at 0.20 s throughout -- only the re-check interval changes (50, 20, or 10 ms), not the manager's lookahead.
 
-**Table 5. Manager-rate sweep, main matched benchmark, two-rate controller only (20 seeds).**
+**Table 4. Manager-rate sweep, main matched benchmark, two-rate controller only (20 seeds).**
 
 | Manager rate | RMS (mm) | Peak (mm) | Authorization active | vs. unguarded MPC | Solve max / period |
 |---|---:|---:|---:|---:|---:|
@@ -388,7 +376,7 @@ Sections 6-7 fix the manager at 100 Hz. To check whether that choice was load-be
 
 In this oscillatory wall-contact-plus-disturbance scenario, 20 Hz gives the lowest RMS, the least-frequent intervention, and (in this run) the smallest computational burden relative to its own deadline; solve-time maxima are wall-clock and have been observed to vary run-to-run by 2-3\(\times\) at a fixed rate, so `rate_sweep.py`'s own output is the source of record rather than this table's specific figures. A representative trial's diagnostics explain the ranking, not just describe it: at 20 Hz the applied correction has a total variation of 12.9 N/s and 0.75 activation events per second, versus 34.6 N/s and 4.25 events per second at 100 Hz -- almost triple the chatter. More tellingly, at 20 Hz tracking is *better* while the tank is active than while idle (15.2 versus 18.3 mm RMS); at 100 Hz this reverses (20.6 versus 16.1 mm). A slower manager commits to fewer, larger, apparently more coherent corrections in this scenario; a faster one re-solves before the previous correction has had time to act, producing more frequent, less decisive adjustments -- a genuine chatter mechanism, not a fluke of one metric.
 
-**Table 6. Manager-rate sweep, force-separation leakage (5 seeds per level).**
+**Table 5. Manager-rate sweep, force-separation leakage (5 seeds per level).**
 
 | Manager rate | \(\lambda=0\) (mm) | \(\lambda=0.5\) (mm) | % degradation |
 |---|---:|---:|---:|
@@ -398,13 +386,13 @@ In this oscillatory wall-contact-plus-disturbance scenario, 20 Hz gives the lowe
 
 Under this different scenario -- a sustained intentional push with no wall or oscillatory disturbance -- the ranking **reverses**: 100 Hz gives the lowest error at every leakage level and 20 Hz the highest. Tracking a step-like sustained push is a settling-time problem rather than a disturbance-rejection problem, so a slower supervisory loop is plausibly sluggish to lock onto the correct steady correction -- the opposite failure mode from the oscillatory-disturbance case above. The sensing-realism sweep shows the same qualitative pattern (velocity bias dominant, colored noise widens variance, delay negligible) at all three rates, only shifted to each rate's own baseline; that shift is consistent with, not independent evidence for, the ranking in this table.
 
-**No manager rate dominates in both regimes tested, and neither compromises safety.** Zero tank violations, zero QP failures, and zero nominal infeasibilities hold at every rate in every scenario reported in this paper. The 100 Hz design point used throughout Sections 6-7.2 is the better choice for the sustained-push/leakage regime this paper otherwise emphasizes, but Table 5 shows it is not the best choice for the oscillatory wall-contact scenario, where a slower manager measurably reduces both intervention frequency and tracking error. Matching manager rate to the anticipated disturbance's own time scale -- rather than assuming faster is always safer -- is a real design question this benchmark exposes rather than resolves.
+**No manager rate dominates in both regimes tested, and neither compromises safety.** Zero tank violations, zero QP failures, and zero nominal infeasibilities hold at every rate in every scenario reported in this paper. The 100 Hz design point used throughout Sections 6-7.2 is the better choice for the sustained-push/leakage regime this paper otherwise emphasizes, but Table 4 shows it is not the best choice for the oscillatory wall-contact scenario, where a slower manager measurably reduces both intervention frequency and tracking error. Matching manager rate to the anticipated disturbance's own time scale -- rather than assuming faster is always safer -- is a real design question this benchmark exposes rather than resolves.
 
 ### 7.4 Interpretation
 
 The benchmark supports three claims. First, finite-horizon residual correction can improve the realized intentional impedance response under disturbances. Second, strict zero-reference PO/PC is substantially more conservative than a finite tank that can spend initial and dissipated energy. Third, the fast layer can preserve its explicit tank and torque interfaces even when the force classifier is wrong, so those certificates must not be confused with task or intent correctness. A fourth, unplanned finding (Section 7.3) is that no single manager rate is best across scenario types -- the right rate depends on whether the disturbance is oscillatory or a sustained step, and the paper's own headline rate is a choice for one of those regimes, not a universal optimum.
 
-The comparison does not establish superiority over passive model-predictive impedance [2], predictive variable-impedance methods [3]--[5], or predictive admittance [6]. Those controllers optimize different quantities and several have physical experiments. Table 1 is a representation comparison, not a numerical ranking.
+The comparison does not establish superiority over passive model-predictive impedance [2], predictive variable-impedance methods [3]--[5], or predictive admittance [6]. Those controllers optimize different quantities and several have physical experiments. The comparison in Section 3 is architectural, not a numerical ranking.
 
 ## 8. Scope and Limitations
 
@@ -436,7 +424,7 @@ python3 -m pytest -q \
   test_rate_sweep.py
 ```
 
-All simulation, verification, and test scripts live in `simulation/`. The primary script writes `simulation/fr3_two_rate_results.json` and `simulation/fr3_two_rate_results.png`. `rate_sweep.py` produces `simulation/rate_sweep_results.json`, the source for Table 5/6 and the manager-rate diagnostics of Section 7.3. The earlier 1-DoF benchmark remains available as a secondary algebra and inter-update audit. `state_of_art_search_log.md` records the literature-search scope and novelty decision.
+All simulation, verification, and test scripts live in `simulation/`. The primary script writes `simulation/fr3_two_rate_results.json` and `simulation/fr3_two_rate_results.png`. `rate_sweep.py` produces `simulation/rate_sweep_results.json`, the source for Table 4/5 and the manager-rate diagnostics of Section 7.3. The earlier 1-DoF benchmark remains available as a secondary algebra and inter-update audit. `state_of_art_search_log.md` records the literature-search scope and novelty decision.
 
 ## References
 
