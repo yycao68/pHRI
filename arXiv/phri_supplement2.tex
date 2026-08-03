@@ -18,6 +18,9 @@
 \newtheorem{remark}{Remark}
 \renewcommand{\thetheorem}{S\arabic{theorem}}
 \renewcommand{\theremark}{S\arabic{remark}}
+\renewcommand{\thesection}{S\arabic{section}}
+\renewcommand{\thetable}{S\arabic{table}}
+\renewcommand{\thefigure}{S\arabic{figure}}
 
 % Convenience macros (identical to phri_main.tex)
 \newcommand{\Lam}{\Lambda(q)}
@@ -69,8 +72,8 @@ are independent of the main paper's numbering.
 \section{Controllability and Detectability of the LPV Backbone}\label{sec:controllability}
 
 \begin{remark}[Controllability and Detectability]\label{rem:feasibility}
-The LPV system (8) of the main paper is uniformly controllable across
-all configurations $\rho_k$ in the singularity-free workspace. Since
+The frozen pair in (8) of the main paper is pointwise controllable at every
+fixed configuration $\rho$ in the singularity-free workspace. Since
 $\Lambda(q)$ in eq.~(2) is symmetric positive-definite for all $q$ away
 from kinematic singularities, $\Laminv$ is full rank, so $B_d(\rho_k)$
 has full column rank 3 (via its velocity block). With $A_d$ mixing
@@ -83,7 +86,8 @@ fixed configuration, and the infinite-horizon LQR gain
 \begin{equation*}
 K_\infty=(R+B_d^\top P_\infty B_d)^{-1}B_d^\top P_\infty A_d
 \end{equation*}
-is well-defined everywhere. For the augmented estimator, observability
+is well-defined everywhere, with the feedback convention
+$\Fmpc=-K_\infty x_e$. For the augmented estimator, observability
 of $[e;\dot e]$ together with full column rank of $B_d$ makes the
 constant disturbance state detectable: if a mode is unobservable from
 $C=[I_6\ 0]$, its $x_e$ component is zero; the augmented dynamics then
@@ -144,11 +148,7 @@ pre/post-multiplying by $Q^{-1}=P$ yields
 $A_\text{cl}(\rho)^\top PA_\text{cl}(\rho)-\varrho^2P\prec0$, for
 all $\rho\in\mathcal P$. Hence $V(x)=x^\top Px$ decreases along every
 trajectory regardless of how $\rho_k$ varies, which is exponential
-stability of this fixed-gain LPV closed loop. Composing with the
-detectable integrating-disturbance estimator of Theorem~2 of the main
-paper, the tracking error is offset-free at each constant-contact
-equilibrium the trajectory visits, \emph{for this fixed-gain closed
-loop}.
+stability of this fixed-gain, disturbance-free LPV closed loop.
 \end{proof}
 
 This is the polytope-level counterpart of the per-configuration DARE
@@ -166,10 +166,9 @@ LMI-certified linear feedback gain} --- the disturbance-free LPV closed
 loop $(A_d,B_d(\rho))$, with the input constraint inactive --- not
 workspace-wide stability of the complete deployed controller. In
 particular it does \textbf{not} by itself analyze: the disturbance
-estimator (offset-free tracking under the Kalman estimator is Theorem~2
-of the main paper's separate result, composed with
-Theorem~\ref{thm:workspace} only informally, in the last line of the
-proof above); the finite-horizon receding-horizon re-solve, whose
+estimator (offset-free tracking under the Kalman estimator is the
+separately scoped Theorem~2 of the main paper, and is not composed with
+Theorem~\ref{thm:workspace} here); the finite-horizon receding-horizon re-solve, whose
 realized policy at each step is the QP's actual minimizer, not the
 certified fixed $K$ (the unconstrained QP realizes \emph{a} member of
 this same class of linear state feedback, Theorem~1/Corollary~1 of the
@@ -384,7 +383,7 @@ XZ$\to$XY tilted & 25.07 & 0.31 & $\times$80\\
 \textbf{Analysis.} The MPC maintains sub-0.35\,mm RMSE across all
 planes, demonstrating that the $\Lam$-adaptive compliance in the QP
 (eq.~9 of the main paper) handles the off-diagonal operational-space
-inertia coupling without gain scheduling --- the controller was tuned
+inertia coupling without plane-specific gain retuning --- the controller was tuned
 and validated on the XZ plane alone (Benchmark~I), and the other three
 planes are a held-out generalization check, not a separately re-tuned
 result.
@@ -400,7 +399,7 @@ per waypoint).
 
 \begin{figure}[!t]
 \centering
-\includegraphics[width=0.85\columnwidth]{figures/guidance_controller_comparison.png}
+\includegraphics[width=\columnwidth]{figures/guidance_controller_comparison.png}
 \caption{Benchmark II --- reach-and-hold under directionally varied
 push. For visibility the plot shows D1/D2/D3/D7 (corresponding to
 G1/G2/G3/G7) plus the predictive variable-impedance MPVIC baseline;
@@ -459,77 +458,76 @@ the main paper's Benchmark~I discussion for the corresponding caveat.
 
 The benchmarks in the main paper apply constant or step forces. Because
 the framework targets \emph{interaction} dynamics broadly, we
-additionally exercise a \emph{time-varying} human force and measure a
-proxy for the $N$-step disturbance-prediction RMS $\varepsilon_N$ of
+additionally exercise a \emph{time-varying} human force and measure the
+$N$-step disturbance-prediction RMS $\varepsilon_N$ of
 Section~III-D of the main paper --- the quantity that bounds how well the
-flat random-walk prediction holds over the horizon. To isolate the
-effect of the force alone from configuration-driven terms, the robot
+flat random-walk prediction holds over the horizon. To reduce
+configuration-driven variation, the robot
 holds a \emph{static} target while a sinusoidal push
 $F_z=-A\sin(2\pi ft)$ of fixed amplitude $A=12$\,N and increasing
 frequency $f$ is applied, sweeping the disturbance rate
-$L_d=A\,2\pi f/\sqrt2$. The controller is DI-MPC + Kalman (C5, 100\,Hz
+$A\,2\pi f$, the injected sinusoid's peak derivative. Because the theorem
+concerns the aggregate disturbance, the table uses the reconstructed-log rate
+$L_{d,\mathrm{emp}}=\max_k\|d_{k+1}-d_k\|_2/\Delta t$.
+The controller is DI-MPC + Kalman (C5, 100\,Hz
 QP).
 
-\textbf{What $\varepsilon_N$ actually measures here.} Because the true
-disturbance $d_k$ is not directly logged in this experiment, we use the
-filtered estimate $\dhat_{k|k}$ as its proxy and the flat prediction
-$\dhat_{k|k-N}=\dhat_{k-N|k-N}$, so
-$\varepsilon_N=\mathrm{RMS}_k\|\dhat_{k|k}-\dhat_{k-N|k-N}\|$ measures
-the $N$-step \emph{self-consistency of the estimate}, not the main
-paper's eq.~(13) prediction error against the true $d_k$ directly ---
-the two agree only to the extent $\dhat$ has converged to $d$. This is
-visible in the $L_d=0$ (constant-force) row: the theoretical
-extrapolation term $L_dN\Delta t$ is exactly zero there, yet the
-measured $\varepsilon_N-\varepsilon_1=0.34$\,N is not --- that residual
-is the estimator's own process-noise jitter accumulated over $N$ steps,
-a real but different quantity from the extrapolation term. Table~\ref{tab:tv}
-should therefore be read as evidence \emph{consistent with} the
-linear-in-rate scaling eq.~(13) predicts, not a direct validation
-against ground truth; a true ground-truth check --- computing $d_{a,k}$
-from the logged simulation dynamics ($\ddot e_k+\Laminv\Fmpck{k}$, both
-already available since the injected force is known) rather than the
-filtered estimate --- is a well-defined follow-up we have not run.
+\textbf{Direct ground-truth metric.} At each manager instant we compute
+the simulator acceleration from the applied, torque-limited input and the
+rigid-body dynamics, then reconstruct
+\begin{equation*}
+d_{\mathrm{acc},k}=\ddot e_k+\Lambda^{-1}(q_k)\Fmpck{k},\qquad
+d_k=-\Lambda(q_k)d_{\mathrm{acc},k}.
+\end{equation*}
+For the flat prediction made at origin $k$, the direct metric is
+$\varepsilon_i=\mathrm{RMS}_k\|d_{k+i}-\dhat_{k|k}\|_2$. We also report
+$e_K=\mathrm{RMS}_k\|d_k-\dhat_{k|k}\|_2$. By Minkowski's inequality,
+the pointwise rate assumption in the main paper's horizon-prediction bound
+gives $\varepsilon_N\le e_K+L_dN\Delta t$; Table~\ref{tab:tv} evaluates it
+with $L_d=L_{d,\mathrm{emp}}$. Origins are restricted
+to the settled portion of the force window and all $N$ target samples
+remain inside that window (704 origins per row).
 
 \begin{table}[!t]
-\caption{Time-Varying Force: Horizon Self-Consistency Error (Estimator
-Proxy) and Tracking}
+\caption{Time-Varying Force: Direct Ground-Truth Prediction Error and Tracking}
 \label{tab:tv}
 \renewcommand{\arraystretch}{1.0}
 \footnotesize
 \setlength{\tabcolsep}{3pt}
 \begin{tabular}{cccccc}
 \toprule
-$L_d$ [N/s] & $\varepsilon_1$ & $\varepsilon_N$ & $\varepsilon_N{-}\varepsilon_1$ & Bound & RMS [mm]\\
+$L_{d,\mathrm{emp}}$ [N/s] & $e_K$ & $\varepsilon_1$ & $\varepsilon_N$ & Bound & RMS [mm]\\
 \midrule
-0.0  & 0.04 & 0.38 & 0.34 & 0.00 & 0.08\\
-5.3  & 0.05 & 0.52 & 0.46 & 0.53 & 0.12\\
-10.7 & 0.12 & 1.20 & 1.08 & 1.07 & 0.27\\
-21.3 & 0.25 & 2.47 & 2.22 & 2.13 & 0.54\\
-42.7 & 0.49 & 4.87 & 4.38 & 4.27 & 1.03\\
+0.51  & 2.20 & 2.20 & 2.20 & 2.25 & 0.08\\
+7.57  & 0.88 & 0.90 & 1.13 & 1.64 & 0.12\\
+15.13 & 2.45 & 2.50 & 3.08 & 3.97 & 0.26\\
+30.44 & 4.51 & 4.62 & 5.94 & 7.55 & 0.54\\
+61.45 & 5.07 & 5.36 & 8.38 & 11.22 & 1.04\\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\textbf{Analysis.} The measured horizon-extrapolation gap
-$\varepsilon_N-\varepsilon_1$ (self-consistency proxy) tracks the bound
-term $L_dN\Delta t$ to within $\approx10\%$ across a decade of
-disturbance rate (0.46 vs.\ 0.53; 1.08 vs.\ 1.07; 2.22 vs.\ 2.13; 4.38
-vs.\ 4.27\,N), consistent with the flat-prediction error being
-\emph{linear in the force rate} as eq.~(13) predicts, with a
-constant-force floor $\approx0.38$\,N (the $f=0$ row) set by the
-estimate's process-noise jitter accumulated over the $N$ steps --- not
-itself a prediction-error measurement (see above). Tracking degrades
-gracefully: the controller holds sub-millimeter error up to
-$L_d\approx21$\,N/s and $\approx1$\,mm at 43\,N/s, recovering the
-offset-free property (Theorem~2 of the main paper) as $f\to0$. This is
-consistent with the disturbance-prediction analysis of the main paper's
-Section~III-D and the use of the flat random-walk model inside the
-receding-horizon loop, though a ground-truth (not self-consistency)
-measurement would be needed to validate it directly; for a
+\textbf{Analysis.} The directly measured $N$-step error stays below the
+RMS bound in every tested row. In the constant injected-force row,
+$L_{d,\mathrm{emp}}=0.51$\,N/s captures the small variation of the other
+aggregate residual terms, giving a 2.25\,N bound versus
+$\varepsilon_N=2.20$\,N. This does not claim zero estimator error. In that
+row, the mean error-vector norm is 0.74\,N and zero-mean fluctuation RMS is
+2.07\,N; hence 2.20\,N is primarily fluctuation, not steady bias, while
+closed-loop position RMS remains 0.08\,mm. As frequency increases, $\varepsilon_N$
+rises from 1.13 to 8.38\,N while remaining below the corresponding
+1.64--11.22\,N bounds. Tracking degrades gradually: it remains below
+0.6\,mm through $L_{d,\mathrm{emp}}=30.44$\,N/s and reaches 1.04\,mm at
+61.45\,N/s.
+These data directly check that bound for the stated simulator protocol;
+they do not establish the same bound under unmodelled contact dynamics,
+sensor delay, or measurement noise. For a
 \emph{structured} high-rate force (e.g.\ physiological tremor) the
 harmonic-internal-model extension of Section~III-D would predict that
 component forward exactly rather than extrapolate it flat. The
-experiment is reproduced by \texttt{time\_varying\_experiment.py}.
+experiment and its machine-readable output are reproduced by
+\texttt{time\_varying\_experiment.py} and
+\texttt{time\_varying\_ground\_truth\_results.json}.
 
 % ----------------------------------------------------------
 \section{Human-Force Magnitude and Shape Sweep}\label{sec:forcesweep}
@@ -565,8 +563,9 @@ D1 Imp.\ -- peak & 28.4 & 37.0 & 51.2 & 70.1 & 88.9\\
 force --- the $e_\infty=K_d^{-1}F_h$ bias combined with the dynamic
 tracking error grows from 27\,mm at 5\,N to 73\,mm at 25\,N --- whereas
 the proposed controller holds a \textbf{0.021\,mm steady-state
-deflection independent of magnitude}: the integrating disturbance state
-cancels the force whatever its size, so accuracy no longer trades
+deflection independent of magnitude over the tested 5--25\,N unsaturated
+range}: the integrating disturbance state cancels the sustained force in this
+range, so accuracy no longer trades
 against the human's effort. The first-contact peak grows only mildly
 (0.29 $\to$ 1.27\,mm across 5--25\,N), scaling with the force step
 before $\dhat$ converges. Under the three 15\,N shapes the proposed
@@ -641,12 +640,9 @@ additive correction authority; $F_\text{max}=0$\,N is the limiting case
 in which the QP contributes nothing.
 
 \textbf{Results.} Under the normal protocol ($F_\text{max}=150$\,N), C8
-matches C7 to measurement precision --- RMS/contact/peak/SS of
-12.66/0.15/0.76/0.022\,mm vs.\ C7's 12.61/0.15/0.77/0.022\,mm (both
-reproduced under the present codebase for a self-consistent comparison;
-both agree with the main paper's Table~I C7 row to within a small
-residual difference from an exact zero-order-hold correction applied
-after that table was generated). The stress sweep is the key comparison:
+matches C7 to measurement precision: RMS/contact/peak/SS is
+12.78/0.15/0.77/0.022\,mm versus 12.62/0.15/0.77/0.023\,mm. The stress sweep
+is the relevant comparison:
 
 \begin{table}[!t]
 \caption{Correction-Authority Ablation: $F_\text{max}$ Sweep, RMS /
@@ -659,10 +655,10 @@ Peak (mm)}
 \toprule
 $F_\text{max}$ [N] & 150 & 20 & 5 & 1 & 0\\
 \midrule
-C7 -- RMS cont. & 0.15 & 0.15 & 317.6 & 414.0 & 424.4\\
-C7 -- peak      & 0.77 & 0.76 & 412.3 & 552.5 & 560.8\\
-\textbf{C8 -- RMS cont.} & \textbf{0.15} & \textbf{0.15} & \textbf{22.5} & \textbf{37.7} & \textbf{41.3}\\
-\textbf{C8 -- peak}      & \textbf{0.76} & \textbf{0.76} & \textbf{29.8} & \textbf{47.9} & \textbf{51.6}\\
+C7 -- RMS cont. & 0.15 & 0.15 & 317.7 & 416.0 & 430.0\\
+C7 -- peak      & 0.77 & 0.76 & 412.2 & 554.2 & 565.9\\
+\textbf{C8 -- RMS cont.} & \textbf{0.15} & \textbf{0.15} & \textbf{41.3} & \textbf{69.8} & \textbf{78.6}\\
+\textbf{C8 -- peak}      & \textbf{0.77} & \textbf{0.76} & \textbf{53.7} & \textbf{95.9} & \textbf{109.4}\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -671,35 +667,18 @@ C7 -- peak      & 0.77 & 0.76 & 412.3 & 552.5 & 560.8\\
 that both controllers are unaffected and C8 costs nothing relative to
 C7 --- the backbone's restoring term is exactly what the unconstrained
 QP would already have produced. Below that, C7's contact-window RMS
-jumps by roughly three orders of magnitude (0.15 $\to$ 424\,mm) the
+jumps by roughly three orders of magnitude (0.15 $\to$ 430\,mm) the
 moment the corrective force can no longer supply the needed authority:
 with $\Fmpc$ forced toward zero, the commanded torque approaches bare
-feedforward against the sustained push. \textbf{C8 degrades gracefully
-instead}, settling at 22--41\,mm even in the $F_\text{max}=0$ limit ---
-a 10--14$\times$ smaller error than C7 across the curtailed range, and
-bounded rather than diverging. The impedance-equivalence and offset-free
+feedforward against the sustained push. \textbf{C8 degrades more gracefully
+over the tested 24\,s protocol}, reaching 41--79\,mm even in the
+$F_\text{max}=0$ case --- a 5.5--7.7$\times$ smaller error than C7 across the
+curtailed range. This finite-duration result is not a boundedness proof. The impedance-equivalence and offset-free
 statements of Theorems~1--2 of the main paper are proved for the standard
 (non-backbone) realization; C8's additive term retains the same
-offset-free mechanism (the $-\dhat$ centering trick is applied to
-$\Fmpc$, not the backbone), but a formal re-derivation of the theorems
-for the backbone-augmented closed loop is left to future work. This is
-an architectural finding about how to \emph{deploy} the predictive
-layer safely, complementary to and compatible with the energy-tank
-layer of the main paper's Section~IV-C (which governs coupled-system
-stability rather than QP-authority loss); it is reported here as a
-self-contained ablation rather than folded into the main paper's
-central narrative. Reproduced by
+offset-free mechanism, but its formal re-derivation is left to future work.
+This deployment ablation is distinct from the energy tank, which addresses
+coupled-system stability rather than QP-authority loss. Reproduced by
 \texttt{stable\_backbone\_comparison.py --n-cycles 3}.
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=\columnwidth]{figures/stable_backbone_comparison.png}
-\caption{Correction-authority robustness ablation: contact-window RMS (a)
-and peak deflection (b) versus the QP's corrective-force bound
-$F_\text{max}$, for the proposed controller with (C8, green) and
-without (C7, red) the impedance backbone. C8 degrades gracefully as
-$F_\text{max}\to0$ while C7 collapses toward bare feedforward.}
-\label{fig:backbone}
-\end{figure}
 
 \end{document}
