@@ -1,0 +1,77 @@
+{
+  "periodic_only": {
+    "two_rate": {
+      "residual_rms_mm_mean": 20.40946432789858,
+      "residual_rms_mm_std": 1.6786461403084258,
+      "minimum_tank_j_min": 0.02,
+      "maximum_torque_ratio": 0.872612320227982,
+      "qp_failures": 0,
+      "nominal_infeasible_samples": 0
+    },
+    "anticipatory": {
+      "residual_rms_mm_mean": 20.73741869370431,
+      "residual_rms_mm_std": 1.6276053639702075,
+      "minimum_tank_j_min": 0.02,
+      "maximum_torque_ratio": 0.8711483988875224,
+      "qp_failures": 0,
+      "nominal_infeasible_samples": 0
+    },
+    "paired_difference_mm": 0.3279543658057339,
+    "paired_95_percent_ci_mm": [
+      0.21998490456201955,
+      0.4359238270494482
+    ],
+    "paired_t_p_value": 4.238345354390442e-06,
+    "relative_change_percent": 1.606873950912268
+  },
+  "pulse_only": {
+    "two_rate": {
+      "residual_rms_mm_mean": 21.21193992494845,
+      "residual_rms_mm_std": 0.025723489149328805,
+      "minimum_tank_j_min": 0.02,
+      "maximum_torque_ratio": 0.8520268713689092,
+      "qp_failures": 0,
+      "nominal_infeasible_samples": 0
+    },
+    "anticipatory": {
+      "residual_rms_mm_mean": 21.58310518553629,
+      "residual_rms_mm_std": 0.010452216848479828,
+      "minimum_tank_j_min": 0.02,
+      "maximum_torque_ratio": 0.8525410176364874,
+      "qp_failures": 0,
+      "nominal_infeasible_samples": 0
+    },
+    "paired_difference_mm": 0.37116526058783367,
+    "paired_95_percent_ci_mm": [
+      0.3592159165182663,
+      0.38311460465740105
+    ],
+    "paired_t_p_value": 8.718355614553663e-24,
+    "relative_change_percent": 1.7497940400598964
+  },
+  "full_matched_robustness_check": {
+    "two_rate": {
+      "residual_rms_mm_mean": 19.133335866120483,
+      "residual_rms_mm_std": 0.6344439830856446,
+      "minimum_tank_j_min": 0.02,
+      "maximum_torque_ratio": 0.883546422000049,
+      "qp_failures": 0,
+      "nominal_infeasible_samples": 0
+    },
+    "anticipatory": {
+      "residual_rms_mm_mean": 18.77299459715944,
+      "residual_rms_mm_std": 0.45723561935415624,
+      "minimum_tank_j_min": 0.02,
+      "maximum_torque_ratio": 0.8749122245491944,
+      "qp_failures": 0,
+      "nominal_infeasible_samples": 0
+    },
+    "paired_difference_mm": -0.3603412689610483,
+    "paired_95_percent_ci_mm": [
+      -0.5413296725664694,
+      -0.17935286535562725
+    ],
+    "paired_t_p_value": 0.0005231100559679655,
+    "relative_change_percent": -1.8833164874250017
+  }
+}

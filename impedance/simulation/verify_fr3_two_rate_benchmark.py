@@ -38,6 +38,12 @@ sys.path.insert(0, str(SIM))
 
 from fr3_mujoco import FR3MuJoCoEnv, Q_NEUTRAL, TAU_LIMIT  # noqa: E402
 from so3_utils import rotation_error_matrix  # noqa: E402
+from harmonic_disturbance_predictor import HarmonicDisturbancePredictor  # noqa: E402
+
+# Known frequencies of rejectable_force's three per-axis sinusoids below --
+# used only by the "anticipatory" controller variant, which assumes these
+# are known (a disclosed modeling choice) and estimates amplitude/phase online.
+REJECTABLE_FREQUENCIES_HZ = np.array([0.9, 1.4, 1.9])
 
 
 @dataclass(frozen=True)
@@ -80,15 +86,18 @@ def intentional_force(t: float) -> np.ndarray:
     return f
 
 
-def rejectable_force(t: float, phases: np.ndarray, scale: float) -> np.ndarray:
-    f = np.array([
+def rejectable_force(t: float, phases: np.ndarray, scale: float, pulse_scale: float | None = None) -> np.ndarray:
+    f = scale * np.array([
         1.1 * np.sin(2 * np.pi * 0.9 * t + phases[0]),
         0.6 * np.sin(2 * np.pi * 1.4 * t + phases[1]),
         0.9 * np.sin(2 * np.pi * 1.9 * t + phases[2]),
     ])
     if 1.507 <= t < 1.514:  # deliberately between 50 Hz manager ticks
-        f += np.array([0.0, 0.0, 12.0])
-    return scale * f
+        # Independently scalable from the sinusoids (default: same scale) so
+        # a "pulse-only, no periodic content" stress case can be constructed
+        # without the sinusoids' amplitude also going to zero.
+        f = f + (scale if pulse_scale is None else pulse_scale) * np.array([0.0, 0.0, 12.0])
+    return f
 
 
 def wall_force(displacement: np.ndarray, velocity: np.ndarray, stiffness: float, damping: float) -> np.ndarray:
@@ -132,6 +141,7 @@ class ResidualMPC3D:
         disturbance_hat: np.ndarray,
         jacobian: np.ndarray,
         tau_nominal: np.ndarray,
+        disturbance_seq: np.ndarray | None = None,
     ) -> np.ndarray:
         cfg = self.cfg
         k = cfg.stiffness * np.eye(3)
@@ -140,7 +150,10 @@ class ResidualMPC3D:
         bc = np.vstack([np.zeros((3, 3)), lambda_inv])
         ad, bd = zoh(ac, bc, cfg.manager_dt)
         phi, gamma = prediction(ad, bd, cfg.horizon)
-        dseq = np.tile(disturbance_hat, cfg.horizon)
+        # disturbance_seq, when given, is a genuine per-horizon-step forecast
+        # (horizon, 3); the default remains the frozen zero-order hold used by
+        # every other controller in this file.
+        dseq = disturbance_seq.reshape(-1) if disturbance_seq is not None else np.tile(disturbance_hat, cfg.horizon)
         xfree = phi @ residual + gamma @ dseq
         q = np.diag([cfg.q_position] * 3 + [cfg.q_velocity] * 3)
         qbar = sparse.block_diag([q] * cfg.horizon, format="csc")
@@ -207,12 +220,14 @@ def run_trial(
     wall_stiffness: float = 900.0,
     wall_damping: float = 12.0,
     disturbance_scale: float = 1.0,
+    pulse_scale: float | None = None,
     sensor_noise: float = 0.0,
+    forecast_blend: float = 1.0,
     estimate_delay_ticks: int = 0,
     noise_ar1: float = 0.0,
     velocity_bias: np.ndarray | None = None,
 ) -> dict:
-    if controller not in {"impedance", "unguarded_mpc", "tdpc", "two_rate"}:
+    if controller not in {"impedance", "unguarded_mpc", "tdpc", "two_rate", "anticipatory"}:
         raise ValueError(controller)
     rng = np.random.default_rng(seed)
     phases = rng.uniform(-np.pi, np.pi, 3)
@@ -222,6 +237,7 @@ def run_trial(
     p0, r0 = state0.ee_pos.copy(), state0.ee_rot.copy()
     reference = np.zeros(6)
     mpc = ResidualMPC3D(cfg)
+    predictor = HarmonicDisturbancePredictor(frequencies_hz=REJECTABLE_FREQUENCIES_HZ) if controller == "anticipatory" else None
     raw_residual = np.zeros(3)
     tank = cfg.tank_initial
     po_energy = 0.0
@@ -249,7 +265,7 @@ def run_trial(
         displacement = state.ee_pos - p0
         velocity = state.ee_vel[:3]
         f_int = intentional_force(t)
-        f_dist = rejectable_force(t, phases, disturbance_scale)
+        f_dist = rejectable_force(t, phases, disturbance_scale, pulse_scale=pulse_scale)
         f_wall = wall_force(displacement, velocity, wall_stiffness, wall_damping)
         tau_nom, jv, lam_inv = nominal_torque(dyn, state, p0, r0, cfg)
         residual = np.concatenate([displacement - reference[:3], velocity - reference[3:]])
@@ -277,7 +293,23 @@ def run_trial(
                 if velocity_bias is not None:
                     controller_residual = residual.copy()
                     controller_residual[3:] += velocity_bias
-                raw_residual = mpc.control(controller_residual, lam_inv, disturbance_hat, jv, tau_nom)
+                disturbance_seq = None
+                if controller == "anticipatory":
+                    # Same measurement the frozen baseline sees -- the only
+                    # difference is what the raw MPC does with it: forecast
+                    # the fitted known-frequency model forward through the
+                    # horizon instead of holding this one sample constant.
+                    predictor.update(t, disturbance_hat)
+                    horizon_times = t + cfg.manager_dt * np.arange(cfg.horizon)
+                    forecast = predictor.forecast(horizon_times)
+                    frozen = np.tile(disturbance_hat, (cfg.horizon, 1))
+                    # forecast_blend=1.0 is the full forecast; 0.0 recovers the
+                    # frozen hold exactly. Experimental knob for diagnosing
+                    # whether partial anticipation avoids the R-penalty
+                    # tradeoff that appears to hurt the full-strength forecast.
+                    disturbance_seq = frozen + forecast_blend * (forecast - frozen)
+                raw_residual = mpc.control(controller_residual, lam_inv, disturbance_hat, jv, tau_nom,
+                                            disturbance_seq=disturbance_seq)
 
         tau_r_raw = jv.T @ raw_residual
         torque_alpha, nominal_ok = torque_scale(tau_nom, tau_r_raw, cfg.torque_margin * TAU_LIMIT)
@@ -285,7 +317,7 @@ def run_trial(
         alpha = torque_alpha
         authorization_active = torque_alpha < 1.0 - 1e-10
 
-        if controller == "two_rate":
+        if controller in {"two_rate", "anticipatory"}:
             power = float(candidate @ velocity)
             dissipation = cfg.damping * float(velocity @ velocity)
             available = max(0.0, tank - cfg.tank_minimum + cfg.dt * dissipation)
@@ -321,7 +353,7 @@ def run_trial(
         env.apply_ee_wrench(np.concatenate([total_external, np.zeros(3)]))
 
         dissipation = cfg.damping * float(velocity @ velocity)
-        if controller == "two_rate":
+        if controller in {"two_rate", "anticipatory"}:
             tank = min(cfg.tank_maximum, tank + cfg.dt * (dissipation - float(applied_residual @ velocity)))
         elif controller in {"unguarded_mpc", "tdpc"}:
             # Counterfactual common ledger for direct energy-use comparison.
