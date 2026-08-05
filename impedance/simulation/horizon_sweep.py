@@ -15,6 +15,13 @@ count (`--seeds`, default 8) reporting mean RMS only -- not the paired
 95% CI / t-test that Table 6's 20-seed comparison supports -- because its
 role is to characterize a trend across six horizon settings, not to certify
 a single point estimate.
+
+A third, narrower sweep repeats periodic_only with the pulse removed
+(pulse_scale=0, matching anticipatory_disturbance_study.py's
+pure_harmonic_ablation) at just the two horizon endpoints, to check
+whether the same widening-with-lookahead pattern appears for genuinely
+harmonic content alone, or only once the pulse's non-harmonic content is
+present.
 """
 
 from __future__ import annotations
@@ -31,11 +38,12 @@ from verify_fr3_two_rate_benchmark import Config, run_trial
 HERE = Path(__file__).resolve().parent
 
 HORIZONS = [10, 20, 40, 60, 80, 110]
+ABLATION_HORIZONS = [20, 110]
 
 
-def _sweep(seeds: int, **trial_kwargs) -> list[dict]:
+def _sweep(seeds: int, horizons: list[int] = HORIZONS, **trial_kwargs) -> list[dict]:
     rows = []
-    for n in HORIZONS:
+    for n in horizons:
         cfg = Config(horizon=n)
         t0 = time.time()
         two_rate = np.array([run_trial("two_rate", cfg, seed, **trial_kwargs)["metrics"]["residual_rms_mm"]
@@ -57,6 +65,10 @@ def periodic_only_sweep(seeds: int) -> list[dict]:
     return _sweep(seeds, wall_stiffness=0.0, wall_damping=0.0)
 
 
+def periodic_only_pure_harmonic_sweep(seeds: int) -> list[dict]:
+    return _sweep(seeds, ABLATION_HORIZONS, wall_stiffness=0.0, wall_damping=0.0, pulse_scale=0.0)
+
+
 def full_matched_sweep(seeds: int) -> list[dict]:
     return _sweep(seeds)
 
@@ -69,6 +81,7 @@ def main() -> None:
     results = {
         "seeds": args.seeds,
         "periodic_only": periodic_only_sweep(args.seeds),
+        "periodic_only_pure_harmonic": periodic_only_pure_harmonic_sweep(args.seeds),
         "full_matched": full_matched_sweep(args.seeds),
     }
     args.output.write_text(json.dumps(results, indent=2), encoding="utf-8")

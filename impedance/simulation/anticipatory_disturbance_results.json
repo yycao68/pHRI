@@ -1,4 +1,29 @@
 {
+  "pure_harmonic_ablation": {
+    "two_rate": {
+      "residual_rms_mm_mean": 20.233562057138847,
+      "residual_rms_mm_std": 1.684480943262726,
+      "minimum_tank_j_min": 0.02,
+      "maximum_torque_ratio": 0.8727628615956681,
+      "qp_failures": 0,
+      "nominal_infeasible_samples": 0
+    },
+    "anticipatory": {
+      "residual_rms_mm_mean": 20.23898318458132,
+      "residual_rms_mm_std": 1.6248087807693161,
+      "minimum_tank_j_min": 0.02,
+      "maximum_torque_ratio": 0.8714656620991991,
+      "qp_failures": 0,
+      "nominal_infeasible_samples": 0
+    },
+    "paired_difference_mm": 0.005421127442472163,
+    "paired_95_percent_ci_mm": [
+      -0.08738907938217859,
+      0.09823133426712292
+    ],
+    "paired_t_p_value": 0.9039805857136558,
+    "relative_change_percent": 0.026792748736792337
+  },
   "periodic_only": {
     "two_rate": {
       "residual_rms_mm_mean": 20.40946432789858,

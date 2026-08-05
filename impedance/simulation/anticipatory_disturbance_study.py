@@ -7,18 +7,21 @@ authorization, but the raw MPC proposal is built from a per-axis
 known-frequency Kalman forecast of the rejectable disturbance -- see
 harmonic_disturbance_predictor.py).
 
-Two dedicated, wall-disabled scenarios isolate the comparison from
+Three dedicated, wall-disabled scenarios isolate the comparison from
 contact-force confounds (the harmonic model has no way to represent
 non-periodic contact transients, and should not be asked to):
 
+- pure_harmonic_ablation: the three known-frequency sinusoids only, the
+  12 N pulse suppressed (pulse_scale=0) -- zero non-harmonic content, the
+  cleanest case the forecaster could ask for, and the control for the
+  other two scenarios below.
 - periodic_only: all three known-frequency sinusoids plus the pulse active
-  -- the primary test of whether forecasting the known-frequency component
-  helps.
+  -- the scenario used throughout the paper; a small amount of
+  non-harmonic content (the pulse) alongside the harmonic content.
 - pulse_only: sinusoids silenced (disturbance_scale=0), pulse alone active
-  -- the literature-motivated negative case: a harmonic model has nothing
-  to lock onto against a genuinely non-periodic disturbance.
+  -- entirely non-harmonic content, the negative-control extreme.
 
-A secondary, non-headline check reruns the full matched benchmark (wall
+A fourth, non-headline check reruns the full matched benchmark (wall
 active, everything on) to see whether any periodic-disturbance advantage
 survives once contact-force content dominates the disturbance estimate.
 """
@@ -71,6 +74,13 @@ def _paired_comparison(cfg: Config, seeds: int, **trial_kwargs) -> dict:
     }
 
 
+def pure_harmonic_ablation(cfg: Config, seeds: int) -> dict:
+    # pulse_scale=0 removes the only non-harmonic content from periodic_only,
+    # leaving a disturbance the two-parameter (amplitude/phase) harmonic
+    # model can represent exactly.
+    return _paired_comparison(cfg, seeds, wall_stiffness=0.0, wall_damping=0.0, pulse_scale=0.0)
+
+
 def periodic_only_comparison(cfg: Config, seeds: int) -> dict:
     return _paired_comparison(cfg, seeds, wall_stiffness=0.0, wall_damping=0.0)
 
@@ -95,6 +105,7 @@ def main() -> None:
     parser.add_argument("--output", type=Path, default=HERE / "anticipatory_disturbance_results.json")
     args = parser.parse_args()
     results = {
+        "pure_harmonic_ablation": pure_harmonic_ablation(Config(), args.seeds),
         "periodic_only": periodic_only_comparison(Config(), args.seeds),
         "pulse_only": pulse_only_comparison(Config(), args.seeds),
         "full_matched_robustness_check": full_matched_robustness_check(Config(), args.seeds),
