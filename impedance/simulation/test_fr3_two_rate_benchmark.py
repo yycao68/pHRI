@@ -22,6 +22,25 @@ def test_two_rate_fr3_preserves_tank_floor_and_torque_envelope():
     assert result["metrics"]["qp_failures"] == 0
 
 
+def test_manager_guard_breaches_the_tank_floor_that_two_rate_preserves():
+    # B3': same MPC proposal and authorization rule as two_rate, but alpha_E
+    # is computed once per manager tick and held stale across the fast ticks
+    # it spans. This is the intended, regression-guarded behavior -- it
+    # isolates that fast re-authorization, not periodic authorization alone,
+    # is what keeps the tank floor invariant that two_rate preserves.
+    # Full default duration (not the 1.8 s smoke-test length used elsewhere
+    # in this file): the breach only appears once the trial reaches the
+    # wall-contact segment starting at t=2.25 s, matching the actual
+    # 20-seed Table 1 protocol this test guards.
+    cfg = Config()
+    result = run_trial("manager_guard", cfg, seed=4)
+    assert result["metrics"]["tank_violation_j"] > 0.0
+    assert result["metrics"]["minimum_tank_j"] < cfg.tank_minimum
+    assert result["metrics"]["maximum_torque_ratio"] <= 1.0 + 1e-8
+    assert result["metrics"]["nominal_infeasible_samples"] == 0
+    assert result["metrics"]["qp_failures"] == 0
+
+
 def test_hannaford_ryu_po_pc_keeps_observer_nonnegative():
     result = run_trial("tdpc", Config(duration=1.8), seed=4)
     assert result["metrics"]["minimum_po_energy_j"] >= -1e-12

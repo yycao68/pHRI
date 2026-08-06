@@ -227,7 +227,7 @@ def run_trial(
     noise_ar1: float = 0.0,
     velocity_bias: np.ndarray | None = None,
 ) -> dict:
-    if controller not in {"impedance", "unguarded_mpc", "tdpc", "two_rate", "anticipatory"}:
+    if controller not in {"impedance", "unguarded_mpc", "tdpc", "two_rate", "anticipatory", "manager_guard"}:
         raise ValueError(controller)
     rng = np.random.default_rng(seed)
     phases = rng.uniform(-np.pi, np.pi, 3)
@@ -241,6 +241,13 @@ def run_trial(
     raw_residual = np.zeros(3)
     tank = cfg.tank_initial
     po_energy = 0.0
+    # manager_guard (B3'): the energy scale alpha_E is computed once per
+    # manager tick, from the state at that instant, and held fixed across
+    # the following fast ticks -- unlike two_rate, which recomputes alpha_E
+    # fresh every fast tick from the current velocity and tank. This isolates
+    # whether *fast* re-authorization is load-bearing, not merely whether
+    # some energy authorization exists at all.
+    held_energy_alpha = 1.0
     # Manager-tick history of the raw force channels, for the optional
     # estimator communication/processing delay below; and a persistent AR(1)
     # state for optionally-colored sensor noise (same stationary std as the
@@ -310,6 +317,14 @@ def run_trial(
                     disturbance_seq = frozen + forecast_blend * (forecast - frozen)
                 raw_residual = mpc.control(controller_residual, lam_inv, disturbance_hat, jv, tau_nom,
                                             disturbance_seq=disturbance_seq)
+                if controller == "manager_guard":
+                    manager_tau_alpha, _ = torque_scale(tau_nom, jv.T @ raw_residual, cfg.torque_margin * TAU_LIMIT)
+                    manager_candidate = manager_tau_alpha * raw_residual
+                    manager_power = float(manager_candidate @ velocity)
+                    manager_dissipation = cfg.damping * float(velocity @ velocity)
+                    manager_available = max(0.0, tank - cfg.tank_minimum + cfg.dt * manager_dissipation)
+                    held_energy_alpha = (1.0 if manager_power <= 0.0
+                                          else min(1.0, manager_available / (cfg.dt * manager_power + 1e-15)))
 
         tau_r_raw = jv.T @ raw_residual
         torque_alpha, nominal_ok = torque_scale(tau_nom, tau_r_raw, cfg.torque_margin * TAU_LIMIT)
@@ -325,6 +340,13 @@ def run_trial(
             alpha *= energy_alpha
             applied_residual = energy_alpha * candidate
             authorization_active = authorization_active or energy_alpha < 1.0 - 1e-10
+        elif controller == "manager_guard":
+            # Reuse the energy scale computed at the last manager tick,
+            # against this tick's own (possibly since-changed) velocity and
+            # candidate -- the staleness the B3' baseline is designed to expose.
+            alpha *= held_energy_alpha
+            applied_residual = held_energy_alpha * candidate
+            authorization_active = authorization_active or held_energy_alpha < 1.0 - 1e-10
         elif controller == "tdpc":
             # Hannaford--Ryu impedance-causal series PC: if the next PO value
             # would be negative, add exactly the damping needed to restore it.
@@ -353,7 +375,7 @@ def run_trial(
         env.apply_ee_wrench(np.concatenate([total_external, np.zeros(3)]))
 
         dissipation = cfg.damping * float(velocity @ velocity)
-        if controller in {"two_rate", "anticipatory"}:
+        if controller in {"two_rate", "anticipatory", "manager_guard"}:
             tank = min(cfg.tank_maximum, tank + cfg.dt * (dissipation - float(applied_residual @ velocity)))
         elif controller in {"unguarded_mpc", "tdpc"}:
             # Counterfactual common ledger for direct energy-use comparison.
@@ -422,7 +444,7 @@ def summarize(raw: dict[str, list[dict]]) -> dict:
 
 
 def run_benchmark(cfg: Config, seeds: int) -> dict:
-    controllers = ("impedance", "unguarded_mpc", "tdpc", "two_rate")
+    controllers = ("impedance", "unguarded_mpc", "tdpc", "manager_guard", "two_rate")
     rng = np.random.default_rng(20260802)
     raw = {name: [] for name in controllers}
     trials = []
