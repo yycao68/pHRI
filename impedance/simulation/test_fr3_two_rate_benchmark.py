@@ -1,7 +1,8 @@
 import numpy as np
 
 from verify_fr3_two_rate_benchmark import (
-    Config, run_trial, sensing_realism_sweep, torque_scale, wall_classification_check,
+    Config, authorization_period_sweep, energy_budget_sweep, po_pc_regularization_check,
+    run_trial, sensing_realism_sweep, torque_scale, wall_classification_check,
 )
 
 
@@ -76,6 +77,43 @@ def test_wall_reaction_is_pushed_into_with_zero_authorization_engagement():
     assert result["rows"]["two_rate"]["contact_fraction_mean"] > 0.0
     assert result["rows"]["two_rate"]["into_wall_impulse_ns_mean"] > 0.0
     assert result["rows"]["two_rate"]["authorization_active_during_contact_mean"] == 0.0
+
+
+def test_energy_budget_sweep_trades_tracking_against_contact_aggressiveness():
+    # More initial budget above the fixed floor should let the controller
+    # intervene less (lower active fraction) and track better (lower RMS),
+    # while doing so more aggressively into a misclassified wall contact
+    # (higher penetration) -- the intended, regression-guarded tradeoff.
+    cfg = Config()
+    result = energy_budget_sweep(cfg, seeds=2)
+    rows = result["rows"]
+    assert [r["budget_above_floor_j"] for r in rows] == sorted(r["budget_above_floor_j"] for r in rows)
+    assert rows[0]["residual_rms_mm_mean"] > rows[-1]["residual_rms_mm_mean"]
+    assert rows[0]["projection_active_fraction_mean"] > rows[-1]["projection_active_fraction_mean"]
+    assert rows[0]["max_penetration_mm_mean"] <= rows[-1]["max_penetration_mm_mean"]
+    for row in rows:
+        assert row["minimum_tank_j_mean"] >= cfg.tank_minimum - 1e-9
+
+
+def test_po_pc_regularized_variant_still_trails_two_rate():
+    # The velocity dead zone should not fully close the gap to two_rate --
+    # this is the intended, regression-guarded finding that the singular
+    # gain is real but not the dominant driver of PO/PC's disadvantage.
+    result = po_pc_regularization_check(Config(), seeds=2)
+    assert result["regularized_vs_two_rate_paired_difference_mm"] > 0.0
+    assert (result["summary"]["tdpc_regularized"]["residual_rms_mm_mean"]
+            <= result["summary"]["tdpc"]["residual_rms_mm_mean"])
+
+
+def test_authorization_period_sweep_breaches_at_the_first_staleness_tick():
+    # 1 ms (period=1) is two_rate itself and must stay safe; any longer
+    # period is intended, regression-guarded to violate immediately, not
+    # gracefully, matching the Section 7.1 finding.
+    cfg = Config()
+    result = authorization_period_sweep(cfg, seeds=2)
+    rows = {row["period_ticks"]: row for row in result["rows"]}
+    assert rows[1]["tank_violation_j_mean"] == 0.0
+    assert rows[2]["seeds_violated"] > 0
 
 
 def test_sensing_realism_sweep_reports_five_conditions_with_preserved_invariants():

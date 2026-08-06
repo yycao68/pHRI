@@ -14,7 +14,7 @@ import json
 import os
 import sys
 import time
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 
 os.environ.setdefault("MPLCONFIGDIR", "/tmp/phri_impedance_fr3_mpl")
@@ -68,6 +68,12 @@ class Config:
     # stress while remaining inside the model's absolute FR3 safety limits.
     torque_margin: float = 0.28
     force_limit: float = 25.0
+    # Practical regularization for the tdpc_regularized variant only (B3
+    # itself stays equation-faithful, uninstrumented by this field): below
+    # this port speed, the 1/||v||^2 damping gain (21) is disclosed as
+    # structurally singular (Section 5.3), so the correction is deferred
+    # to the next tick rather than computed from a near-zero denominator.
+    tdpc_velocity_floor: float = 0.005
     wall_location: float = 0.035
 
     @property
@@ -226,8 +232,9 @@ def run_trial(
     estimate_delay_ticks: int = 0,
     noise_ar1: float = 0.0,
     velocity_bias: np.ndarray | None = None,
+    auth_period_ticks: int | None = None,
 ) -> dict:
-    if controller not in {"impedance", "unguarded_mpc", "tdpc", "two_rate", "anticipatory", "manager_guard"}:
+    if controller not in {"impedance", "unguarded_mpc", "tdpc", "tdpc_regularized", "two_rate", "anticipatory", "manager_guard"}:
         raise ValueError(controller)
     rng = np.random.default_rng(seed)
     phases = rng.uniform(-np.pi, np.pi, 3)
@@ -248,6 +255,13 @@ def run_trial(
     # whether *fast* re-authorization is load-bearing, not merely whether
     # some energy authorization exists at all.
     held_energy_alpha = 1.0
+    # Decoupled from the manager's own re-planning cadence: at
+    # auth_period_ticks=1 (1 ms) this recovers two_rate's every-fast-tick
+    # recompute exactly; at auth_period_ticks=cfg.manager_steps (10 ms,
+    # the default when unset) it recovers the original manager_guard.
+    # Intermediate values let Section 7.1's staleness finding be swept
+    # rather than only compared at its two endpoints.
+    effective_auth_period = auth_period_ticks if auth_period_ticks is not None else cfg.manager_steps
     # Manager-tick history of the raw force channels, for the optional
     # estimator communication/processing delay below; and a persistent AR(1)
     # state for optionally-colored sensor noise (same stationary std as the
@@ -317,14 +331,18 @@ def run_trial(
                     disturbance_seq = frozen + forecast_blend * (forecast - frozen)
                 raw_residual = mpc.control(controller_residual, lam_inv, disturbance_hat, jv, tau_nom,
                                             disturbance_seq=disturbance_seq)
-                if controller == "manager_guard":
-                    manager_tau_alpha, _ = torque_scale(tau_nom, jv.T @ raw_residual, cfg.torque_margin * TAU_LIMIT)
-                    manager_candidate = manager_tau_alpha * raw_residual
-                    manager_power = float(manager_candidate @ velocity)
-                    manager_dissipation = cfg.damping * float(velocity @ velocity)
-                    manager_available = max(0.0, tank - cfg.tank_minimum + cfg.dt * manager_dissipation)
-                    held_energy_alpha = (1.0 if manager_power <= 0.0
-                                          else min(1.0, manager_available / (cfg.dt * manager_power + 1e-15)))
+
+        if controller == "manager_guard" and index % effective_auth_period == 0:
+            # Recomputed at its own cadence (effective_auth_period), not tied
+            # to the manager-tick boundary above: uses whichever raw_residual
+            # the MPC most recently proposed, and this tick's own velocity/tank.
+            auth_tau_alpha, _ = torque_scale(tau_nom, jv.T @ raw_residual, cfg.torque_margin * TAU_LIMIT)
+            auth_candidate = auth_tau_alpha * raw_residual
+            auth_power = float(auth_candidate @ velocity)
+            auth_dissipation = cfg.damping * float(velocity @ velocity)
+            auth_available = max(0.0, tank - cfg.tank_minimum + cfg.dt * auth_dissipation)
+            held_energy_alpha = (1.0 if auth_power <= 0.0
+                                  else min(1.0, auth_available / (cfg.dt * auth_power + 1e-15)))
 
         tau_r_raw = jv.T @ raw_residual
         torque_alpha, nominal_ok = torque_scale(tau_nom, tau_r_raw, cfg.torque_margin * TAU_LIMIT)
@@ -347,13 +365,14 @@ def run_trial(
             alpha *= held_energy_alpha
             applied_residual = held_energy_alpha * candidate
             authorization_active = authorization_active or held_energy_alpha < 1.0 - 1e-10
-        elif controller == "tdpc":
+        elif controller in {"tdpc", "tdpc_regularized"}:
             # Hannaford--Ryu impedance-causal series PC: if the next PO value
             # would be negative, add exactly the damping needed to restore it.
             predicted_po = po_energy - cfg.dt * float(candidate @ velocity)
             velocity_sq = float(velocity @ velocity)
             damping_gain = 0.0
-            if predicted_po < 0.0 and velocity_sq > 1e-14:
+            velocity_floor_sq = (cfg.tdpc_velocity_floor ** 2 if controller == "tdpc_regularized" else 1e-14)
+            if predicted_po < 0.0 and velocity_sq > velocity_floor_sq:
                 damping_gain = -predicted_po / (cfg.dt * velocity_sq)
             tdpc_force = candidate - damping_gain * velocity
             tdpc_tau = jv.T @ tdpc_force
@@ -377,7 +396,7 @@ def run_trial(
         dissipation = cfg.damping * float(velocity @ velocity)
         if controller in {"two_rate", "anticipatory", "manager_guard"}:
             tank = min(cfg.tank_maximum, tank + cfg.dt * (dissipation - float(applied_residual @ velocity)))
-        elif controller in {"unguarded_mpc", "tdpc"}:
+        elif controller in {"unguarded_mpc", "tdpc", "tdpc_regularized"}:
             # Counterfactual common ledger for direct energy-use comparison.
             tank = min(cfg.tank_maximum, tank + cfg.dt * (dissipation - float(applied_residual @ velocity)))
 
@@ -518,6 +537,136 @@ def wall_classification_check(cfg: Config, seeds: int) -> dict:
     return {"seeds": seeds, "rows": rows}
 
 
+def energy_budget_sweep(cfg: Config, seeds: int) -> dict:
+    # How much of two_rate's advantage comes from the specific initial
+    # budget E_0-E_min=0.06 J used throughout the paper? Sweep the budget
+    # above the fixed floor at the main benchmark's own randomized wall/
+    # disturbance protocol, holding everything else (including E_min and
+    # E_max) fixed, and report tracking, authorization activity, the
+    # ledger floor itself, injected residual work (the total positive
+    # port work actually delivered -- how much of the budget gets spent),
+    # and contact behavior (max penetration, into-wall impulse), tying
+    # this sweep to the same physical metrics as the wall-classification
+    # check above.
+    budgets_above_floor = (0.0, 0.02, 0.06, 0.12, 0.25)
+    param_rng = np.random.default_rng(20260802)
+    params_by_seed = [{
+        "wall_stiffness": float(param_rng.uniform(500.0, 1500.0)),
+        "wall_damping": float(param_rng.uniform(8.0, 20.0)),
+        "disturbance_scale": float(param_rng.uniform(0.8, 1.2)),
+    } for _ in range(seeds)]
+
+    rows = []
+    for budget in budgets_above_floor:
+        trial_cfg = replace(cfg, tank_initial=cfg.tank_minimum + budget)
+        rms, active, min_tank, injected_work_j, max_pen_mm, into_wall_impulse_ns = [], [], [], [], [], []
+        for seed in range(seeds):
+            result = run_trial("two_rate", trial_cfg, seed, **params_by_seed[seed])
+            metrics = result["metrics"]
+            log = result["log"]
+            applied = np.asarray(log["applied_residual"])
+            velocity = np.asarray(log["velocity"])
+            position = np.asarray(log["position"])
+            power = np.sum(applied * velocity, axis=1)
+            injected_work_j.append(float(np.sum(np.maximum(0.0, power)) * cfg.dt))
+            penetration = np.maximum(0.0, position[:, 0] - cfg.wall_location)
+            in_contact = penetration > 0.0
+            max_pen_mm.append(float(1e3 * penetration.max()))
+            push_in = np.maximum(0.0, applied[:, 0])
+            into_wall_impulse_ns.append(float(np.sum(push_in[in_contact]) * cfg.dt) if in_contact.any() else 0.0)
+            rms.append(metrics["residual_rms_mm"])
+            active.append(metrics["projection_active_fraction"])
+            min_tank.append(metrics["minimum_tank_j"])
+        rows.append({
+            "budget_above_floor_j": budget,
+            "tank_initial_j": trial_cfg.tank_initial,
+            "residual_rms_mm_mean": float(np.mean(rms)),
+            "residual_rms_mm_std": float(np.std(rms, ddof=1)) if seeds > 1 else 0.0,
+            "projection_active_fraction_mean": float(np.mean(active)),
+            "minimum_tank_j_mean": float(np.mean(min_tank)),
+            "injected_work_j_mean": float(np.mean(injected_work_j)),
+            "max_penetration_mm_mean": float(np.mean(max_pen_mm)),
+            "into_wall_impulse_ns_mean": float(np.mean(into_wall_impulse_ns)),
+        })
+    return {"seeds": seeds, "rows": rows}
+
+
+def po_pc_regularization_check(cfg: Config, seeds: int) -> dict:
+    # B3 (tdpc) is deliberately equation-faithful to [7] and its 1/||v||^2
+    # gain (21) is disclosed as structurally singular near zero port speed
+    # (Section 5.3, Section 7.1). tdpc_regularized is NOT a replacement for
+    # B3 -- it is a secondary robustness baseline testing whether B5's
+    # advantage over PO/PC survives once PO/PC is given a practical
+    # velocity dead zone (cfg.tdpc_velocity_floor) instead of the raw
+    # published formula.
+    param_rng = np.random.default_rng(20260802)
+    params_by_seed = [{
+        "wall_stiffness": float(param_rng.uniform(500.0, 1500.0)),
+        "wall_damping": float(param_rng.uniform(8.0, 20.0)),
+        "disturbance_scale": float(param_rng.uniform(0.8, 1.2)),
+    } for _ in range(seeds)]
+
+    raw = {name: [] for name in ("tdpc", "tdpc_regularized", "two_rate")}
+    for name in raw:
+        for seed in range(seeds):
+            result = run_trial(name, cfg, seed, **params_by_seed[seed])
+            raw[name].append(result["metrics"])
+    rms = {name: np.array([m["residual_rms_mm"] for m in vals]) for name, vals in raw.items()}
+    diff = rms["tdpc_regularized"] - rms["two_rate"]
+    half = stats.t.ppf(0.975, seeds - 1) * stats.sem(diff) if seeds > 1 else 0.0
+    return {
+        "seeds": seeds,
+        "summary": {
+            name: {
+                "residual_rms_mm_mean": float(vals.mean()),
+                "residual_rms_mm_std": float(vals.std(ddof=1)) if seeds > 1 else 0.0,
+                "minimum_po_energy_j_min": float(np.min([m["minimum_po_energy_j"] for m in raw[name]])) if name != "two_rate" else None,
+                "projection_active_fraction_mean": float(np.mean([m["projection_active_fraction"] for m in raw[name]])),
+            }
+            for name, vals in rms.items()
+        },
+        "regularized_vs_two_rate_paired_difference_mm": float(diff.mean()),
+        "regularized_vs_two_rate_95_percent_ci_mm": [float(diff.mean() - half), float(diff.mean() + half)],
+        "regularized_vs_two_rate_p_value": float(stats.ttest_rel(rms["tdpc_regularized"], rms["two_rate"]).pvalue) if seeds > 1 else 1.0,
+    }
+
+
+def authorization_period_sweep(cfg: Config, seeds: int) -> dict:
+    # Section 7.1's B4/B5 comparison is only the two endpoints (10 ms
+    # staleness vs. every 1 ms tick). Sweep the manager_guard's own
+    # auth_period_ticks between them to find where the tank-floor
+    # violation actually begins, at the main benchmark's own randomized
+    # wall/disturbance protocol.
+    periods_ticks = (1, 2, 5, 10)
+    param_rng = np.random.default_rng(20260802)
+    params_by_seed = [{
+        "wall_stiffness": float(param_rng.uniform(500.0, 1500.0)),
+        "wall_damping": float(param_rng.uniform(8.0, 20.0)),
+        "disturbance_scale": float(param_rng.uniform(0.8, 1.2)),
+    } for _ in range(seeds)]
+
+    rows = []
+    for period in periods_ticks:
+        rms, min_tank, violation, violated_fraction = [], [], [], []
+        for seed in range(seeds):
+            result = run_trial("manager_guard", cfg, seed, auth_period_ticks=period, **params_by_seed[seed])
+            m = result["metrics"]
+            rms.append(m["residual_rms_mm"])
+            min_tank.append(m["minimum_tank_j"])
+            violation.append(m["tank_violation_j"])
+            violated_fraction.append(1.0 if m["tank_violation_j"] > 0.0 else 0.0)
+        rows.append({
+            "period_ticks": period,
+            "period_ms": period * cfg.dt * 1000,
+            "residual_rms_mm_mean": float(np.mean(rms)),
+            "residual_rms_mm_std": float(np.std(rms, ddof=1)) if seeds > 1 else 0.0,
+            "minimum_tank_j_mean": float(np.mean(min_tank)),
+            "tank_violation_j_mean": float(np.mean(violation)),
+            "seeds_violated": int(np.sum(violated_fraction)),
+        })
+    return {"seeds": seeds, "rows": rows}
+
+
 def leakage_sweep(cfg: Config, seeds: int) -> dict:
     rows = []
     for leakage in (0.0, 0.1, 0.25, 0.5):
@@ -640,6 +789,9 @@ def main() -> None:
     parser.add_argument("--leakage-seeds", type=int, default=5)
     parser.add_argument("--realism-seeds", type=int, default=5)
     parser.add_argument("--wall-check-seeds", type=int, default=20)
+    parser.add_argument("--energy-budget-seeds", type=int, default=10)
+    parser.add_argument("--po-pc-regularization-seeds", type=int, default=10)
+    parser.add_argument("--auth-period-seeds", type=int, default=10)
     parser.add_argument("--output", type=Path, default=HERE / "fr3_two_rate_results.json")
     parser.add_argument("--figure", type=Path, default=HERE / "fr3_two_rate_results.png")
     args = parser.parse_args()
@@ -651,7 +803,10 @@ def main() -> None:
                "benchmark": run_benchmark(cfg, args.seeds),
                "leakage_sweep": leakage_sweep(cfg, args.leakage_seeds),
                "sensing_realism_sweep": sensing_realism_sweep(cfg, args.realism_seeds),
-               "wall_classification_check": wall_classification_check(cfg, args.wall_check_seeds)}
+               "wall_classification_check": wall_classification_check(cfg, args.wall_check_seeds),
+               "energy_budget_sweep": energy_budget_sweep(cfg, args.energy_budget_seeds),
+               "po_pc_regularization_check": po_pc_regularization_check(cfg, args.po_pc_regularization_seeds),
+               "authorization_period_sweep": authorization_period_sweep(cfg, args.auth_period_seeds)}
     args.output.write_text(json.dumps(results, indent=2), encoding="utf-8")
     plot_results(results, args.figure)
     print(json.dumps({"output": str(args.output), "figure": str(args.figure),
@@ -660,7 +815,10 @@ def main() -> None:
                       "comparison": results["benchmark"]["comparison"],
                       "leakage_sweep": results["leakage_sweep"],
                       "sensing_realism_sweep": results["sensing_realism_sweep"],
-                      "wall_classification_check": results["wall_classification_check"]}, indent=2))
+                      "wall_classification_check": results["wall_classification_check"],
+                      "energy_budget_sweep": results["energy_budget_sweep"],
+                      "po_pc_regularization_check": results["po_pc_regularization_check"],
+                      "authorization_period_sweep": results["authorization_period_sweep"]}, indent=2))
 
 
 if __name__ == "__main__":
