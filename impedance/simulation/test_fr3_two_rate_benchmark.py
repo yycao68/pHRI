@@ -1,6 +1,8 @@
 import numpy as np
 
-from verify_fr3_two_rate_benchmark import Config, run_trial, sensing_realism_sweep, torque_scale
+from verify_fr3_two_rate_benchmark import (
+    Config, run_trial, sensing_realism_sweep, torque_scale, wall_classification_check,
+)
 
 
 def test_joint_torque_scaling_respects_derated_fr3_envelope():
@@ -58,6 +60,22 @@ def test_two_rate_preserves_invariants_under_delay_colored_noise_and_velocity_bi
     assert result["metrics"]["maximum_torque_ratio"] <= 1.0 + 1e-8
     assert result["metrics"]["nominal_infeasible_samples"] == 0
     assert result["metrics"]["qp_failures"] == 0
+
+
+def test_wall_reaction_is_pushed_into_with_zero_authorization_engagement():
+    # F_e (the wall's own reaction force) is folded into d_hat at full weight
+    # (22 with lambda=0), so the MPC's rejection objective structurally
+    # includes cancelling legitimate contact resistance. This is the
+    # intended, regression-guarded finding: passive impedance never reaches
+    # the wall under this protocol, the proposed controller does and pushes
+    # into it, and the tank never engages because the failure is a
+    # classification error, not an energy or torque violation.
+    cfg = Config()
+    result = wall_classification_check(cfg, seeds=3)
+    assert result["rows"]["impedance"]["contact_fraction_mean"] == 0.0
+    assert result["rows"]["two_rate"]["contact_fraction_mean"] > 0.0
+    assert result["rows"]["two_rate"]["into_wall_impulse_ns_mean"] > 0.0
+    assert result["rows"]["two_rate"]["authorization_active_during_contact_mean"] == 0.0
 
 
 def test_sensing_realism_sweep_reports_five_conditions_with_preserved_invariants():

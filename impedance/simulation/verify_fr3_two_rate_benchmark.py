@@ -470,6 +470,54 @@ def run_benchmark(cfg: Config, seeds: int) -> dict:
             "comparison": comparison, "raw": raw}
 
 
+def wall_classification_check(cfg: Config, seeds: int) -> dict:
+    # Equation (22) folds the environment/wall force F_e into the estimated
+    # disturbance d_hat at full weight (unlike the intentional force F_h,
+    # which is gated by leakage lambda and 0 by default) -- so the MPC's
+    # job of cancelling d_hat structurally includes cancelling the wall's
+    # own resistive reaction. Isolated from the periodic rejectable content
+    # (disturbance_scale=0) so any into-wall push is attributable to the
+    # intentional-force-driven wall contact alone, not the sinusoids.
+    # disturbance_scale=0 silences the only other source of seed-dependent
+    # randomness (the sinusoid phases, which multiply against zero), so this
+    # check needs its own per-seed variation; randomize wall stiffness/damping
+    # over the same ranges as run_benchmark's own protocol.
+    param_rng = np.random.default_rng(20260803)
+    params_by_seed = [{
+        "wall_stiffness": float(param_rng.uniform(500.0, 1500.0)),
+        "wall_damping": float(param_rng.uniform(8.0, 20.0)),
+    } for _ in range(seeds)]
+
+    rows = {}
+    for name in ("impedance", "two_rate"):
+        max_penetration_mm = []
+        contact_fraction = []
+        into_wall_impulse_ns = []
+        auth_active_during_contact = []
+        for seed in range(seeds):
+            result = run_trial(name, cfg, 300 + seed, disturbance_scale=0.0, **params_by_seed[seed])
+            log = result["log"]
+            position = np.asarray(log["position"])
+            applied = np.asarray(log["applied_residual"])
+            auth = np.asarray(log["authorization_active"])
+            penetration = np.maximum(0.0, position[:, 0] - cfg.wall_location)
+            in_contact = penetration > 0.0
+            max_penetration_mm.append(float(1e3 * penetration.max()))
+            contact_fraction.append(float(in_contact.mean()))
+            push_in = np.maximum(0.0, applied[:, 0])
+            into_wall_impulse_ns.append(float(np.sum(push_in[in_contact]) * cfg.dt) if in_contact.any() else 0.0)
+            auth_active_during_contact.append(float(auth[in_contact].mean()) if in_contact.any() else 0.0)
+        rows[name] = {
+            "max_penetration_mm_mean": float(np.mean(max_penetration_mm)),
+            "max_penetration_mm_std": float(np.std(max_penetration_mm, ddof=1)) if seeds > 1 else 0.0,
+            "contact_fraction_mean": float(np.mean(contact_fraction)),
+            "into_wall_impulse_ns_mean": float(np.mean(into_wall_impulse_ns)),
+            "into_wall_impulse_ns_std": float(np.std(into_wall_impulse_ns, ddof=1)) if seeds > 1 else 0.0,
+            "authorization_active_during_contact_mean": float(np.mean(auth_active_during_contact)),
+        }
+    return {"seeds": seeds, "rows": rows}
+
+
 def leakage_sweep(cfg: Config, seeds: int) -> dict:
     rows = []
     for leakage in (0.0, 0.1, 0.25, 0.5):
@@ -591,6 +639,7 @@ def main() -> None:
     parser.add_argument("--seeds", type=int, default=20)
     parser.add_argument("--leakage-seeds", type=int, default=5)
     parser.add_argument("--realism-seeds", type=int, default=5)
+    parser.add_argument("--wall-check-seeds", type=int, default=20)
     parser.add_argument("--output", type=Path, default=HERE / "fr3_two_rate_results.json")
     parser.add_argument("--figure", type=Path, default=HERE / "fr3_two_rate_results.png")
     args = parser.parse_args()
@@ -601,7 +650,8 @@ def main() -> None:
                "representative": representative,
                "benchmark": run_benchmark(cfg, args.seeds),
                "leakage_sweep": leakage_sweep(cfg, args.leakage_seeds),
-               "sensing_realism_sweep": sensing_realism_sweep(cfg, args.realism_seeds)}
+               "sensing_realism_sweep": sensing_realism_sweep(cfg, args.realism_seeds),
+               "wall_classification_check": wall_classification_check(cfg, args.wall_check_seeds)}
     args.output.write_text(json.dumps(results, indent=2), encoding="utf-8")
     plot_results(results, args.figure)
     print(json.dumps({"output": str(args.output), "figure": str(args.figure),
@@ -609,7 +659,8 @@ def main() -> None:
                       "benchmark": results["benchmark"]["summary"],
                       "comparison": results["benchmark"]["comparison"],
                       "leakage_sweep": results["leakage_sweep"],
-                      "sensing_realism_sweep": results["sensing_realism_sweep"]}, indent=2))
+                      "sensing_realism_sweep": results["sensing_realism_sweep"],
+                      "wall_classification_check": results["wall_classification_check"]}, indent=2))
 
 
 if __name__ == "__main__":
