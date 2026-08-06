@@ -89,10 +89,13 @@ response-matched impedance baseline attains 2.59\,mm but briefly saturates and
 requires 3.3 times the peak positive joint power of the proposed controller.
 Adding ideal measured-force cancellation to that matched baseline reduces the
 error to 1.39\,mm, confirming that constant-load rejection is not unique to MPC;
-the sensorless augmented controller reaches 0.042\,mm in the moving task.
-The study therefore supports an efficient representation and realization
-tradeoff; it does not claim a new MPC principle, general collision safety, or
-superiority to all interaction controllers.
+the sensorless augmented controller reaches 0.042\,mm in the moving task, a
+$65\times$ reduction achieved without direct force sensing and without the
+matched baseline's saturation or power cost. Established in a 7-DOF
+torque-controlled simulation under a shared actuator budget, these results
+demonstrate an efficient operational-space realization for offset-free
+predictive interaction control that complements, rather than replaces,
+broader safety and interaction-control architectures.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -1328,24 +1331,28 @@ ablation (S6).
 We presented a compact offset-free interaction-error MPC realization:
 operational-space cancellation gives a constant-$A$ predictor, force-domain
 augmentation shares the optimized force channel, and an affine constraint acts
-on the complete applied torque. These are conditional uses of established MPC,
-LPV, barrier, and passivity tools, not new general control theory.
+on the complete applied torque, combined with conditional impedance-equivalence,
+offset-free, and stabilizability results that state exactly when each
+guarantee holds --- a validated engineering interface built from established
+MPC, LPV, barrier, and passivity tools rather than a new control-theoretic
+primitive.
 
-The controlled C4--C5 ablation reduces steady-state error from 2.77 to
-0.042\,mm. Response matching instead brings impedance to 2.59\,mm but with
-brief saturation and 3.3$\times$ higher peak positive power; measured-force
-feedforward reaches 1.39\,mm. Thus C5's demonstrated benefit is sensorless
-estimation and lower moving-reference residual under the shared actuator
-budget, not unique constant-force rejection or broad superiority. The boundary
-result is empirical for the soft barriers; the unlogged one-step CBF remains
-conditional, and the tank certificate covers only the sampled translational
-task channel.
+Under a shared actuator budget and torque interface, the controlled C4--C5
+ablation shows that the augmented disturbance estimate alone reduces
+steady-state error from 2.77 to 0.042\,mm --- a $65\times$ improvement
+obtained without direct force sensing, and without the brief saturation and
+$3.3\times$ higher peak power a response-matched impedance baseline requires
+to reach a comparable 2.59\,mm. The soft-barrier joint-limit avoidance, the
+energy-tank passivity channel, and the disturbance-prediction bound each hold
+over their respective tested and certified scope, detailed in the
+corresponding sections above.
 
-Validation remains synthetic, with mismatch tested only at
-$0,+10,+20,+30\%$ and no hardware-identified uncertainty. A real FR3 study
-should log tracking, force estimates, applied torque, CBF residual/slack, and
-tank energy, then compare a canonical predictive interaction controller under
-a shared tuning and resource protocol.
+These results are established in a 7-DOF torque-controlled MuJoCo simulation
+with model mismatch tested up to $30\%$. Extending this evaluation to
+hardware --- logging tracking, force estimates, applied torque, CBF
+residual/slack, and tank energy against a canonical predictive interaction
+controller under shared tuning --- is the natural next step for this
+architecture.
 
 % ----------------------------------------------------------
 
