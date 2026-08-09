@@ -30,7 +30,27 @@
 \maketitle
 
 \begin{abstract}
-When a robot controller requests behavior that its actuators cannot realize, torque clipping keeps the hardware command legal but changes the behavior actually executed. Reference governors, action governors, and predictive safety filters already establish the general idea of supervising a nominal controller; this paper addresses a narrower interface question: how to expose a common task-acceleration request while retaining each robot's configuration-dependent torque geometry and making the assumptions behind behavior preservation auditable. The nominal PD, impedance, trained-policy, neural-policy, or conditioned-motion interface runs at 1~kHz. A 50~Hz manager maps its requested acceleration through a robot-specific realization model, predicts an uncertainty-tightened feasible set, and returns a minimum-cost behavior-coordinate correction when the QP is feasible; a final projection remains as a fast actuator guard. A one-step lemma specializes certificate-refinement logic to this interface through three conditions: torque-prediction accuracy, actuator margin, and behavior-successor mismatch; a corollary identifies the additional drift bound required by the two-rate signal. These are implementation contracts rather than a new general safety-filter or certificate-transfer theory. In 111 deterministic reduced-order runs, full-horizon enforcement removes a predicted 3.587~Nm future torque violation left by first-step-only enforcement. Under deterministic held-out synthetic plant perturbations, a sampled start/end audit reports positive T1 and T2 slacks and maximum $\ell_\infty$ T3 defects below 0.0069~m/s against a 0.03~m/s budget for three realization maps. A matched horizon trajectory-reference governor achieves comparable constraint handling in the successful cases; the proposed vector correction has lower correction RMSE in three of the four successful or horizon-isolation cases, but not in all scenarios. Abrupt disturbance and severe mismatch violate the audit premises for both predictive architectures. The study demonstrates and falsifies the proposed interface contract in a controlled benchmark; it does not claim a new predictive-control principle, recursive safety, hardware validation, or general superiority over governor and safety-filter variants.
+When a robot controller requests behavior that its actuators cannot realize, torque clipping keeps the hardware 
+command legal but changes the behavior actually executed. Reference governors, action governors, and predictive 
+safety filters already establish the general idea of supervising a nominal controller; this paper addresses a 
+narrower interface question: how to expose a common task-acceleration request while retaining each robot's 
+configuration-dependent torque geometry and making the assumptions behind behavior preservation auditable. 
+The nominal PD, impedance, trained-policy, neural-policy, or conditioned-motion interface runs at 1~kHz. 
+A 50~Hz manager maps its requested acceleration through a robot-specific realization model, predicts an 
+uncertainty-tightened feasible set, and returns a minimum-cost behavior-coordinate correction when the QP 
+is feasible; a final projection remains as a fast actuator guard. A one-step lemma specializes 
+certificate-refinement logic to this interface through three conditions: torque-prediction accuracy, 
+actuator margin, and behavior-successor mismatch; a corollary identifies the additional drift bound 
+required by the two-rate signal. These are implementation contracts rather than a new general 
+safety-filter or certificate-transfer theory. In 111 deterministic reduced-order runs, full-horizon 
+enforcement removes a predicted 3.587~Nm future torque violation left by first-step-only enforcement. 
+Under deterministic held-out synthetic plant perturbations, a sampled start/end audit reports positive 
+T1 and T2 slacks and maximum $\ell_\infty$ T3 defects below 0.0069~m/s against a 0.03~m/s budget for 
+three realization maps. A matched horizon trajectory-reference governor achieves comparable constraint 
+handling in the successful cases; the proposed vector correction has lower correction RMSE in three of 
+the four successful or horizon-isolation cases, but not in all scenarios. Abrupt disturbance and severe 
+mismatch violate the audit premises for both predictive architectures. The study demonstrates and 
+falsifies the proposed interface contract in a controlled benchmark.
 \end{abstract}
 
 \begin{IEEEkeywords}
