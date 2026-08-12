@@ -52,7 +52,7 @@ a 7-DOF Franka FR3, adding the disturbance state to an otherwise identical
 saturates and requires 3.3 times the peak positive joint power; ideal
 measured-force cancellation reaches 1.39\,mm. The proposed sensorless
 controller therefore isolates a $65.8\times$ offset-rejection benefit in the
-tested moving task without increasing peak power.
+tested moving task without increasing measured peak positive joint power.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -166,8 +166,13 @@ where $d_{\rm acc}$ collects the projected interaction wrench,
 $-\dot J_v\dot q$, orientation-to-translation coupling, friction, and model
 error. Hence this is a cancellation-plus-disturbance model, not an assumption
 of perfect nonlinear inversion. We use the force-equivalent disturbance
-$d=-\Lambda d_{\rm acc}$, which is constant for a constant translational
-human force even when $\Lambda(q)$ changes.
+$d=-\Lambda d_{\rm acc}$. Only the interaction-wrench contribution to $d$ is
+constant under a constant translational human force, independent of
+$\Lambda(q)$; the remaining components of $d_{\rm acc}$ --- the Coriolis-like
+coupling term, orientation-to-translation coupling, friction, and model
+error --- are themselves configuration- and motion-dependent, so the
+aggregate $d$ need not be constant even when the human force is. This is
+exactly why $d$ is modeled as a random walk rather than a known constant.
 
 For error state $x=[e^\top,\dot e^\top]^\top$ and sample period $\Delta t$,
 exact zero-order-hold discretization gives
@@ -313,15 +318,22 @@ zero correction on QP failure rather than claiming recursive feasibility.
 \begin{proposition}[Frozen-configuration offset rejection]
 Fix $q$, assume the augmented pair in \eqref{eq:augmented} is detectable, the
 closed loop is stable, the QP is feasible with inactive constraints at steady
-state, and the estimator is asymptotically unbiased for a constant $d$. Then
+state, the estimator is asymptotically unbiased for a constant $d$, and the
+unconstrained first-move position gain $K_e$ is nonsingular. Then
 the equilibrium satisfies $e_\infty=0$ and $F_{\mathrm{mpc},\infty}=-d$.
 \end{proposition}
 \begin{proof}
 At equilibrium, \eqref{eq:discrete} requires
-$B_d(F_{\mathrm{mpc},\infty}+d)=0$. Away from singularities $B_d$ has full column rank,
-so $F_{\mathrm{mpc},\infty}=-d$. With the centered input $V=U+d_N$, the unconstrained
-steady solution is $V=0$; positive-definite position weighting and stable
-feedback then give $e_\infty=0$.
+$B_d(F_{\mathrm{mpc},\infty}+d)=0$; away from singularities $B_d$ has full
+column rank, so $F_{\mathrm{mpc},\infty}=-d$, and the first block row then
+gives $\dot e_\infty=0$. Because $D_{\rm bar}=\Gamma(\bm 1_N\otimes I_3)$
+(\eqref{eq:lifted}), $X$ depends on $U$ only through $V=U+d_N$, so the cost
+\eqref{eq:cost} written in $V$ is independent of $\hat d$ and the
+unconstrained law is exactly $F_{\mathrm{mpc},0}=K_ee+K_{\dot e}\dot e-\hat d$
+for every $\hat d$, not only $\hat d=0$. At equilibrium, with
+$\hat d_\infty=d$ by unbiasedness, $F_{\mathrm{mpc},\infty}=K_ee_\infty-d$.
+Equating the two expressions for $F_{\mathrm{mpc},\infty}$ gives
+$K_ee_\infty=0$, hence $e_\infty=0$ since $K_e$ is nonsingular.
 \end{proof}
 
 This is a frozen-configuration result. Moving-reference performance and active
@@ -385,22 +397,27 @@ The controller is implemented at two rates. At every 1\,kHz physics step, the
 robot model, reference acceleration, orientation term, and null-space term are
 updated. At a QP tick, the same measured state is used to update the recursive
 filter, rebuild the scheduled prediction and affine torque row, and solve for
-the first task-force move. That move is held until the next QP tick. This
-ordering matters: using an unclipped optimizer output rather than the force
-associated with the applied command in \eqref{eq:kf} would give the estimator
-a false input whenever a runtime guard activates.
+the first task-force move. That move is held until the next QP tick. The
+recursive filter's predict step in \eqref{eq:kf} uses this QP-solved force
+directly, not a guard-adjusted value: if a runtime guard later alters the
+torque actually sent to the robot, the resulting mismatch is absorbed as
+apparent disturbance at the next measurement update rather than fed back
+explicitly. Section~V confirms this distinction is immaterial for the
+reported benchmarks, where the raw limit excess stays below the saturation
+threshold throughout; it would matter under sustained, deliberate guard
+activation.
 
 The per-tick sequence is:
 \begin{enumerate}[leftmargin=*,itemsep=1pt,topsep=2pt]
 \item compute $M,C,G,J_v,J_\omega,\Lambda$ and the measured error $y_k$;
-\item predict and correct $(\hat z_k,P_k)$ using the previously applied
-task-force correction;
+\item predict and correct $(\hat z_k,P_k)$ using the QP-solved task-force
+correction from the previous tick;
 \item form $\Phi,\Gamma,D_{\rm bar}$ from the current $B_d(q_k)$ and construct
 $(H,h)$ from \eqref{eq:condensed};
 \item add the force box and complete first-move torque row
 \eqref{eq:taubox}, warm-start OSQP, and solve;
-\item assemble \eqref{eq:torque}, apply the configured runtime guards, and
-store the applied correction for the next filter prediction.
+\item assemble \eqref{eq:torque} and apply the configured runtime guards to
+the torque command sent to the robot.
 \end{enumerate}
 
 Table~\ref{tab:params} records the parameters needed to reproduce the direct
@@ -539,8 +556,13 @@ The nominal 300\,N/m impedance is intentionally compliant, so its comparison
 with C4 is gain-confounded. A separate calibration estimates C4's equilibrium
 stiffness as 5441\,N/m, then searches stiffness scales
 $(0.8,1.0,1.2)$ and damping ratios $(0.7,1.0,1.3)$ on one cycle. It selects
-5441\,N/m and $\zeta=1.3$. A torque-aware PI baseline is tuned independently
-over nine integral-gain/limit pairs. We also provide the matched impedance
+5441\,N/m and $\zeta=1.3$. This calibration matches equilibrium stiffness
+and a scalar damping ratio on the calibration cycle; it is not a full
+frequency-response match, and ``response-matched'' below refers to this
+stiffness- and damping-calibrated baseline rather than a guarantee of
+matched rise time, overshoot, or multiaxis coupling. A torque-aware PI
+baseline is tuned independently over nine integral-gain/limit pairs. We
+also provide the matched impedance
 with ideal simulated-force cancellation filtered at 50\,ms; this is a
 favorable sensor-based comparator, not a reproduction of a particular
 published controller. Metrics in Table~\ref{tab:fair} use three held-out
@@ -554,8 +576,8 @@ cycles.
 \setlength{\tabcolsep}{1.4pt}
 \begin{tabular}{@{}lrrrr@{}}
 \toprule
-Controller & Contact & SS & Saturated & Peak $P^+$\\
- & RMS (mm) & (mm) & samples (\%) & (W)\\
+Controller & Contact & SS & Raw-limit & Peak $P^+$\\
+ & RMS (mm) & (mm) & excess (\%) & (W)\\
 \midrule
 Nominal impedance & 41.07 & 44.82 & 0 & 22.5\\
 Response-matched impedance & 2.38 & 2.59 & 0.45 & 378.2\\
@@ -585,7 +607,7 @@ samples, compared with 113.2\,W and no thresholded saturation for C4. C4 and
 C5 each complete 2400 QP solves without failure; their maximum raw limit
 excesses are below $2\times10^{-5}$\,Nm, beneath the $10^{-3}$\,Nm saturation
 threshold. Adding the estimator reduces steady-state error by $65.8\times$
-without increasing peak power. Ideal measured-force cancellation confirms
+without increasing peak positive joint power. Ideal measured-force cancellation confirms
 that constant-load rejection is not unique to MPC; C5's distinction in this
 test is achieving 0.042\,mm without a force measurement.
 
@@ -713,7 +735,11 @@ For C7, steady-state deflection remains approximately 0.021\,mm throughout the
 tested unsaturated range, whereas first-contact peak error increases from 0.29
 to 1.27\,mm. The estimator cancels a constant force after convergence, but it
 cannot cancel an unseen step at its first sample; this separates steady-state
-offset rejection from transient compliance.
+offset rejection from transient compliance. The reported SS value is
+load-independent by construction rather than a rounding artifact:
+Proposition~1 predicts exact rejection for any constant $d$, so 0.021\,mm
+reflects a load-independent numerical/discretization and trajectory-tracking
+floor, not a residual scaling with the applied force.
 
 \begin{table}[t]
 \caption{Sustained-Force Sweep: Steady-State / Peak Error (mm)}
