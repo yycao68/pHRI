@@ -132,13 +132,33 @@ combinations~\cite{wu2025ensuring} address adjacent robustness and constraint
 questions.  These works preclude a claim that MPC, disturbance estimation, or
 interaction-error prediction is new in isolation.
 
-The narrower opportunity addressed here is an economical interface between
-these established ideas.  Rather than optimize full joint dynamics or
+Two of these differ from the present formulation in model scope and sensing.
+Jordana \emph{et al.}~\cite{jordana2024force} embed direct force-sensor
+feedback in a full nonlinear whole-body MPC, estimating the discrepancy
+between predicted and measured contact force within that model; the present
+controller instead uses no force/torque sensor and estimates an unmodelled
+aggregate disturbance as a random walk in a reduced, configuration-independent
+three-dimensional force channel. Gold \emph{et al.}'s MPIC~\cite{gold2023mpic}
+predicts contact force explicitly through an interaction model, weighting the
+prediction independently in the cost alongside position, velocity, and
+control-effort terms; for a reference-holding task, that weight must be zero
+to avoid trading position accuracy for compliance, at which point the force
+prediction stops contributing to disturbance rejection at all. The present
+controller instead treats the disturbance as unknown, and its centered input
+cost achieves offset rejection with no such trade-off: $\Fmpc=-\dhat$ is
+exactly cost-free at any position weight, regardless of whether the task is
+framed as motion, compliance, or force control.
+
+The opportunity addressed here is therefore not a new predictive-control or
+estimation primitive in isolation, but their specific combination into an
+economical interface.  Rather than optimize full joint dynamics or
 impedance parameters, operational-space cancellation leaves a normalized
 translational error model.  The optimization variable is a corrective task
-force, the persistent disturbance is augmented in the same force domain, and
-the robot-specific realization enters the complete applied-torque constraint.
-The result is a small convex QP whose state-transition block can be precomputed.
+force, the persistent disturbance is augmented in the same force domain with
+a centered cost that makes offset rejection unconditional on task weighting,
+and the robot-specific realization enters the complete applied-torque
+constraint rather than bounding the correction alone.  The result is a small
+convex QP whose state-transition block can be precomputed.
 
 The contributions are therefore threefold:
 
@@ -208,8 +228,12 @@ slow-varying loads (unmodelled payloads, tool changes).
 This decomposition is written in acceleration units; the estimator and QP of
 Section~\ref{sec:layer2} operate on the equivalent \emph{force-form}
 disturbance $d=-\Lambda(q)d_{\mathrm{acc}}$ (the quantity entering through $B_d(\rho_k)$ in
-\eqref{eq:augstate}), which is constant for a constant human force and is the
-form realized in code.
+\eqref{eq:augstate}), the form realized in code. Only the interaction-wrench
+contribution to $d$ is constant under a constant human force; the remaining
+terms of $d_{\text{acc}}$ in \eqref{eq:dist} --- orientation coupling, the
+Jacobian-derivative term, model error --- stay configuration- and
+motion-dependent regardless, which is why $d$ is modelled as a random walk
+rather than a known constant.
 
 For the reference-holding task considered here, design a torque law $\tau$
 such that for any constant bounded disturbance $d$ compatible with the
@@ -571,8 +595,13 @@ $\ddot{e}=-\Laminv\Fmpc+d_{\text{acc}}$, related by $d=-\Lambda(q)\,d_{\text{acc
 This form enters the discrete model through the \emph{same} input matrix
 $B_d(\rho_k)$ as the control $\Fmpc$, and---unlike the acceleration form
 $d_{\text{acc}}=-\Lambda^{-1}(q)d$, which varies with configuration as
-$\Lambda(q)$ changes---it is constant for a constant human force, matching the
-constant-disturbance hypothesis of Theorem~\ref{thm:zss}. It is the quantity
+$\Lambda(q)$ changes---its dominant, interaction-wrench component is constant
+for a constant human force, independent of $\Lambda(q)$; the remaining,
+smaller contributions to $d$ stay configuration- and motion-dependent, and
+the random-walk model \eqref{eq:augstate} accommodates that residual
+variation rather than assuming $d(t)$ is exactly constant, consistent with
+the constant-$d_\infty$ hypothesis Theorem~\ref{thm:zss} states for the
+estimator's converged target. It is the quantity
 the implementation stores as $\dhat$ and cancels via $\Fmpc=-\dhat$ at steady
 state. Augment the state with this integrating disturbance, modelled as a
 random walk $d_{k+1}=d_k+w_k$:
