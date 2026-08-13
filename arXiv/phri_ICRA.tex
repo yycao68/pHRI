@@ -85,7 +85,9 @@ constraint optimization \cite{chen2025unified}, learns interaction models
 \cite{haninger2023model}, estimates force online \cite{jordana2024force}, or
 enforces passivity and safety conditions
 \cite{cao2023passive,matschek2023safe}. High-rate nonlinear manipulator MPC is
-also possible with tailored computation \cite{kleff2021highfrequency}. Thus
+also possible with tailored computation \cite{kleff2021highfrequency}, and
+combining MPC with an extended-state disturbance observer has been
+demonstrated on hardware at millisecond rates \cite{wu2025ensuring}. Thus
 MPC, disturbance estimation, and predictive impedance are not individually
 new.
 
@@ -250,7 +252,7 @@ Let $z=[x^\top,d^\top]^\top$, $C_z=[I_6\;0]$, and denote the two matrices in
 \eqref{eq:augmented} by $A_z(q_k)$ and $B_z(q_k)$. The implemented recursion is
 \begin{subequations}
 \begin{align}
-\hat z^-_{k+1}&=A_z(q_k)\hat z^+_k+B_z(q_k)F_{\mathrm{mpc},k},\\
+\hat z^-_{k+1}&=A_z(q_k)\hat z^+_k+B_z(q_k)F_{\mathrm{mpc},k},\label{eq:kfpredict}\\
 P^-_{k+1}&=A_z(q_k)P^+_kA_z^\top(q_k)+Q_z,\\
 S_{k+1}&=C_zP^-_{k+1}C_z^\top+R_z,\\
 L_{k+1}&=P^-_{k+1}C_z^\top S_{k+1}^{-1},\\
@@ -351,26 +353,36 @@ clipping and torque-rate limiting remain final guards. If
 $\tau_{\rm base}$ alone exhausts the budget, the released benchmark returns
 zero correction on QP failure rather than claiming recursive feasibility.
 
-\begin{proposition}[Frozen-configuration offset rejection]
+\begin{proposition}[Frozen-configuration offset rejection in expectation]
 Fix $q$, assume the augmented pair in \eqref{eq:augmented} is detectable, the
 closed loop is stable, the QP is feasible with inactive constraints at steady
-state, the estimator is asymptotically unbiased for a constant $d$, and the
-unconstrained first-move position gain $K_e$ is nonsingular. Then
-the equilibrium satisfies $e_\infty=0$ and $F_{\mathrm{mpc},\infty}=-d$.
+state, the estimator is asymptotically unbiased for a constant $d$ (i.e.
+$\mathbb E[\hat d_k]\to d$), and the unconstrained first-move position gain
+$K_e$ is nonsingular. Then the mean equilibrium satisfies
+$\mathbb E[e_\infty]=0$ and $\mathbb E[F_{\mathrm{mpc},\infty}]=-d$.
 \end{proposition}
 \begin{proof}
-At equilibrium, \eqref{eq:discrete} requires
-$B_d(F_{\mathrm{mpc},\infty}+d)=0$; away from singularities $B_d$ has full
-column rank, so $F_{\mathrm{mpc},\infty}=-d$, and the first block row then
-gives $\dot e_\infty=0$. Because $D_{\rm bar}=\Gamma(\bm 1_N\otimes I_3)$
-(\eqref{eq:lifted}), $X$ depends on $U$ only through $V=U+d_N$, so the cost
-\eqref{eq:cost} written in $V$ is independent of $\hat d$ and the
-unconstrained law is exactly $F_{\mathrm{mpc},0}=K_ee+K_{\dot e}\dot e-\hat d$
-for every $\hat d$, not only $\hat d=0$. At equilibrium, with
-$\hat d_\infty=d$ by unbiasedness, $F_{\mathrm{mpc},\infty}=K_ee_\infty-d$.
-Equating the two expressions for $F_{\mathrm{mpc},\infty}$ gives
-$K_ee_\infty=0$, hence $e_\infty=0$ since $K_e$ is nonsingular.
+Taking expectations of \eqref{eq:discrete} at equilibrium gives
+$B_d(\mathbb E[F_{\mathrm{mpc},\infty}]+d)=0$; away from singularities $B_d$
+has full column rank, so $\mathbb E[F_{\mathrm{mpc},\infty}]=-d$, and the
+first block row then gives $\mathbb E[\dot e_\infty]=0$. Because
+$D_{\rm bar}=\Gamma(\bm 1_N\otimes I_3)$ (\eqref{eq:lifted}), $X$ depends on
+$U$ only through $V=U+d_N$, so the cost \eqref{eq:cost} written in $V$ is
+independent of $\hat d$ and the unconstrained law is exactly
+$F_{\mathrm{mpc},0}=K_ee+K_{\dot e}\dot e-\hat d$ for every $\hat d$, not
+only $\hat d=0$. Taking expectations at equilibrium, with
+$\mathbb E[\hat d_\infty]=d$ by unbiasedness,
+$\mathbb E[F_{\mathrm{mpc},\infty}]=K_e\mathbb E[e_\infty]-d$. Equating the
+two expressions for $\mathbb E[F_{\mathrm{mpc},\infty}]$ gives
+$K_e\mathbb E[e_\infty]=0$, hence $\mathbb E[e_\infty]=0$ since $K_e$ is
+nonsingular.
 \end{proof}
+For the persistently-tuned filter implemented here ($Q_w\succ0$, held
+constant online rather than decayed), the estimation error retains a
+nonzero steady-state covariance even for exactly constant $d$, so realized
+trajectories fluctuate around this mean equilibrium rather than converging
+to it pointwise; Section~V's nonzero residual floors are consistent with
+that fluctuation, not a violation of the proposition.
 
 This is a frozen-configuration result. Moving-reference performance and active
 constraint behavior are evaluated numerically; they are not consequences of
@@ -434,7 +446,7 @@ robot model, reference acceleration, orientation term, and null-space term are
 updated. At a QP tick, the same measured state is used to update the recursive
 filter, rebuild the scheduled prediction and affine torque row, and solve for
 the first task-force move. That move is held until the next QP tick. The
-recursive filter's predict step in \eqref{eq:kf} uses this QP-solved force
+recursive filter's predict step in \eqref{eq:kfpredict} uses this QP-solved force
 directly, not a guard-adjusted value: if a runtime guard later alters the
 torque actually sent to the robot, the resulting mismatch is absorbed as
 apparent disturbance at the next measurement update rather than fed back
@@ -787,9 +799,10 @@ to 1.27\,mm. The estimator cancels a constant force after convergence, but it
 cannot cancel an unseen step at its first sample; this separates steady-state
 offset rejection from transient compliance. The reported SS value is
 load-independent by construction rather than a rounding artifact:
-Proposition~1 predicts exact rejection for any constant $d$, so 0.021\,mm
-reflects a load-independent numerical/discretization and trajectory-tracking
-floor, not a residual scaling with the applied force.
+Proposition~1 predicts rejection in expectation for any constant $d$, so
+0.021\,mm reflects a load-independent numerical/discretization,
+trajectory-tracking, and estimator-fluctuation floor, not a residual scaling
+with the applied force.
 
 \begin{table}[t]
 \caption{Sustained-Force Sweep: Steady-State / Peak Error (mm)}
