@@ -695,10 +695,10 @@ future joint-space rollout.
 \toprule
 $F_{\max}$ (N) & 150 & 20 & 5 & 1 & 0\\
 \midrule
-C7 RMS & 0.15 & 0.15 & 317.7 & 416.0 & 430.0\\
-C7 peak & 0.77 & 0.76 & 412.2 & 554.2 & 565.9\\
-C8 RMS & 0.15 & 0.15 & 41.3 & 69.8 & 78.6\\
-C8 peak & 0.77 & 0.76 & 53.7 & 95.9 & 109.4\\
+C7 RMS & 0.32 & 0.32 & 317.9 & 416.1 & 430.0\\
+C7 peak & 1.48 & 1.47 & 412.4 & 554.3 & 565.9\\
+C8 RMS & 0.32 & 0.32 & 41.3 & 69.8 & 78.5\\
+C8 peak & 1.47 & 1.47 & 53.5 & 95.8 & 109.3\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -707,7 +707,7 @@ At 150 and 20\,N, C8 matches C7 to the reported precision; the backbone does
 not cost nominal performance because it replaces force that the unconstrained
 QP would otherwise generate. At 5\,N and below, both controllers degrade
 severely, but C8's retained stiffness reduces contact RMS by 5.5--7.7 times
-over this 24\,s protocol. At $F_{\max}=0$, C8 still has 78.6\,mm contact RMS:
+over this 24\,s protocol. At $F_{\max}=0$, C8 still has 78.5\,mm contact RMS:
 the backbone improves graceful degradation but cannot reproduce offset-free
 control without additive correction. This finite-duration stress test is not
 a boundedness, recursive-feasibility, or actuator-fault guarantee. It does,
@@ -802,16 +802,16 @@ bound for unmodelled contact, delay, or hardware sensing.
 
 The circular experiment is repeated with sustained loads from 5 to 25\,N to
 check the operating range of the offset claim (Table~\ref{tab:forcesweep}).
-For C7, steady-state deflection remains approximately 0.021\,mm throughout the
-tested unsaturated range, whereas first-contact peak error increases from 0.29
-to 1.27\,mm. The estimator cancels a constant force after convergence, but it
+For C7, steady-state deflection remains approximately 0.023\,mm throughout the
+tested unsaturated range, whereas first-contact peak error increases from 0.57
+to 2.45\,mm. The estimator cancels a constant force after convergence, but it
 cannot cancel an unseen step at its first sample; this separates steady-state
 offset rejection from transient compliance. The reported SS value is
 load-independent by construction rather than a rounding artifact:
 Proposition~1 predicts rejection in expectation for any constant $d$, so
-0.021\,mm reflects a load-independent numerical/discretization,
-trajectory-tracking, and estimator-fluctuation floor, not a residual scaling
-with the applied force.
+this near-constant $\approx$0.023\,mm reflects a load-independent numerical/
+discretization, trajectory-tracking, and estimator-fluctuation floor, not a
+residual scaling with the applied force.
 
 \begin{table}[t]
 \caption{Sustained-Force Sweep: Steady-State / Peak Error (mm)}
@@ -825,16 +825,16 @@ Applied load (N) & 5 & 10 & 15 & 20 & 25\\
 \midrule
 Nominal impedance, SS & 26.9 & 33.7 & 45.0 & 58.5 & 73.1\\
 Nominal impedance, peak & 28.4 & 37.0 & 51.2 & 70.1 & 88.9\\
-C7, SS & 0.021 & 0.021 & 0.021 & 0.021 & 0.021\\
-C7, peak & 0.29 & 0.50 & 0.76 & 1.02 & 1.27\\
+C7, SS & 0.024 & 0.023 & 0.023 & 0.023 & 0.023\\
+C7, peak & 0.57 & 0.96 & 1.46 & 1.96 & 2.45\\
 \bottomrule
 \end{tabular}
 \end{table}
 
 At 15\,N, changing the force profile from a step to a linear ramp lowers C7
-contact RMS from 0.151 to 0.096\,mm and peak error from 0.759 to 0.286\,mm. A
-1\,Hz sinusoid raises contact RMS to 0.402\,mm while peak error remains
-0.601\,mm. These results agree with the direct prediction study: smoother
+contact RMS from 0.32 to 0.19\,mm and peak error from 1.46 to 0.57\,mm. A
+1\,Hz sinusoid raises contact RMS to 0.87\,mm while peak error is a
+comparable 1.30\,mm. These results agree with the direct prediction study: smoother
 onset reduces the unobserved transient, while a persistent time-varying load
 exposes the bandwidth limit of the random-walk estimator. They do not imply
 amplitude-independent performance after the 150\,N force box or joint-torque
