@@ -493,7 +493,7 @@ Position / velocity weights & $Q_p,Q_v$ & $2\!\times\!10^4 I_3,\ 50I_3$\\
 Terminal scale / effort weight & $\gamma,R$ & $5,\ 10^{-6}I_3$\\
 Corrective-force bound & $F_{\max}$ & 150\,N per axis\\
 FR3 joint-torque limits & $\tau_{\max}$ & $[87,87,87,87,12,12,12]$\,Nm\\
-Disturbance process variance & $Q_w$ & $10I_3$\\
+Disturbance process variance & $Q_w$ & $10I_3$ (2$I_3$ in C6--C7)\\
 Position / velocity obs. variance & $R_e,R_{\dot e}$ & $10^{-3}I_3,\ 10^{-2}I_3$\\
 OSQP tolerances / iteration cap & --- & $10^{-6}$ / 4000\\
 \bottomrule
@@ -522,9 +522,13 @@ comparators use the same plant and physical torque budget.
 Table~\ref{tab:ablation} separates estimator and update-rate effects. C4 and
 C5 have identical horizon, weights, rate, and torque interface; only the
 augmented disturbance estimator differs. At 100\,Hz it reduces steady-state
-error from 2.77 to 0.042\,mm. Raising the rate mainly reduces the contact
-transient in this protocol, while the estimator primarily removes the
-constant-load offset; the effects are not claimed to be orthogonal in
+error from 2.77 to 0.042\,mm. $Q_w$ is scaled by the QP period between the
+100\,Hz and 500\,Hz configurations (Table~\ref{tab:params}) so the
+continuous-time-equivalent process-noise density, not just the raw discrete
+value, is held constant across the rate comparison; C6/C7 use the
+correspondingly smaller $Q_w=2I_3$. Raising the rate mainly reduces the
+contact transient in this protocol, while the estimator primarily removes
+the constant-load offset; the effects are not claimed to be orthogonal in
 general.
 
 \begin{table}[t]
@@ -540,8 +544,8 @@ Controller & Rate & Contact RMS & Peak & SS error\\
 \midrule
 C4: DI-MPC, no estimator & 100 & 2.20 & 2.92 & 2.77\\
 C5: DI-MPC + estimator & 100 & 0.53 & 2.58 & \textbf{0.042}\\
-C6: DI-MPC, no estimator & 500 & 0.80 & 1.10 & 1.10\\
-C7: DI-MPC + estimator & 500 & \textbf{0.20} & \textbf{0.80} & $<0.05$\\
+C6: DI-MPC, no estimator & 500 & 0.80 & \textbf{1.10} & 1.10\\
+C7: DI-MPC + estimator & 500 & \textbf{0.32} & 1.48 & \textbf{0.029}\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -574,8 +578,8 @@ PI impedance & 36.2 & 27.4 & 43.7 & 21.4\\
 Predictive variable imp. & 12.9 & 4.5 & 7.5 & 4.8\\
 C4: DI-MPC 100\,Hz & \textbf{11.4} & 2.2 & 2.9 & 2.8\\
 C5: DI-MPC + est. 100\,Hz & \textbf{11.4} & 0.5 & 2.6 & $<0.05$\\
-C6: DI-MPC 500\,Hz & 12.8 & 0.8 & 1.1 & 1.1\\
-C7: DI-MPC + est. 500\,Hz & 12.6 & \textbf{0.2} & \textbf{0.8} & $<0.05$\\
+C6: DI-MPC 500\,Hz & 12.8 & 0.8 & \textbf{1.1} & 1.1\\
+C7: DI-MPC + est. 500\,Hz & 12.7 & \textbf{0.32} & 1.48 & \textbf{0.029}\\
 \bottomrule
 \end{tabular}
 \end{table}

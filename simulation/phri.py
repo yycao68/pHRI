@@ -345,10 +345,28 @@ def make_mpc_controller(name: str, dt_sim: float, *,
     use_kal    = variable or ("Kalman" in name)
     dt_mpc_eff = dt_fast if high_freq else dt_slow
     mpc_every  = max(1, round(dt_mpc_eff / dt_sim))
+    # Q_proc_d is a per-Kalman-tick process-noise variance, and the filter
+    # ticks once per control() call, i.e. once every dt_mpc_eff seconds (see
+    # ImpedanceMPCController._kalman_step). Holding it at the same absolute
+    # value for both the 100 Hz and 500 Hz configs (as an earlier version of
+    # this code did) injects 5x the process noise per second at 500 Hz,
+    # confounding "faster rate" with "implicitly more aggressive estimator".
+    # Scale by dt_mpc_eff/MPC_DT_SLOW so the continuous-time-equivalent
+    # density is held constant instead; this reproduces the original
+    # Q_proc_d=10.0 exactly at the 100 Hz reference rate.
+    # This applies to every "500 Hz"-named controller built through this
+    # function, i.e. every experiment in phri_ICRA.tex that reuses it. As of
+    # 2026-08-12 only the core ablation (Table II) and broad screen (Table
+    # III) have been rerun and updated in the paper to match; the waypoint,
+    # four-plane, and force-magnitude/shape C7 numbers there still reflect
+    # the old, unscaled Q_w=10 and have NOT been re-verified against this
+    # fix -- re-run them before trusting those specific numbers.
+    Q_proc_d_eff = 10.0 * (dt_mpc_eff / MPC_DT_SLOW)
     mpc_params = ImpedanceMPCParams(
         N=10, dt_mpc=dt_mpc_eff,
         Q_pos=2e4 * np.eye(3), Q_vel=50.0 * np.eye(3),
         Q_f_scale=5.0, R_u=1e-6 * np.eye(3),
+        Q_proc_d=Q_proc_d_eff,
         variable_impedance=variable,
         backbone_track=backbone,
         horizon_torque_constraint=backbone or frozen_horizon,
