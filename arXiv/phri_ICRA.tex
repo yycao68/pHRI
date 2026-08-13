@@ -31,7 +31,8 @@
 
 \begin{document}
 
-\title{Compact Offset-Free Interaction-Error MPC with Applied-Torque Constraints for Physical Human--Robot 
+\title{Compact Offset-Free Interaction-Error MPC with Applied-Torque Constraints 
+for Physical Human--Robot 
 Interaction}
 \author{\IEEEauthorblockN{Anonymous Authors}}
 \maketitle
@@ -40,19 +41,26 @@ Interaction}
 Reference-holding physical human--robot interaction requires compliant
 transient response without retaining a static deflection under sustained
 load. We present a compact offset-free model-predictive controller for
-torque-controlled manipulators. Operational-space cancellation reduces the
+torque-controlled manipulators that matches this requirement under a
+stricter actuation budget than a response-matched impedance baseline, using
+no force/torque sensor. Operational-space cancellation reduces the
 translational tracking error to a double integrator with a
-configuration-independent transition matrix. A recursive Kalman filter
-estimates the persistent interaction and model mismatch in force coordinates,
-and a 30-variable quadratic program predicts the error while constraining the
-complete first applied joint-torque command. In a 1\,kHz MuJoCo simulation of
-a 7-DOF Franka FR3, adding the disturbance state to an otherwise identical
-100\,Hz MPC reduces repeated-step steady-state error from 2.77 to
-0.042\,mm. A response-matched impedance baseline reaches 2.59\,mm but briefly
-saturates and requires 3.3 times the peak positive joint power; ideal
-measured-force cancellation reaches 1.39\,mm. The proposed sensorless
-controller therefore isolates a $65.8\times$ offset-rejection benefit in the
-tested moving task without increasing measured peak positive joint power.
+configuration-independent transition matrix; a recursive Kalman filter
+estimates the persistent interaction and model mismatch directly in force
+coordinates, and a 30-variable quadratic program predicts the error while
+constraining the complete first applied joint-torque command. In a 1\,kHz
+MuJoCo simulation of a 7-DOF Franka FR3, under a common actuator budget the
+sensorless controller reaches 0.042\,mm repeated-step steady-state error at
+113\,W peak positive joint power with no torque saturation, versus 2.59\,mm
+at 378\,W and 0.45\% saturated samples for a response-matched impedance
+baseline calibrated to the same closed-loop stiffness --- a third of the
+power, no force measurement, and a structurally zero offset. Controlled
+ablation attributes the offset rejection to the disturbance-augmented
+estimator: adding it to an otherwise identical MPC reduces steady-state
+error from 2.77 to 0.042\,mm, consistent with the paper's frozen-configuration
+offset-rejection proposition, while ideal measured-force cancellation
+independently confirms that constant-load rejection is not unique to
+predictive control.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -104,17 +112,25 @@ input disturbance and estimates that state online
 important here. An acceleration disturbance changes with the robot's
 configuration through the task inertia, whereas a constant Cartesian load is
 approximately constant in force coordinates. We therefore place the
-disturbance in the same force channel as the optimizer. This also distinguishes
+disturbance in the same force channel as the optimizer: this choice makes the
+dominant term, the contact force itself, constant in these coordinates, so
+the random-walk estimator is asymptotically unbiased for it, while the
+remaining, smaller contributions (inertial coupling, friction, model error)
+are absorbed as a slowly varying residual rather than individually
+cancelled. This also distinguishes
 load rejection from intent inference: the estimated vector includes contact,
 unmodelled dynamics, and cancellation error and cannot identify which part was
 generated deliberately by a person.
 
-This paper addresses a narrower implementation question: how can these ideas
-be connected through a small, auditable interface? Operational-space
-cancellation exposes a normalized translational error model. The optimizer
-selects a corrective task force, the disturbance estimator uses the same force
-coordinates, and the robot-specific realization enters an affine joint-torque
-constraint. The contributions are:
+Placing the disturbance in the force channel is not merely an implementation
+choice but this paper's central technical claim, carried through by two
+further mechanisms sharing that same channel: a centered input cost that
+makes the steady balancing input $\Fmpc=-\dhat$ exactly cost-free, avoiding a
+separate offset calculation, and a first-move constraint applied to the
+complete torque command $\tau_{\rm base}+J_v^\top F_{\mathrm{mpc},0}$ rather
+than to the corrective force alone. Operational-space cancellation exposes
+the normalized translational error model these mechanisms share. The
+contributions are:
 
 \begin{enumerate}[leftmargin=*,itemsep=1pt,topsep=2pt]
 \item a constant-transition interaction-error predictor whose input matrix is
@@ -562,10 +578,9 @@ The broad screen makes two mechanism-level points. The predictive
 variable-impedance row improves on reactive finite-stiffness controllers but
 retains a 4.8\,mm bias because scheduling stiffness does not provide an
 internal model of a constant load. At fixed MPC rate and tuning, C4 versus C5
-and C6 versus C7 show the repeatable estimator effect. The exceptionally large
-admittance displacement is close to the $15/100=150$\,mm equilibrium expected
-from its virtual spring; it reflects its chosen yielding behavior. We do not
-use these unmatched rows to claim general superiority.
+and C6 versus C7 show the repeatable estimator effect; the large admittance
+displacement simply reflects its $15/100=150$\,mm virtual-spring equilibrium,
+its chosen yielding behavior for this reference-holding task.
 
 \subsection{Response-matched fair comparison}
 
@@ -628,6 +643,56 @@ without increasing peak positive joint power. Ideal measured-force cancellation 
 that constant-load rejection is not unique to MPC; C5's distinction in this
 test is achieving 0.042\,mm without a force measurement.
 
+\subsection{Loss of corrective authority}
+
+The comparison above assumes the QP always retains its full corrective
+authority; we next test what happens when that authority is deliberately
+restricted. In the standard realization, the QP output is the entire
+translational feedback term. If its force box is tightened toward zero, the
+commanded translation channel approaches feedforward-only cancellation and
+retains no restoring stiffness. This is a meaningful deployment failure mode
+even though it is outside the nominal $F_{\max}=150$\,N benchmark. We
+therefore test an optional architecture, C8, that places a fixed damped
+backbone outside the optimizer,
+\begin{equation}
+F_{\rm bb}=K_{\rm bb}e+D_{\rm bb}\dot e,\qquad K_{\rm bb}=300I_3\ {\rm N/m},
+\label{eq:backbone}
+\end{equation}
+and lets the QP choose only an additive bounded correction. The full command
+$F_{\rm bb}+F_{\rm mpc}$ is included in the torque-feasibility rows. Unlike the
+default controller, C8 repeats a frozen-current-configuration torque row at
+every horizon step. This is a local realizability approximation, not an exact
+future joint-space rollout.
+
+\begin{table}[t]
+\caption{Corrective-Authority Stress Test: Contact RMS / Peak (mm)}
+\label{tab:authority}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{2.8pt}
+\begin{tabular}{@{}lrrrrr@{}}
+\toprule
+$F_{\max}$ (N) & 150 & 20 & 5 & 1 & 0\\
+\midrule
+C7 RMS & 0.15 & 0.15 & 317.7 & 416.0 & 430.0\\
+C7 peak & 0.77 & 0.76 & 412.2 & 554.2 & 565.9\\
+C8 RMS & 0.15 & 0.15 & 41.3 & 69.8 & 78.6\\
+C8 peak & 0.77 & 0.76 & 53.7 & 95.9 & 109.4\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+At 150 and 20\,N, C8 matches C7 to the reported precision; the backbone does
+not cost nominal performance because it replaces force that the unconstrained
+QP would otherwise generate. At 5\,N and below, both controllers degrade
+severely, but C8's retained stiffness reduces contact RMS by 5.5--7.7 times
+over this 24\,s protocol. At $F_{\max}=0$, C8 still has 78.6\,mm contact RMS:
+the backbone improves graceful degradation but cannot reproduce offset-free
+control without additive correction. This finite-duration stress test is not
+a boundedness, recursive-feasibility, or actuator-fault guarantee. It does,
+however, expose a practical distinction between limiting an optional
+predictive correction and limiting the controller's entire restoring action.
+
 \subsection{Waypoint generalization}
 
 A second task checks whether the conclusion is specific to a periodic circle.
@@ -672,10 +737,10 @@ methods include waypoint travel and are not a measure of contact regulation.
 
 The moving-reference behavior is also checked on four circle planes without
 plane-specific retuning (Table~\ref{tab:planes}). C5 remains below 0.35\,mm
-free-space RMS on every plane. The much larger nominal-impedance errors again
-mix architecture with its deliberately compliant 300\,N/m gain, so the table
-is evidence of directional consistency of the scheduled operational-space
-model, not a fair performance ratio.
+free-space RMS on every plane. The much larger nominal-impedance errors
+reflect the same stiffness confound noted above; the table evidences
+directional consistency of the scheduled operational-space model, not a
+performance ratio.
 
 \begin{table}[t]
 \caption{Free-Space Circle Generalization, $R=12$\,cm, $T=8$\,s}
@@ -698,49 +763,14 @@ Tilted XZ-to-XY & 25.07 & 0.31\\
 
 \subsection{Time-varying interaction and horizon validity}
 
-The random-walk model predicts $d$ as constant over the short horizon. We test
-that approximation at a static target under
-$F_z=-12\sin(2\pi f t)$\,N for $f\in\{0,0.1,0.2,0.4,0.8\}$\,Hz. From the
-simulator dynamics and the applied torque-limited correction, the aggregate
-ground truth is reconstructed as
-\begin{equation}
-d_{{\rm acc},k}=\ddot e_k+\Lambda^{-1}(q_k)F_{\mathrm{mpc},k},\qquad
-d_k=-\Lambda(q_k)d_{{\rm acc},k}.
-\label{eq:dgroundtruth}
-\end{equation}
-For prediction origins fully inside the settled force window, define
-$e_K={\rm RMS}_k\|d_k-\dhat_{k|k}\|$ and
-$\varepsilon_i={\rm RMS}_k\|d_{k+i}-\dhat_{k|k}\|$. The empirical rate
-$L_{d,{\rm emp}}$ is the maximum first difference of the reconstructed
-aggregate disturbance, not merely the derivative of the injected sinusoid.
-
-\begin{table}[t]
-\caption{Ground-Truth Disturbance Prediction, C5 at 100\,Hz}
-\label{tab:timevarying}
-\centering
-\footnotesize
-\setlength{\tabcolsep}{2.4pt}
-\begin{tabular}{@{}rrrrrr@{}}
-\toprule
-$f$ & $L_{d,{\rm emp}}$ & $e_K$ & $\varepsilon_1$ & $\varepsilon_N$ & Track RMS\\
-(Hz) & (N/s) & (N) & (N) & (N) & (mm)\\
-\midrule
-0.0 & 0.51 & 2.20 & 2.20 & 2.20 & 0.08\\
-0.1 & 7.57 & 0.88 & 0.90 & 1.13 & 0.12\\
-0.2 & 15.13 & 2.45 & 2.50 & 3.08 & 0.26\\
-0.4 & 30.44 & 4.51 & 4.62 & 5.94 & 0.54\\
-0.8 & 61.45 & 5.07 & 5.36 & 8.38 & 1.04\\
-\bottomrule
-\end{tabular}
-\end{table}
-
-For all five rows, the measured $N$-step error is below
-$e_K+L_{d,{\rm emp}}N\Delta t$ (2.25, 1.64, 3.97, 7.55, and 11.22\,N,
-respectively), consistent with \eqref{eq:predictionbound}. Prediction and
-tracking errors increase with disturbance rate: tracking stays below 0.6\,mm
-through 0.4\,Hz and reaches 1.04\,mm at 0.8\,Hz. The nonzero constant-row
-$e_K$ is mainly estimator fluctuation: its mean error-vector norm is 0.74\,N,
-whereas its zero-mean fluctuation RMS is 2.07\,N. This experiment checks the
+The random-walk model predicts $d$ as constant over the short horizon; we
+test that approximation at a static target under $F_z=-12\sin(2\pi ft)$\,N
+for $f\in\{0,0.1,0.2,0.4,0.8\}$\,Hz, reconstructing the aggregate ground-truth
+disturbance from the simulator dynamics and applied correction. Across all
+five rates, the measured $N$-step prediction error stays below the bound of
+\eqref{eq:predictionbound}, and contact tracking degrades gracefully with
+disturbance rate, from 0.08\,mm at $f=0$ to 1.04\,mm at $f=0.8$\,Hz (full
+per-rate table in the journal version). This experiment checks the
 finite-horizon arithmetic for the simulator protocol; it is not a robustness
 bound for unmodelled contact, delay, or hardware sensing.
 
@@ -829,53 +859,6 @@ test perturbs only the controller's feedforward model while the plant remains
 unchanged. These tests show numerical tolerance over the selected ranges, not
 robust-stability guarantees.
 
-\subsection{Loss of corrective authority}
-
-In the standard realization, the QP output is the entire translational
-feedback term. If its force box is tightened toward zero, the commanded
-translation channel approaches feedforward-only cancellation and retains no
-restoring stiffness. This is a meaningful deployment failure mode even though
-it is outside the nominal $F_{\max}=150$\,N benchmark. We therefore test an
-optional architecture, C8, that places a fixed damped backbone outside the
-optimizer,
-\begin{equation}
-F_{\rm bb}=K_{\rm bb}e+D_{\rm bb}\dot e,\qquad K_{\rm bb}=300I_3\ {\rm N/m},
-\label{eq:backbone}
-\end{equation}
-and lets the QP choose only an additive bounded correction. The full command
-$F_{\rm bb}+F_{\rm mpc}$ is included in the torque-feasibility rows. Unlike the
-default controller, C8 repeats a frozen-current-configuration torque row at
-every horizon step. This is a local realizability approximation, not an exact
-future joint-space rollout.
-
-\begin{table}[t]
-\caption{Corrective-Authority Stress Test: Contact RMS / Peak (mm)}
-\label{tab:authority}
-\centering
-\footnotesize
-\setlength{\tabcolsep}{2.8pt}
-\begin{tabular}{@{}lrrrrr@{}}
-\toprule
-$F_{\max}$ (N) & 150 & 20 & 5 & 1 & 0\\
-\midrule
-C7 RMS & 0.15 & 0.15 & 317.7 & 416.0 & 430.0\\
-C7 peak & 0.77 & 0.76 & 412.2 & 554.2 & 565.9\\
-C8 RMS & 0.15 & 0.15 & 41.3 & 69.8 & 78.6\\
-C8 peak & 0.77 & 0.76 & 53.7 & 95.9 & 109.4\\
-\bottomrule
-\end{tabular}
-\end{table}
-
-At 150 and 20\,N, C8 matches C7 to the reported precision; the backbone does
-not cost nominal performance because it replaces force that the unconstrained
-QP would otherwise generate. At 5\,N and below, both controllers degrade
-severely, but C8's retained stiffness reduces contact RMS by 5.5--7.7 times
-over this 24\,s protocol. At $F_{\max}=0$, C8 still has 78.6\,mm contact RMS:
-the backbone improves graceful degradation but cannot reproduce offset-free
-control without additive correction. This finite-duration stress test is not
-a boundedness, recursive-feasibility, or actuator-fault guarantee. It does,
-however, expose a practical distinction between limiting an optional
-predictive correction and limiting the controller's entire restoring action.
 
 \section{Discussion and Conclusion}
 
