@@ -40,16 +40,20 @@ Interaction}
 \begin{abstract}
 Reference-holding physical human--robot interaction requires bounded
 transient deviation followed by offset-free reference recovery, without
-retaining a static deflection under sustained load. We present a compact offset-free model-predictive controller for
-torque-controlled manipulators that matches this requirement under a
-stricter actuation budget than a stiffness-and-damping-calibrated impedance
-baseline, using
-no force/torque sensor. Operational-space cancellation reduces the
-translational tracking error to a double integrator with a
-configuration-independent transition matrix; a recursive Kalman filter
-estimates the persistent interaction and model mismatch directly in force
-coordinates, and a 30-variable quadratic program predicts the error while
-constraining the complete first applied joint-torque command. In a 1\,kHz
+retaining a static deflection under sustained load. Operational-space
+cancellation reduces the translational tracking error to a
+\textbf{double integrator with a configuration-independent transition
+matrix}, turning physical interaction into a predictive quantity on a
+fixed linear model rather than a property re-derived per contact or
+configuration. Built on that representation, we present a compact
+offset-free model-predictive controller for torque-controlled
+manipulators that matches the reference-holding requirement under a
+stricter actuation budget than a stiffness-and-damping-calibrated
+impedance baseline, using no force/torque sensor: a recursive Kalman
+filter estimates the persistent interaction and model mismatch directly
+in force coordinates, and a 30-variable quadratic program predicts the
+error while constraining the complete first applied joint-torque
+command. In a 1\,kHz
 MuJoCo simulation of a 7-DOF Franka FR3, under a common actuator budget the
 sensorless controller reaches 0.042\,mm repeated-step steady-state error at
 113\,W peak positive joint power with no torque saturation, versus 2.59\,mm
@@ -140,13 +144,17 @@ the normalized translational error model these mechanisms share. The
 contributions are:
 
 \begin{enumerate}[leftmargin=*,itemsep=1pt,topsep=2pt]
-\item a constant-transition interaction-error predictor whose input matrix is
-scheduled only through the current task inertia;
-\item force-domain disturbance augmentation with a centered input cost that
-admits the steady balancing input $\Fmpc=-\dhat$; and
-\item a first-move applied-torque constraint and a controlled FR3 simulation
-comparison against nominal, calibrated, integral, variable-impedance,
-and ideal measured-force baselines.
+\item a \textbf{double-integrator interaction-error representation}:
+operational-space cancellation reduces translational tracking error to a
+fixed linear system whose input matrix is scheduled only through the
+current task inertia, making interaction a predictive state on a shared
+model rather than a property re-modeled per contact or configuration;
+\item force-domain disturbance augmentation on that representation, with a
+centered input cost that admits the steady balancing input $\Fmpc=-\dhat$
+at no cost; and
+\item a first-move applied-torque constraint on the same representation, and
+a controlled FR3 simulation comparison against nominal, calibrated,
+integral, variable-impedance, and ideal measured-force baselines.
 \end{enumerate}
 
 The conference version focuses on the implemented controller and its causal
@@ -896,6 +904,19 @@ steady-state improvement to disturbance augmentation under identical MPC
 tuning. Stiffness/damping calibration also shows that much of the nominal
 impedance-versus-MPC gap is simply stiffness, while ideal force cancellation
 confirms that offset rejection is not unique to predictive control.
+
+\textbf{Where this places the contribution.} The double-integrator
+representation is a general pattern for physical interaction, not one
+particular to a fixed base: in selected task coordinates, after nominal
+dynamic compensation, interaction reduces to a fixed linear system driven
+by a single disturbance state, which is what makes it a predictive
+quantity rather than a property re-modeled per contact or configuration.
+In a model-based Physical AI stack --- perception and planning reasoning
+about the world and the task, and a fast interaction interface turning
+that into torque --- this paper establishes the base case of that shared
+representation: a single fixed contact point, exact in force coordinates.
+``Physical AI'' names that placement; it is not an additional
+experimental claim.
 
 The evidence remains limited to torque-controlled FR3 simulation. The
 predictor lumps human force and model error, assumes accurate position and

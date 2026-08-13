@@ -72,10 +72,13 @@ Many physical human--robot interaction tasks require a robot to yield
 transiently to contact yet recover a commanded reference under a sustained
 load.  Finite-stiffness impedance control retains a static deflection in this
 setting, whereas existing predictive interaction controllers often optimize a
-nonlinear robot or impedance model online.  We present a compact offset-free
-interaction-error MPC realization for torque-controlled manipulators.
-Operational-space cancellation exposes a translational error double
-integrator with a configuration-independent transition matrix.  A
+nonlinear robot or impedance model online.  Operational-space cancellation
+exposes a translational error \textbf{double integrator with a
+configuration-independent transition matrix}, turning physical interaction
+into a predictive quantity on a fixed linear model rather than a property
+re-derived per contact or configuration.  Built on that representation, we
+present a compact offset-free interaction-error MPC realization for
+torque-controlled manipulators.  A
 force-domain random-walk state estimates persistent interaction and model
 error, and a 30-variable convex QP maps the resulting correction through the
 current task inertia while constraining the complete applied joint torque.
@@ -163,13 +166,18 @@ convex QP whose state-transition block can be precomputed.
 The contributions are therefore threefold:
 
 \begin{enumerate}[leftmargin=*,itemsep=2pt,topsep=2pt]
-\item a task-error-centered operational-space predictor with a constant
-transition matrix and configuration-scheduled input effectiveness;
-\item force-domain offset-free augmentation that aligns the disturbance
-estimate, horizon prediction, and corrective task-force variable; and
-\item an applied-torque realization that constrains the sum of feedforward,
-translation, orientation, and null-space torques, accompanied by conditional
-analytical statements and reproducible simulation audits.
+\item a \textbf{double-integrator interaction-error representation}: a
+task-error-centered operational-space predictor with a constant transition
+matrix and configuration-scheduled input effectiveness, making physical
+interaction a predictive quantity on a shared model rather than a property
+re-derived per contact or configuration;
+\item force-domain offset-free augmentation on that representation, aligning
+the disturbance estimate, horizon prediction, and corrective task-force
+variable; and
+\item an applied-torque realization, on the same representation, that
+constrains the sum of feedforward, translation, orientation, and null-space
+torques, accompanied by conditional analytical statements and reproducible
+simulation audits.
 \end{enumerate}
 
 The novelty is thus architectural and implementational: an explicit reusable
@@ -1374,6 +1382,19 @@ offset-free, and stabilizability results that state exactly when each
 guarantee holds --- a validated engineering interface built from established
 MPC, LPV, barrier, and passivity tools rather than a new control-theoretic
 primitive.
+
+\textbf{Where this places the contribution.} The double-integrator
+representation is a general pattern for physical interaction, not one
+particular to a fixed base: in selected task coordinates, after nominal
+dynamic compensation, interaction reduces to a fixed linear system driven
+by a single disturbance state, which is what makes it a predictive quantity
+rather than a property re-modeled per contact or configuration. In a
+model-based Physical AI stack --- perception and planning reasoning about
+the world and the task, and a fast interaction interface turning that into
+torque --- this paper establishes the base case of that shared
+representation: a single fixed contact point, exact in force coordinates.
+``Physical AI'' names that placement; it is not an additional experimental
+claim.
 
 Under a shared actuator budget and torque interface, the controlled C4--C5
 ablation shows that the augmented disturbance estimate alone reduces
