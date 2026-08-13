@@ -97,14 +97,17 @@ controller instead uses no force/torque sensor and estimates an unmodelled
 aggregate disturbance as a random walk in a reduced, configuration-independent
 three-dimensional force channel. Gold~\emph{et~al.}'s MPIC
 \cite{gold2023mpic} predicts contact force explicitly through an interaction
-model cascaded with low-level PD control; here the disturbance is treated as
-unknown rather than explicitly predicted, and the correction is realized
-through a single affine constraint on the complete applied joint torque
-rather than a cascaded loop. The present contribution is therefore not online
-force estimation or predictive interaction control as such, but their
-combination into a sensorless, constant-transition offset-free interface with
-a proved frozen-configuration equilibrium and a first-move
-torque-feasibility guarantee.
+model cascaded with low-level PD control, weighting the prediction
+independently in the cost; for a reference-holding task that weight must be
+zero to avoid trading position accuracy for compliance, at which point the
+force prediction stops contributing to disturbance rejection. The present
+controller instead treats the disturbance as unknown, and its centered input
+cost achieves offset rejection with no such trade-off:
+$\Fmpc=-\dhat$ is exactly cost-free at any position weight. The present
+contribution is therefore not online force estimation or predictive
+interaction control as such, but their combination into a sensorless,
+constant-transition offset-free interface with a proved frozen-configuration
+equilibrium and a first-move torque-feasibility guarantee.
 
 Offset-free MPC commonly augments a nominal model with a constant output or
 input disturbance and estimates that state online
