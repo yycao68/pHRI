@@ -38,11 +38,12 @@ Interaction}
 \maketitle
 
 \begin{abstract}
-Reference-holding physical human--robot interaction requires compliant
-transient response without retaining a static deflection under sustained
-load. We present a compact offset-free model-predictive controller for
+Reference-holding physical human--robot interaction requires bounded
+transient deviation followed by offset-free reference recovery, without
+retaining a static deflection under sustained load. We present a compact offset-free model-predictive controller for
 torque-controlled manipulators that matches this requirement under a
-stricter actuation budget than a response-matched impedance baseline, using
+stricter actuation budget than a stiffness-and-damping-calibrated impedance
+baseline, using
 no force/torque sensor. Operational-space cancellation reduces the
 translational tracking error to a double integrator with a
 configuration-independent transition matrix; a recursive Kalman filter
@@ -52,7 +53,8 @@ constraining the complete first applied joint-torque command. In a 1\,kHz
 MuJoCo simulation of a 7-DOF Franka FR3, under a common actuator budget the
 sensorless controller reaches 0.042\,mm repeated-step steady-state error at
 113\,W peak positive joint power with no torque saturation, versus 2.59\,mm
-at 378\,W and 0.45\% saturated samples for a response-matched impedance
+at 378\,W and 0.45\% saturated samples for a stiffness-and-damping-calibrated
+impedance
 baseline calibrated to the same closed-loop stiffness --- a third of the
 power, no force measurement, and a structurally zero offset. Controlled
 ablation attributes the offset rejection to the disturbance-augmented
@@ -143,7 +145,7 @@ scheduled only through the current task inertia;
 \item force-domain disturbance augmentation with a centered input cost that
 admits the steady balancing input $\Fmpc=-\dhat$; and
 \item a first-move applied-torque constraint and a controlled FR3 simulation
-comparison against nominal, response-matched, integral, variable-impedance,
+comparison against nominal, calibrated, integral, variable-impedance,
 and ideal measured-force baselines.
 \end{enumerate}
 
@@ -546,7 +548,7 @@ C7: DI-MPC + estimator & 500 & \textbf{0.20} & \textbf{0.80} & $<0.05$\\
 
 \subsection{Broad baseline screen}
 
-Before response matching, we screen the controller against four common
+Before stiffness/damping calibration, we screen the controller against four common
 interaction behaviors using the nominal 300\,N/m impedance setting. The
 admittance controller has a 100\,N/m virtual spring; PI impedance adds an
 integral state to the nominal impedance; and predictive variable impedance
@@ -584,8 +586,8 @@ C7: DI-MPC + est. 500\,Hz & 12.6 & \textbf{0.2} & \textbf{0.8} & $<0.05$\\
 \caption{Representative trajectories from the broad screen. The compliant
 admittance response is intentional; its large displacement is not a failure
 for a guidance task, but it is unsuitable for the reference-holding objective
-studied here. The response-matched study below removes the largest stiffness
-confound between impedance and MPC.}
+studied here. The calibrated-impedance study below removes the largest
+stiffness confound between impedance and MPC.}
 \label{fig:broad}
 \end{figure}
 
@@ -597,23 +599,23 @@ and C6 versus C7 show the repeatable estimator effect; the large admittance
 displacement simply reflects its $15/100=150$\,mm virtual-spring equilibrium,
 its chosen yielding behavior for this reference-holding task.
 
-\subsection{Response-matched fair comparison}
+\subsection{Stiffness-and-Damping-Calibrated Fair Comparison}
 
 The nominal 300\,N/m impedance is intentionally compliant, so its comparison
 with C4 is gain-confounded. A separate calibration estimates C4's equilibrium
 stiffness as 5441\,N/m, then searches stiffness scales
 $(0.8,1.0,1.2)$ and damping ratios $(0.7,1.0,1.3)$ on one cycle. It selects
 5441\,N/m and $\zeta=1.3$. This calibration matches equilibrium stiffness
-and a scalar damping ratio on the calibration cycle; it is not a full
-frequency-response match, and ``response-matched'' below refers to this
-stiffness- and damping-calibrated baseline rather than a guarantee of
-matched rise time, overshoot, or multiaxis coupling. A torque-aware PI
+and a scalar damping ratio on the calibration cycle only; it is not a full
+frequency-response match, and does not guarantee matched rise time,
+overshoot, or multiaxis coupling. A torque-aware PI
 baseline is tuned independently over nine integral-gain/limit pairs. We
 also provide the matched impedance
 with ideal simulated-force cancellation filtered at 50\,ms; this is a
 favorable sensor-based comparator, not a reproduction of a particular
-published controller. Metrics in Table~\ref{tab:fair} use three held-out
-cycles.
+published controller. Metrics in Table~\ref{tab:fair} use three evaluation
+cycles of the same periodic trajectory, not independently randomized
+scenarios.
 
 \begin{table}[t]
 \caption{Fair Comparison Under a Common Actuator Budget}
@@ -627,7 +629,7 @@ Controller & Contact & SS & Raw-limit & Peak $P^+$\\
  & RMS (mm) & (mm) & excess (\%) & (W)\\
 \midrule
 Nominal impedance & 41.07 & 44.82 & 0 & 22.5\\
-Response-matched impedance & 2.38 & 2.59 & 0.45 & 378.2\\
+Calibrated impedance & 2.38 & 2.59 & 0.45 & 378.2\\
 Tuned anti-windup PI & 27.10 & 20.38 & 0 & 58.3\\
 Matched imp. + force FF & 1.40 & 1.39 & 0.45 & 378.2\\
 C4: DI-MPC 100\,Hz & 2.20 & 2.77 & 0 & 113.2\\
@@ -639,14 +641,14 @@ C5: DI-MPC + est. 100\,Hz & \textbf{0.53} & \textbf{0.042} & 0 & 113.1\\
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{figures/fair_offset_free_comparison.pdf}
-\caption{Held-out fair comparison. Response matching closes the nominal
+\caption{Evaluation-cycle fair comparison. Stiffness/damping calibration closes the nominal
 impedance/C4 steady-state gap. The controlled C4--C5 pair isolates the
 disturbance augmentation; ideal measured-force feedforward also reduces the
 load-axis bias but retains the matched impedance's saturation and power cost.}
 \label{fig:fair}
 \end{figure}
 
-The response-matched impedance and C4 have similar steady-state errors (2.59
+The calibrated impedance and C4 have similar steady-state errors (2.59
 and 2.77\,mm), so the nominal impedance/C4 ratio is not an architectural
 result. Their resource use differs: the matched impedance reaches 378.2\,W
 peak positive joint power and exceeds a physical torque limit in 0.45\% of
@@ -884,7 +886,7 @@ constant-$A_d$ error predictor; force-domain augmentation aligns the estimate,
 horizon model, and balancing input; and the affine first-move constraint acts
 on the complete applied torque. The C4--C5 ablation attributes a $65.8\times$
 steady-state improvement to disturbance augmentation under identical MPC
-tuning. Response matching also shows that much of the nominal
+tuning. Stiffness/damping calibration also shows that much of the nominal
 impedance-versus-MPC gap is simply stiffness, while ideal force cancellation
 confirms that offset rejection is not unique to predictive control.
 
