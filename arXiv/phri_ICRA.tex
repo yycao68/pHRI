@@ -81,6 +81,23 @@ also possible with tailored computation \cite{kleff2021highfrequency}. Thus
 MPC, disturbance estimation, and predictive impedance are not individually
 new.
 
+Two of these differ from the present formulation in model scope and sensing.
+Jordana~\emph{et~al.}~\cite{jordana2024force} embed direct force-sensor
+feedback in a full nonlinear whole-body MPC, estimating the discrepancy
+between predicted and measured contact force within that model; the present
+controller instead uses no force/torque sensor and estimates an unmodelled
+aggregate disturbance as a random walk in a reduced, configuration-independent
+three-dimensional force channel. Gold~\emph{et~al.}'s MPIC
+\cite{gold2023mpic} predicts contact force explicitly through an interaction
+model cascaded with low-level PD control; here the disturbance is treated as
+unknown rather than explicitly predicted, and the correction is realized
+through a single affine constraint on the complete applied joint torque
+rather than a cascaded loop. The present contribution is therefore not online
+force estimation or predictive interaction control as such, but their
+combination into a sensorless, constant-transition offset-free interface with
+a proved frozen-configuration equilibrium and a first-move
+torque-feasibility guarantee.
+
 Offset-free MPC commonly augments a nominal model with a constant output or
 input disturbance and estimates that state online
 \cite{pannocchia2003disturbance}. The choice of disturbance coordinates is
