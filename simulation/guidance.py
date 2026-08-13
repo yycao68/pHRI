@@ -204,10 +204,19 @@ def make_mpc_controller(ctrl_name: str, dt_sim: float,
     use_kal    = variable or ("Kalman" in ctrl_name)
     dt_mpc_eff = dt_sim if high_freq else dt_slow
     mpc_every  = 1 if high_freq else max(1, round(dt_slow / dt_sim))
+    # Same fix as phri.py's make_mpc_controller (2026-08-12): Q_proc_d was
+    # never scaled by dt_mpc_eff, so the 500Hz filter injected 5x the
+    # process noise per second of the 100Hz filter -- confounding "faster
+    # rate" with "implicitly more aggressive estimator". Scale by
+    # dt_mpc_eff/MPC_DT_SLOW so the continuous-time-equivalent density is
+    # held constant instead; reproduces the old Q_proc_d=10.0 exactly at
+    # the 100Hz reference rate.
+    Q_proc_d_eff = 10.0 * (dt_mpc_eff / MPC_DT_SLOW)
     mpc_params = ImpedanceMPCParams(
         N=10, dt_mpc=dt_mpc_eff,
         Q_pos=2e4 * np.eye(3), Q_vel=50.0 * np.eye(3),
         Q_f_scale=5.0, R_u=1e-6 * np.eye(3),
+        Q_proc_d=Q_proc_d_eff,
         variable_impedance=variable,
         F_max=150.0, K_rot=20.0, D_rot=6.0,
         k_null=10.0, d_null=2.0, q_null=Q_NEUTRAL,

@@ -356,11 +356,16 @@ def make_mpc_controller(name: str, dt_sim: float, *,
     # Q_proc_d=10.0 exactly at the 100 Hz reference rate.
     # This applies to every "500 Hz"-named controller built through this
     # function, i.e. every experiment in phri_ICRA.tex that reuses it. As of
-    # 2026-08-12 only the core ablation (Table II) and broad screen (Table
-    # III) have been rerun and updated in the paper to match; the waypoint,
-    # four-plane, and force-magnitude/shape C7 numbers there still reflect
-    # the old, unscaled Q_w=10 and have NOT been re-verified against this
-    # fix -- re-run them before trusting those specific numbers.
+    # 2026-08-12: the core ablation (Table II), broad screen (Table III), and
+    # waypoint generalization (Table tab:waypoints, via guidance.py's OWN
+    # separate make_mpc_controller -- see the identical fix and comment
+    # there) have been rerun and updated in the paper to match. The
+    # four-plane generalization table (tab:planes) only ever used C5 (100 Hz)
+    # so it was never affected by this confound -- checked, not rerun.
+    # The force-magnitude/shape sweep and the C8 corrective-authority stress
+    # test still use the old, unscaled Q_w=10 at 500 Hz and have NOT been
+    # re-verified against this fix -- re-run them before trusting those
+    # specific numbers.
     Q_proc_d_eff = 10.0 * (dt_mpc_eff / MPC_DT_SLOW)
     mpc_params = ImpedanceMPCParams(
         N=10, dt_mpc=dt_mpc_eff,
