@@ -629,11 +629,14 @@ enters the free response, pre-compensating the QP before the disturbance
 accumulates in the error state.
 
 \textit{Implementation note (process-noise scaling).}
-The random-walk covariance $Q_w$ is a fixed tuning constant in the present
-implementation. For a disturbance-tracking bandwidth invariant to the QP rate
-it should scale with the sample time, $Q_w=Q_d\,\Delta t$ (the exact
-discretization of the continuous random walk \eqref{eq:distmodel}); the single
-constant used here behaves well across the 100--500\,Hz range tested.
+For a disturbance-tracking bandwidth invariant to the QP rate, the random-walk
+covariance $Q_w$ must scale with the sample time, $Q_w=Q_d\,\Delta t$ (the
+exact discretization of the continuous random walk \eqref{eq:distmodel}); a
+single raw discrete constant held fixed across rates implicitly retunes
+estimator aggressiveness. The implementation scales $Q_w$ by the QP period
+between the 100\,Hz and 500\,Hz configurations (Table~\ref{tab:params}), so
+the continuous-time-equivalent process-noise density is held constant across
+the rate comparison; C6/C7 use the correspondingly smaller $Q_w=2I_3$.
 
 \begin{theorem}[Offset-Free Steady-State Tracking]\label{thm:zss}
 Consider the augmented model \eqref{eq:augstate} at a fixed
@@ -1128,9 +1131,9 @@ C2 -- Admittance    & 113.9 & 174.7 & 210.5 & 186.7\\
 C3 -- PI Impedance  & 36.2 & 27.4 & 43.7 & 21.4\\
 MPVIC -- Var.-Imp. MPC & 12.9 & 4.5 & 7.5 & 4.8\\
 C4 -- MPC 100\,Hz   & \textbf{11.4} & 2.2 & 2.9 & 2.8\\
-C5 -- MPC+K 100\,Hz & \textbf{11.4} & 0.5 & 2.6 & \textbf{$<$0.05}\\
-C6 -- MPC 500\,Hz   & 12.8 & 0.8 & 1.1 & 1.1\\
-C7 -- MPC+K 500\,Hz & 12.6 & \textbf{0.2} & \textbf{0.8} & \textbf{$<$0.05}\\
+C5 -- MPC+K 100\,Hz & \textbf{11.4} & 0.5 & 2.6 & $<$0.05\\
+C6 -- MPC 500\,Hz   & 12.8 & 0.8 & \textbf{1.1} & 1.1\\
+C7 -- MPC+K 500\,Hz & 12.7 & \textbf{0.32} & 1.48 & \textbf{0.029}\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1173,14 +1176,20 @@ MPVIC is our own discrete-stiffness scheduler in the family of
 \cite{liu2025model,roveda2019optimal}, not a reproduction of a specific
 published algorithm; its stiffness set and force penalty have not been
 swept for sensitivity.
-\item \textbf{Rate and estimation are largely orthogonal (C4--C7).}
+\item \textbf{Rate and estimation are not fully orthogonal (C4--C7).}
 Raising the QP rate from 100 to 500\,Hz mainly shrinks the
 zero-order-hold transient; adding the Kalman estimator mainly removes
 the steady-state error. C7 combines both and gives the lowest
-contact-window RMS, peak deflection, and steady-state error of any
-controller; its total RMS (12.6\,mm, averaged over the whole cycle) is
-marginally higher than C4/C5's (11.4\,mm), since the faster rate
-sharpens the contact transient without improving free-motion tracking.
+contact-window RMS and, of the exactly reported values, steady-state
+error of any controller. Under the rate-proportional $Q_w$ scaling of
+Table~\ref{tab:params}, however, C7 no longer has the lowest peak
+deflection: C6's 1.1\,mm undercuts C7's 1.48\,mm, since at 500\,Hz the
+faster rate alone already damps the first-contact transient and the
+estimator's additional corrective action adds excess control effort
+during that same window. C7's total RMS (12.7\,mm, averaged over the
+whole cycle) is marginally higher than C4/C5's (11.4\,mm), since the
+faster rate sharpens the contact transient without improving
+free-motion tracking.
 \item \textbf{Admittance yields by design (C2).} Its 174.7\,mm
 contact-window RMS is close to the equilibrium prediction
 $15/100=150$\,mm, the expected behavior of intentional compliance.
@@ -1615,7 +1624,7 @@ Effort weight & $R$ & $10^{-6}I_3$\\
 Corrective-force bound & $F_\text{max}$ & 150\,N\\
 FR3 torque limits & $\tau_\text{max}$ & $87\!\times\!4;\ 12\!\times\!3$\,Nm\\
 $\Lambda^{-1}$ regularization & $\sigma$ & $10^{-6}$\\
-Kalman process noise & $Q_d$ & 10.0\\
+Kalman process noise & $Q_d$ & 10.0 (2.0 in C6--C7)\\
 Kalman obs.\ noise (pos.) & --- & $10^{-3}$\\
 Kalman obs.\ noise (vel.) & --- & $10^{-2}$\\
 Orientation stiffness & $K_\text{rot}$ & 20\,Nm/rad\\
@@ -1769,8 +1778,8 @@ G3 -- Variable Compl.    & 3/3 & 69.3 & 133.5 & 170.1\\
 MPVIC -- Var.-Imp. MPC   & 3/3 & 51.2 & 5.0 & 6.0\\
 G4 -- MPC 100\,Hz        & 3/3 & 47.9 & 2.2 & 2.6\\
 G5 -- MPC+K 100\,Hz      & 3/3 & \textbf{47.9} & 0.6 & 2.4\\
-G6 -- MPC 500\,Hz        & 3/3 & 51.9 & 0.8 & 1.0\\
-G7 -- MPC+K 500\,Hz      & 3/3 & 51.4 & \textbf{0.2} & \textbf{0.8}\\
+G6 -- MPC 500\,Hz        & 3/3 & 51.9 & 0.8 & \textbf{1.0}\\
+G7 -- MPC+K 500\,Hz      & 3/3 & 51.5 & \textbf{0.37} & 1.42\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1785,8 +1794,11 @@ deflection from 47.1\,mm to 2.6\,mm. Adding the Kalman augmentation
 improves the contact and free-motion metrics --- G5 lowers contact-window
 RMS from 2.2\,mm to 0.6\,mm and slightly reduces peak (2.6$\to$2.4\,mm)
 --- so unlike a higher impedance gain it carries no peak penalty. Raising
-the QP rate to 500\,Hz then sharpens the first-contact transient
-further: G7 attains 0.2\,mm contact-window RMS and a 0.8\,mm peak. The
+the QP rate to 500\,Hz then sharpens contact-window RMS further: G7
+attains 0.37\,mm. Under the rate-proportional $Q_w$ scaling of
+Table~\ref{tab:params}, however, it no longer has the lowest peak error
+--- G6's 1.0\,mm undercuts G7's 1.42\,mm, mirroring the same pattern seen
+in Table~\ref{tab:bm1}. The
 pure-admittance and variable-compliance baselines (G2, G3) yield by
 design, producing the large 190--134\,mm contact-window deflections
 expected of intentional compliance. The predictive variable-impedance
@@ -1898,8 +1910,8 @@ $F_z$ [N] & 5 & 10 & 15 & 20 & 25\\
 \midrule
 D1 Imp.\ -- SS   & 26.9 & 33.7 & 45.0 & 58.5 & 73.1\\
 D1 Imp.\ -- peak & 28.4 & 37.0 & 51.2 & 70.1 & 88.9\\
-\textbf{D7 -- SS}   & \textbf{0.021} & \textbf{0.021} & \textbf{0.021} & \textbf{0.021} & \textbf{0.021}\\
-\textbf{D7 -- peak} & \textbf{0.29} & \textbf{0.50} & \textbf{0.76} & \textbf{1.02} & \textbf{1.27}\\
+\textbf{D7 -- SS}   & \textbf{0.024} & \textbf{0.023} & \textbf{0.023} & \textbf{0.023} & \textbf{0.023}\\
+\textbf{D7 -- peak} & \textbf{0.57} & \textbf{0.96} & \textbf{1.46} & \textbf{1.96} & \textbf{2.45}\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1907,16 +1919,16 @@ D1 Imp.\ -- peak & 28.4 & 37.0 & 51.2 & 70.1 & 88.9\\
 \textbf{Analysis.} Classical impedance deflects in proportion to the
 force --- the $e_\infty=K_d^{-1}F_h$ bias combined with the dynamic
 tracking error grows from 27\,mm at 5\,N to 73\,mm at 25\,N --- whereas
-the proposed controller holds a \textbf{0.021\,mm steady-state
-deflection independent of magnitude over the tested 5--25\,N unsaturated
-range}: the integrating disturbance state cancels the sustained force in this
-range, so accuracy no longer trades
-against the human's effort. The first-contact peak grows only mildly
-(0.29 $\to$ 1.27\,mm across 5--25\,N), scaling with the force step
-before $\dhat$ converges. Under the three 15\,N shapes the proposed
-controller keeps contact-window RMS at 0.15\,mm (step), 0.10\,mm (ramp),
-and 0.40\,mm (1\,Hz sinusoid) versus 40.9 / 26.0 / 33.0\,mm for classical
-impedance; the sinusoid is the worst case, consistent with
+the proposed controller holds an approximately \textbf{0.023\,mm
+steady-state deflection independent of magnitude over the tested
+5--25\,N unsaturated range}: the integrating disturbance state cancels
+the sustained force in this range, so accuracy no longer trades against
+the human's effort. The first-contact peak grows
+more substantially (0.57 $\to$ 2.45\,mm across 5--25\,N), scaling with the
+force step before $\dhat$ converges. Under the three 15\,N shapes the
+proposed controller keeps contact-window RMS at 0.32\,mm (step), 0.19\,mm
+(ramp), and 0.87\,mm (1\,Hz sinusoid) versus 40.9 / 26.0 / 33.0\,mm for
+classical impedance; the sinusoid is the worst case, consistent with
 \S\ref{sec:tv} --- the flat $\dot d=0$ model lags a fast-varying force,
 which the harmonic internal model of Section~III-D of the main paper
 would recover. Reproduced by \texttt{force\_sweep.py}.
@@ -1986,7 +1998,7 @@ in which the QP contributes nothing.
 
 \textbf{Results.} Under the normal protocol ($F_\text{max}=150$\,N), C8
 matches C7 to measurement precision: RMS/contact/peak/SS is
-12.78/0.15/0.77/0.022\,mm versus 12.62/0.15/0.77/0.023\,mm. The stress sweep
+12.84/0.32/1.47/0.028\,mm versus 12.73/0.32/1.48/0.029\,mm. The stress sweep
 is the relevant comparison:
 
 \begin{table}[!t]
@@ -2000,10 +2012,10 @@ Peak (mm)}
 \toprule
 $F_\text{max}$ [N] & 150 & 20 & 5 & 1 & 0\\
 \midrule
-C7 -- RMS cont. & 0.15 & 0.15 & 317.7 & 416.0 & 430.0\\
-C7 -- peak      & 0.77 & 0.76 & 412.2 & 554.2 & 565.9\\
-\textbf{C8 -- RMS cont.} & \textbf{0.15} & \textbf{0.15} & \textbf{41.3} & \textbf{69.8} & \textbf{78.6}\\
-\textbf{C8 -- peak}      & \textbf{0.77} & \textbf{0.76} & \textbf{53.7} & \textbf{95.9} & \textbf{109.4}\\
+C7 -- RMS cont. & 0.32 & 0.32 & 317.9 & 416.1 & 430.0\\
+C7 -- peak      & 1.48 & 1.47 & 412.4 & 554.3 & 565.9\\
+\textbf{C8 -- RMS cont.} & \textbf{0.32} & \textbf{0.32} & \textbf{41.3} & \textbf{69.8} & \textbf{78.5}\\
+\textbf{C8 -- peak}      & \textbf{1.47} & \textbf{1.47} & \textbf{53.5} & \textbf{95.8} & \textbf{109.3}\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -2012,7 +2024,7 @@ C7 -- peak      & 0.77 & 0.76 & 412.2 & 554.2 & 565.9\\
 that both controllers are unaffected and C8 costs nothing relative to
 C7 --- the backbone's restoring term is exactly what the unconstrained
 QP would already have produced. Below that, C7's contact-window RMS
-jumps by roughly three orders of magnitude (0.15 $\to$ 430\,mm) the
+jumps by roughly three orders of magnitude (0.32 $\to$ 430\,mm) the
 moment the corrective force can no longer supply the needed authority:
 with $\Fmpc$ forced toward zero, the commanded torque approaches bare
 feedforward against the sustained push. \textbf{C8 degrades more gracefully
