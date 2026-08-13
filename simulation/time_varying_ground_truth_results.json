@@ -1,0 +1,145 @@
+{
+  "protocol": {
+    "controller": "DI-MPC + Kalman 100 Hz",
+    "amplitude_N": 12.0,
+    "force_window_s": [
+      2.0,
+      10.0
+    ],
+    "duration_s": 11.0,
+    "horizon_steps": 10,
+    "manager_dt_s": 0.01,
+    "frequencies_Hz": [
+      0.0,
+      0.1,
+      0.2,
+      0.4,
+      0.8
+    ],
+    "ground_truth_definition": "d_acc=e_ddot+Lambda_inv*F_mpc; d=-Lambda*d_acc",
+    "injected_rate_definition": "peak pointwise rate A*2*pi*f",
+    "bound_rate_definition": "max ||d_true[k+1]-d_true[k]||/manager_dt over settled aggregate-disturbance log"
+  },
+  "results": [
+    {
+      "freq": 0.0,
+      "injected_force_peak_rate_N_per_s": 0.0,
+      "aggregate_Ld_emp_max_N_per_s": 0.5132634852419339,
+      "aggregate_rate_p99_N_per_s": 0.31834865097333787,
+      "aggregate_rate_rms_N_per_s": 0.10095799109094879,
+      "current_estimation_rms": 2.200242787454078,
+      "current_estimation_bias_vector_N": [
+        -0.3854731124783395,
+        -0.6253502865210633,
+        -0.028834096150744472
+      ],
+      "current_estimation_bias_norm_N": 0.735176105702943,
+      "current_estimation_fluctuation_rms_N": 2.073785046080511,
+      "true_eps1": 2.2001673417508827,
+      "true_epsN": 2.199846583027239,
+      "extrapolation_term": 0.05132634852419339,
+      "total_bound": 2.2515691359782717,
+      "proxy_eps1": 0.03770833580597485,
+      "proxy_epsN": 0.3823266645480447,
+      "rms_d_acc_true": 3.5784095318390627,
+      "rms_track": 0.08324390833702874,
+      "prediction_origins": 704
+    },
+    {
+      "freq": 0.1,
+      "injected_force_peak_rate_N_per_s": 7.5398223686155035,
+      "aggregate_Ld_emp_max_N_per_s": 7.569882862750242,
+      "aggregate_rate_p99_N_per_s": 7.567765279796351,
+      "aggregate_rate_rms_N_per_s": 5.010702877790087,
+      "current_estimation_rms": 0.8843042523443964,
+      "current_estimation_bias_vector_N": [
+        -0.026791984590974857,
+        -0.597092853247855,
+        0.12495507602057213
+      ],
+      "current_estimation_bias_norm_N": 0.6106156375833283,
+      "current_estimation_fluctuation_rms_N": 0.6396425203604638,
+      "true_eps1": 0.8992477594641851,
+      "true_epsN": 1.1282480204085472,
+      "extrapolation_term": 0.7569882862750242,
+      "total_bound": 1.6412925386194206,
+      "proxy_eps1": 0.05094644368215898,
+      "proxy_epsN": 0.5133091496178912,
+      "rms_d_acc_true": 2.6341272739971027,
+      "rms_track": 0.11530287444727305,
+      "prediction_origins": 704
+    },
+    {
+      "freq": 0.2,
+      "injected_force_peak_rate_N_per_s": 15.079644737231007,
+      "aggregate_Ld_emp_max_N_per_s": 15.128234736335042,
+      "aggregate_rate_p99_N_per_s": 15.112968751653344,
+      "aggregate_rate_rms_N_per_s": 10.550231937975168,
+      "current_estimation_rms": 2.4541198329492864,
+      "current_estimation_bias_vector_N": [
+        -0.39541894797098126,
+        -0.5758111215033748,
+        0.32486325505932895
+      ],
+      "current_estimation_bias_norm_N": 0.7703575316365735,
+      "current_estimation_fluctuation_rms_N": 2.330075841668215,
+      "true_eps1": 2.5013108445478536,
+      "true_epsN": 3.0755121753416703,
+      "extrapolation_term": 1.5128234736335042,
+      "total_bound": 3.966943306582791,
+      "proxy_eps1": 0.11777371529132097,
+      "proxy_epsN": 1.173955623223841,
+      "rms_d_acc_true": 2.492499012892293,
+      "rms_track": 0.2601570471244466,
+      "prediction_origins": 704
+    },
+    {
+      "freq": 0.4,
+      "injected_force_peak_rate_N_per_s": 30.159289474462014,
+      "aggregate_Ld_emp_max_N_per_s": 30.437575667001603,
+      "aggregate_rate_p99_N_per_s": 30.319843167648727,
+      "aggregate_rate_rms_N_per_s": 21.85322700318207,
+      "current_estimation_rms": 4.507830770024373,
+      "current_estimation_bias_vector_N": [
+        -0.3470231692698879,
+        -0.5631469841946419,
+        0.22152223448540384
+      ],
+      "current_estimation_bias_norm_N": 0.6975899269549725,
+      "current_estimation_fluctuation_rms_N": 4.453527427218731,
+      "true_eps1": 4.62498598889383,
+      "true_epsN": 5.944056753469912,
+      "extrapolation_term": 3.0437575667001604,
+      "total_bound": 7.551588336724533,
+      "proxy_eps1": 0.24805759046865009,
+      "proxy_epsN": 2.4638061544711567,
+      "rms_d_acc_true": 2.3949890037315393,
+      "rms_track": 0.5359494434054223,
+      "prediction_origins": 704
+    },
+    {
+      "freq": 0.8,
+      "injected_force_peak_rate_N_per_s": 60.31857894892403,
+      "aggregate_Ld_emp_max_N_per_s": 61.45156900097564,
+      "aggregate_rate_p99_N_per_s": 61.050241879415246,
+      "aggregate_rate_rms_N_per_s": 43.58217812047571,
+      "current_estimation_rms": 5.072860542420961,
+      "current_estimation_bias_vector_N": [
+        0.17293129288466133,
+        -0.4829146410917661,
+        -0.17708993502067202
+      ],
+      "current_estimation_bias_norm_N": 0.5426533218595234,
+      "current_estimation_fluctuation_rms_N": 5.043752715501258,
+      "true_eps1": 5.359965411201366,
+      "true_epsN": 8.375323094282457,
+      "extrapolation_term": 6.145156900097564,
+      "total_bound": 11.218017442518525,
+      "proxy_eps1": 0.49170517193414054,
+      "proxy_epsN": 4.870389651052633,
+      "rms_d_acc_true": 2.50058066974333,
+      "rms_track": 1.0381988630301313,
+      "prediction_origins": 704
+    }
+  ]
+}

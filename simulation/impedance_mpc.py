@@ -95,6 +95,17 @@ class ImpedanceMPCParams:
     variable_impedance: bool = False
     vic_K_set: np.ndarray = field(default_factory=lambda: np.array(
         [200.0, 400.0, 800.0, 1500.0, 3000.0]))  # candidate stiffness (N/m)
+
+    # ── Observer-impedance baseline (non-predictive ablation) ─────────────
+    # F_mpc = K_e e + K_edot edot - d_hat using the SAME Kalman estimator as
+    # the full MPC, but a FIXED gain [K_e, K_edot] evaluated once (at
+    # reset, from the initial Lam_inv via unconstrained_first_move_gain)
+    # rather than re-solved by a receding-horizon QP every tick. Isolates
+    # the estimator's contribution to offset rejection from the horizon
+    # optimization's -- if this matches C5 closely under nominal conditions,
+    # the 65.8x steady-state improvement is attributable to the estimator,
+    # not to MPC prediction as such.
+    observer_only: bool = False
     vic_zeta:  float = 1.0     # damping ratio for the scheduled stiffness
     vic_w_e:   float = 2e4     # tracking-error weight in the K-selection cost
     vic_w_F:   float = 3e-3    # task-force weight  (interior optimum ⇒ finite K*)
@@ -160,6 +171,19 @@ class ImpedanceMPCParams:
     # simplification the frozen-Jacobian version already makes for the whole
     # τ_base.
     horizon_torque_schedule: bool = False
+
+    # ── Applied-torque constraint (9b) on/off ────────────────────────────
+    # False removes the first-move torque row entirely -- the QP shapes
+    # F_mpc from the force box alone, with no knowledge of tau_max. The
+    # plant (FR3MuJoCoEnv.apply_torque) still clips physically regardless
+    # of this flag, so the difference is NOT whether the robot ever
+    # exceeds tau_max (it never does), but whether the QP's own optimum
+    # already accounts for the limit or has to be corrected downstream by
+    # clipping -- i.e. whether the commanded and actually-applied torque
+    # match. Used by the active-torque-constraint experiment to isolate
+    # what embedding (9b) buys under a tightened budget (phri.TAU_MAX_SCALE)
+    # where it actually binds.
+    apply_torque_constraint: bool = True
 
     # Error-decay correction blended into reference scheduling: q̄_i =
     # q_d,i + rho^i·(q_k − q_d,k) (and analogously for q̇), rho in [0,1].
@@ -287,6 +311,7 @@ class ImpedanceMPCController:
         self._first_step = True
         self._F_prev     = np.zeros(3)         # F_mpc from previous MPC call
         self.F_seq       = np.zeros((params.N, 3))  # full N-step QP solution
+        self._observer_gain = None  # cached [K_e,K_edot], observer_only mode
 
         # OSQP instance — created lazily on first QP call, reused thereafter
         self._osqp_prob: object = None
@@ -559,6 +584,50 @@ class ImpedanceMPCController:
                 Gam[6*i:6*(i+1), 3*j:3*(j+1)] = self._Ad_pow[i - j] @ Bd
         return Gam
 
+    def unconstrained_first_move_gain(self, Lam_inv: np.ndarray) -> np.ndarray:
+        """Realized first-move gain K = [K_e, K_edot] (3x6) of the
+        unconstrained receding-horizon law, eq:unconstrained:
+        F_mpc,0 = S_0 U* = S_0 (-H^-1 Gamma^T Qbar Phi) x_e = K @ x_e.
+        Used by the observer-impedance baseline (a fixed, non-predictive
+        law using this same gain, no horizon re-optimization) to isolate
+        the estimator's contribution from the receding-horizon prediction's.
+        Configuration-dependent through Lam_inv, same as the QP itself; the
+        baseline evaluates this once at a reference configuration and holds
+        it fixed, which is what makes it non-predictive."""
+        Gamma = self._build_Gamma(Lam_inv)
+        H = Gamma.T @ self.Q_bar @ Gamma + self.R_bar
+        K_full = -np.linalg.solve(H, Gamma.T @ self.Q_bar @ self.Phi)
+        return K_full[:3]
+
+    def _default_qp_objective(
+        self,
+        x_e: np.ndarray,
+        d_hat: np.ndarray,
+        Lam_inv: np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """Assemble the default centered-input LQ objective.
+
+        The physical decision variable remains ``U``.  The effort term is
+        ``0.5 * ||U + d_seq||^2_Rbar``, so its decision-dependent linear
+        contribution is ``Rbar @ d_seq``.  Keeping this assembly in one
+        testable routine prevents a silent return to an absolute-input
+        penalty, which would introduce an R-dependent steady-state bias.
+        """
+        Gamma = self._build_Gamma(Lam_inv)
+        Bd = self._B_d(Lam_inv)
+        D_bar = np.zeros((6 * self.p.N, 3))
+        cumsum = np.zeros((6, 3))
+        for k in range(self.p.N):
+            cumsum = cumsum + self._Ad_pow[k] @ Bd
+            D_bar[6*k:6*(k+1)] = cumsum
+
+        x_free = self.Phi @ x_e + D_bar @ d_hat
+        H = Gamma.T @ self.Q_bar @ Gamma + self.R_bar
+        H = 0.5 * (H + H.T)
+        d_seq = np.tile(d_hat, self.p.N)
+        h = Gamma.T @ self.Q_bar @ x_free + self.R_bar @ d_seq
+        return H, h, Gamma, D_bar, x_free
+
     # ------------------------------------------------------------------
     # Kalman filter (disturbance augmentation)
     # ------------------------------------------------------------------
@@ -799,6 +868,7 @@ class ImpedanceMPCController:
         # variables but leaves adaptive-rho at whatever value the previous
         # episode drove it to, causing mis-scaled iterations at episode start.
         self._osqp_prob = None
+        self._observer_gain = None  # re-cached lazily on first control() call
 
     # ------------------------------------------------------------------
     # Main control call
@@ -931,6 +1001,28 @@ class ImpedanceMPCController:
             H = self.R_bar
             h = -self.R_bar @ U_imp
             F_backbone = np.zeros(3)
+        elif self.p.observer_only:
+            # ---- Observer-impedance baseline (non-predictive ablation) ---
+            # Same construction as impedance_track, but G is the realized
+            # first-move gain of the unconstrained MPC (eq:unconstrained),
+            # evaluated once and cached, NOT a hand-chosen impedance
+            # stiffness and NOT re-solved by horizon optimization every
+            # tick. Isolates estimator credit from horizon-prediction
+            # credit: matching C5 here under nominal conditions means the
+            # steady-state improvement is attributable to d_hat, not to MPC
+            # prediction as such.
+            if self._observer_gain is None:
+                self._observer_gain = self.unconstrained_first_move_gain(Lam_inv)
+            G = self._observer_gain
+            A_cl = self.A_d + Bd @ G
+            U_obs = np.zeros(3 * self.p.N)
+            xi = x_e.copy()
+            for i in range(self.p.N):
+                U_obs[3*i:3*i+3] = G @ xi - d_hat
+                xi = A_cl @ xi
+            H = self.R_bar
+            h = -self.R_bar @ U_obs
+            F_backbone = np.zeros(3)
         elif self.p.backbone_track:
             # ---- Impedance-backbone + bounded additive MPC correction ----
             # F_backbone = K_bb e + D_bb ė is commanded independently below
@@ -972,31 +1064,8 @@ class ImpedanceMPCController:
             h = Gamma.T @ self.Q_bar @ x_free + self.R_bar @ d_seq
         else:
             F_backbone = np.zeros(3)
-            Gamma = self._build_Gamma(Lam_inv)
-
-            # Disturbance propagation over N steps: D̄ ∈ ℝ^{6N×3}
-            # D̄[k] = (I + A_d + ... + A_d^k) Bd  — geometric sum, not A_d^k Bd.
-            # Under constant d̂, the disturbance accumulates at every step, so each
-            # horizon row needs the full prefix sum, not just the k-th power term.
-            D_bar = np.zeros((6 * self.p.N, 3))
-            _cumsum = np.zeros((6, 3))
-            for k in range(self.p.N):
-                _cumsum = _cumsum + self._Ad_pow[k] @ Bd
-                D_bar[6*k:6*(k+1)] = _cumsum
-
-            # Free-response incorporating current disturbance estimate
-            x_free = self.Phi @ x_e + D_bar @ d_hat
-
-            # QP matrices
-            H = Gamma.T @ self.Q_bar @ Gamma + self.R_bar
-            H = 0.5 * (H + H.T)      # ensure symmetric (numerical drift)
-            # Offset-free input centering:
-            # D_bar = Gamma @ (1_N ⊗ I_3), so constant d_hat can be absorbed by
-            # V = U + (1_N ⊗ d_hat).  Penalising V, not U, makes the steady
-            # balancing input F_mpc = -d_hat cost-free and removes R-dependent
-            # steady-state bias.
-            d_seq = np.tile(d_hat, self.p.N)
-            h = Gamma.T @ self.Q_bar @ x_free + self.R_bar @ d_seq
+            H, h, Gamma, D_bar, x_free = self._default_qp_objective(
+                x_e, d_hat, Lam_inv)
 
         # ── Orientation stabilisation (simple impedance, runs every step) ─
         e_R  = rotation_error_matrix(R_d, ee_rot)    # (3,) axis-angle error
@@ -1015,7 +1084,13 @@ class ImpedanceMPCController:
         tau_base = tau_ff + J_v.T @ F_backbone + tau_orient + tau_null
 
         # ── Horizon-wide torque constraint rows: J_list/tau_base_list ─────
-        if schedule_active:
+        if not self.p.apply_torque_constraint:
+            # (9b) omitted entirely: _solve_qp receives J_list=None and
+            # falls back to the force-box-only QP (see _torque_constraint_
+            # matrix / _solve_qp_osqp's `if A_tau is not None` branch).
+            J_list        = None
+            tau_base_list = None
+        elif schedule_active:
             # J_list/tauff_list already computed above (before the mode
             # dispatch, so backbone_track could also use lam_inv_list) —
             # reused here, not recomputed. J_v,i/τ_ff,i are reference-

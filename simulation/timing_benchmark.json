@@ -1,0 +1,25 @@
+{
+  "platform": "arm, Darwin 25.5.0, Python 3.13.12",
+  "results": {
+    "100 Hz (C5)": {
+      "n_solves": 2400,
+      "mean_ms": 0.5671886146592442,
+      "p50_ms": 0.536624516826123,
+      "p99_ms": 0.7519282668363301,
+      "max_ms": 24.150665965862572,
+      "deadline_ms": 10.0,
+      "deadline_misses": 1,
+      "deadline_miss_fraction": 0.0004166666666666667
+    },
+    "500 Hz (C7)": {
+      "n_solves": 12000,
+      "mean_ms": 0.5088748483200712,
+      "p50_ms": 0.49391703214496374,
+      "p99_ms": 0.7132955861743541,
+      "max_ms": 1.6454580472782254,
+      "deadline_ms": 2.0,
+      "deadline_misses": 0,
+      "deadline_miss_fraction": 0.0
+    }
+  }
+}

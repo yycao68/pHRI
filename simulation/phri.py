@@ -333,6 +333,18 @@ def make_mpc_controller(name: str, dt_sim: float, *,
     # the backbone+additive-correction one — isolates the constraint's
     # effect from the backbone architecture change.
     frozen_horizon   = "Frozen" in name
+    # "NoTauRow" removes the first-move applied-torque row (9b) from the QP
+    # entirely -- the plant still clips physically (FR3MuJoCoEnv.apply_
+    # torque), so this isolates whether the QP's own optimum already
+    # accounts for tau_max or is corrected downstream by clipping. See
+    # ImpedanceMPCParams.apply_torque_constraint.
+    no_tau_row       = "NoTauRow" in name
+    # "Observer" selects the observer-impedance baseline: a FIXED gain
+    # [K_e,K_edot] taken from the MPC's own realized unconstrained
+    # first-move gain (eq:unconstrained), evaluated once, with the same
+    # Kalman estimator but no horizon re-optimization each tick. See
+    # ImpedanceMPCParams.observer_only.
+    observer_mode    = "Observer" in name
     # "Schedule" selects the reference-scheduled horizon-wide constraint
     # instead of freezing at q_k: J_v,i/τ_ff,i are recomputed along the
     # redundancy-resolved joint reference q_d(t) precomputed by
@@ -377,6 +389,8 @@ def make_mpc_controller(name: str, dt_sim: float, *,
         backbone_track=backbone,
         horizon_torque_constraint=backbone or frozen_horizon,
         horizon_torque_schedule=schedule_horizon,
+        apply_torque_constraint=not no_tau_row,
+        observer_only=observer_mode,
         schedule_rho=SCHEDULE_RHO_OVERRIDE if SCHEDULE_RHO_OVERRIDE is not None else 0.0,
         F_max=F_MAX_OVERRIDE if F_MAX_OVERRIDE is not None else 150.0,
         tau_max=BASE_TAU_MAX * TAU_MAX_SCALE if TAU_MAX_SCALE is not None else BASE_TAU_MAX,

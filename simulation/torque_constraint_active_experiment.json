@@ -1,0 +1,130 @@
+{
+  "n_cycles": 3,
+  "scales": [
+    1.0,
+    0.5,
+    0.3
+  ],
+  "results": {
+    "1.0": {
+      "DI-MPC + Kalman 500 Hz": {
+        "rms_total": 0.012733651658286221,
+        "rms_contact": 0.00031970109791538623,
+        "peak_defl": 0.0014790290870096098,
+        "ss_err": 2.8790517196265413e-05,
+        "z_ss_error": 2.1838500537405364e-05,
+        "clip_sample_fraction": 0.0,
+        "max_command_excess_Nm": 3.709366486859267e-06,
+        "clip_excess_threshold_Nm": 0.001,
+        "peak_applied_torque": 82.69332153923597,
+        "rms_applied_torque": 11.079379138077245,
+        "peak_positive_joint_power": 81.09837608791659,
+        "positive_joint_energy": 95.0431103304257,
+        "qp_solve_count": 12000,
+        "qp_failure_count": 0,
+        "qp_failure_fraction": 0.0,
+        "magnitude_clip_fraction_at_qp_update": 0.0,
+        "magnitude_clip_fraction_between_qp_updates": 0.0
+      },
+      "DI-MPC + Kalman + NoTauRow 500 Hz": {
+        "rms_total": 0.012736979993209467,
+        "rms_contact": 0.00031944480996810566,
+        "peak_defl": 0.001478140746215046,
+        "ss_err": 2.817620802333109e-05,
+        "z_ss_error": 2.178321404551579e-05,
+        "clip_sample_fraction": 0.0005833333333333334,
+        "max_command_excess_Nm": 4.185520142582995,
+        "clip_excess_threshold_Nm": 0.001,
+        "peak_applied_torque": 82.69334293194598,
+        "rms_applied_torque": 11.084838818535479,
+        "peak_positive_joint_power": 81.09836217304228,
+        "positive_joint_energy": 94.98397897361706,
+        "qp_solve_count": 12000,
+        "qp_failure_count": 0,
+        "qp_failure_fraction": 0.0,
+        "magnitude_clip_fraction_at_qp_update": 0.0005833333333333334,
+        "magnitude_clip_fraction_between_qp_updates": 0.0005833333333333334
+      }
+    },
+    "0.5": {
+      "DI-MPC + Kalman 500 Hz": {
+        "rms_total": 0.013843306164029382,
+        "rms_contact": 0.00031913895715658994,
+        "peak_defl": 0.001476992979637272,
+        "ss_err": 2.7428208432841498e-05,
+        "z_ss_error": 2.1717185149104275e-05,
+        "clip_sample_fraction": 0.0,
+        "max_command_excess_Nm": 0.0,
+        "clip_excess_threshold_Nm": 0.001,
+        "peak_applied_torque": 43.635740332636246,
+        "rms_applied_torque": 11.040902851342373,
+        "peak_positive_joint_power": 76.2803030148913,
+        "positive_joint_energy": 94.0378194391972,
+        "qp_solve_count": 12000,
+        "qp_failure_count": 0,
+        "qp_failure_fraction": 0.0,
+        "magnitude_clip_fraction_at_qp_update": 0.0,
+        "magnitude_clip_fraction_between_qp_updates": 0.0
+      },
+      "DI-MPC + Kalman + NoTauRow 500 Hz": {
+        "rms_total": 0.012736979993209467,
+        "rms_contact": 0.00031944480996810566,
+        "peak_defl": 0.001478140746215046,
+        "ss_err": 2.817620802333109e-05,
+        "z_ss_error": 2.178321404551579e-05,
+        "clip_sample_fraction": 0.0005833333333333334,
+        "max_command_excess_Nm": 4.185520142582995,
+        "clip_excess_threshold_Nm": 0.001,
+        "peak_applied_torque": 82.69334293194598,
+        "rms_applied_torque": 11.084838818535479,
+        "peak_positive_joint_power": 81.09836217304228,
+        "positive_joint_energy": 94.98397897361706,
+        "qp_solve_count": 12000,
+        "qp_failure_count": 0,
+        "qp_failure_fraction": 0.0,
+        "magnitude_clip_fraction_at_qp_update": 0.0005833333333333334,
+        "magnitude_clip_fraction_between_qp_updates": 0.0005833333333333334
+      }
+    },
+    "0.3": {
+      "DI-MPC + Kalman 500 Hz": {
+        "rms_total": 0.3023147268761337,
+        "rms_contact": 0.256001607771088,
+        "peak_defl": 0.5723133855519744,
+        "ss_err": 0.12316391173123681,
+        "z_ss_error": 0.09074684380324233,
+        "clip_sample_fraction": 0.0935,
+        "max_command_excess_Nm": 115835.23420431839,
+        "clip_excess_threshold_Nm": 0.001,
+        "peak_applied_torque": 87.0,
+        "rms_applied_torque": 19.443656978720533,
+        "peak_positive_joint_power": 2429.1227121668335,
+        "positive_joint_energy": 2102.1650221307027,
+        "qp_solve_count": 12000,
+        "qp_failure_count": 1509,
+        "qp_failure_fraction": 0.12575,
+        "magnitude_clip_fraction_at_qp_update": 0.09333333333333334,
+        "magnitude_clip_fraction_between_qp_updates": 0.09366666666666666
+      },
+      "DI-MPC + Kalman + NoTauRow 500 Hz": {
+        "rms_total": 0.012736979993209467,
+        "rms_contact": 0.00031944480996810566,
+        "peak_defl": 0.001478140746215046,
+        "ss_err": 2.817620802333109e-05,
+        "z_ss_error": 2.178321404551579e-05,
+        "clip_sample_fraction": 0.0005833333333333334,
+        "max_command_excess_Nm": 4.185520142582995,
+        "clip_excess_threshold_Nm": 0.001,
+        "peak_applied_torque": 82.69334293194598,
+        "rms_applied_torque": 11.084838818535479,
+        "peak_positive_joint_power": 81.09836217304228,
+        "positive_joint_energy": 94.98397897361706,
+        "qp_solve_count": 12000,
+        "qp_failure_count": 0,
+        "qp_failure_fraction": 0.0,
+        "magnitude_clip_fraction_at_qp_update": 0.0005833333333333334,
+        "magnitude_clip_fraction_between_qp_updates": 0.0005833333333333334
+      }
+    }
+  }
+}

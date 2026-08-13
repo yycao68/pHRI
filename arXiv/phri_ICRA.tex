@@ -42,10 +42,10 @@ Reference-holding physical human--robot interaction requires bounded
 transient deviation followed by offset-free reference recovery, without
 retaining a static deflection under sustained load. Operational-space
 cancellation reduces the translational tracking error to a
-\textbf{double integrator with a configuration-independent transition
-matrix}, turning physical interaction into a predictive quantity on a
-fixed linear model rather than a property re-derived per contact or
-configuration. Built on that representation, we present a compact
+\textbf{double integrator with a fixed transition matrix and a
+configuration-scheduled input map}, turning physical interaction into a
+predictive quantity on that representation rather than a property
+re-derived per contact or configuration. Built on that representation, we present a compact
 offset-free model-predictive controller for torque-controlled
 manipulators that matches the reference-holding requirement under a
 stricter actuation budget than a stiffness-and-damping-calibrated
@@ -59,8 +59,10 @@ sensorless controller reaches 0.042\,mm repeated-step steady-state error at
 113\,W peak positive joint power with no torque saturation, versus 2.59\,mm
 at 378\,W and 0.45\% saturated samples for a stiffness-and-damping-calibrated
 impedance
-baseline calibrated to the same closed-loop stiffness --- a third of the
-power, no force measurement, and a structurally zero offset. Controlled
+baseline calibrated to the same closed-loop stiffness --- about a third of
+the power in this task, no force measurement, and an architecturally
+zero-mean offset under the stated frozen-configuration assumptions
+(Proposition~1). Controlled
 ablation attributes the offset rejection to the disturbance-augmented
 estimator: adding it to an otherwise identical MPC reduces steady-state
 error from 2.77 to 0.042\,mm, consistent with the paper's frozen-configuration
@@ -104,13 +106,14 @@ between predicted and measured contact force within that model; the present
 controller instead uses no force/torque sensor and estimates an unmodelled
 aggregate disturbance as a random walk in a reduced, configuration-independent
 three-dimensional force channel. Gold~\emph{et~al.}'s MPIC
-\cite{gold2023mpic} predicts contact force explicitly through an interaction
-model cascaded with low-level PD control, weighting the prediction
-independently in the cost; for a reference-holding task that weight must be
-zero to avoid trading position accuracy for compliance, at which point the
-force prediction stops contributing to disturbance rejection. The present
-controller instead treats the disturbance as unknown, and its centered input
-cost achieves offset rejection with no such trade-off:
+\cite{gold2023mpic} explicitly predicts robot--environment interaction force
+through an interaction model cascaded with low-level PD control and
+optimizes a motion--force trade-off through an independently weighted
+prediction term. The present controller instead treats the persistent
+interaction as an unknown aggregate input and targets zero-mean reference
+error under constant load through force-coordinate disturbance augmentation
+and an input-centered cost, achieving offset rejection with no explicit
+motion--force weighting:
 $\Fmpc=-\dhat$ is exactly cost-free at any position weight. The present
 contribution is therefore not online force estimation or predictive
 interaction control as such, but their combination into a sensorless,
@@ -152,8 +155,11 @@ model rather than a property re-modeled per contact or configuration;
 \item force-domain disturbance augmentation on that representation, with a
 centered input cost that admits the steady balancing input $\Fmpc=-\dhat$
 at no cost; and
-\item a first-move applied-torque constraint on the same representation, and
-a controlled FR3 simulation comparison against nominal, calibrated,
+\item a first-move applied-torque constraint on the same representation,
+isolated from the estimator by a non-predictive observer-impedance
+baseline and stress-tested by tightening the torque budget until it
+actually binds; and
+\item a controlled FR3 simulation comparison against nominal, calibrated,
 integral, variable-impedance, and ideal measured-force baselines.
 \end{enumerate}
 
@@ -363,12 +369,14 @@ clipping and torque-rate limiting remain final guards. If
 $\tau_{\rm base}$ alone exhausts the budget, the released benchmark returns
 zero correction on QP failure rather than claiming recursive feasibility.
 
-\begin{proposition}[Frozen-configuration offset rejection in expectation]
+\begin{proposition}[Frozen-configuration zero-mean offset rejection]
 Fix $q$, assume the augmented pair in \eqref{eq:augmented} is detectable, the
-closed loop is stable, the QP is feasible with inactive constraints at steady
-state, the estimator is asymptotically unbiased for a constant $d$ (i.e.
-$\mathbb E[\hat d_k]\to d$), and the unconstrained first-move position gain
-$K_e$ is nonsingular. Then the mean equilibrium satisfies
+closed loop is stable, the QP constraints remain inactive almost surely over
+the stationary estimation fluctuations at steady state (not only in a mean
+sense, so the unconstrained affine first-move law applies to essentially
+every realization), the estimator is asymptotically unbiased for a constant
+$d$ (i.e. $\mathbb E[\hat d_k]\to d$), and the unconstrained first-move
+position gain $K_e$ is nonsingular. Then the mean equilibrium satisfies
 $\mathbb E[e_\infty]=0$ and $\mathbb E[F_{\mathrm{mpc},\infty}]=-d$.
 \end{proposition}
 \begin{proof}
@@ -479,10 +487,13 @@ the torque command sent to the robot.
 \end{enumerate}
 
 Table~\ref{tab:params} records the parameters needed to reproduce the direct
-comparison. The optional workspace correction is disabled in the circular and
-waypoint controller comparisons and enabled only in the boundary experiment.
-The CBF and tank constants are intentionally omitted because those final
-filters do not support the headline results.
+comparison. $Q_w$ and $R_e,R_{\dot e}$ are Kalman-gain tuning constants, not
+measured sensor noise; the simulated position feedback is otherwise exact,
+and Table~\ref{tab:robust} injects its own explicit observation noise
+independent of this tuning. The optional workspace correction is disabled in
+the circular and waypoint controller comparisons and enabled only in the
+boundary experiment. The CBF and tank constants are intentionally omitted
+because those final filters do not support the headline results.
 
 \begin{table}[t]
 \caption{Principal Controller and Estimator Parameters}
@@ -501,8 +512,8 @@ Position / velocity weights & $Q_p,Q_v$ & $2\!\times\!10^4 I_3,\ 50I_3$\\
 Terminal scale / effort weight & $\gamma,R$ & $5,\ 10^{-6}I_3$\\
 Corrective-force bound & $F_{\max}$ & 150\,N per axis\\
 FR3 joint-torque limits & $\tau_{\max}$ & $[87,87,87,87,12,12,12]$\,Nm\\
-Disturbance process variance & $Q_w$ & $10I_3$ (2$I_3$ in C6--C7)\\
-Position / velocity obs. variance & $R_e,R_{\dot e}$ & $10^{-3}I_3,\ 10^{-2}I_3$\\
+Disturbance process variance & $Q_w$ & $10I_3\,$N$^2$/update (2$I_3$ in C6--C7)\\
+Position / velocity obs. variance & $R_e,R_{\dot e}$ & $10^{-3}I_3\,$m$^2$,\ $10^{-2}I_3\,$(m/s)$^2$\\
 OSQP tolerances / iteration cap & --- & $10^{-6}$ / 4000\\
 \bottomrule
 \end{tabular}
@@ -515,6 +526,32 @@ to $\tau_{\rm base}+J_v^\top F_{\mathrm{mpc},0}$, not only to the corrective
 force. Third, the benchmark logs raw and applied torque separately, using a
 $10^{-3}$\,Nm excess threshold so numerical QP tolerances are not mislabeled as
 physical saturation.
+
+Table~\ref{tab:timing} reports per-tick wall-clock time (Kalman step,
+$\Gamma$/$H$/$h$ rebuild, warm-started OSQP solve, and torque assembly) for
+C5 and C7 over the same 3-cycle benchmark, on a single-threaded Python/OSQP
+implementation (Apple M1 Max), not a compiled real-time target.
+
+\begin{table}[t]
+\caption{Per-Tick Solve Time and Deadline Misses}
+\label{tab:timing}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{@{}lrrrrrr@{}}
+\toprule
+Rate & Mean & p50 & p99 & Max & Deadline & Misses\\
+ & (ms) & (ms) & (ms) & (ms) & (ms) &\\
+\midrule
+100\,Hz (C5) & 0.57 & 0.54 & 0.75 & 24.15$^\dagger$ & 10.0 & 1/2400\\
+500\,Hz (C7) & 0.51 & 0.49 & 0.71 & 1.65 & 2.0 & 0/12000\\
+\bottomrule
+\end{tabular}
+\end{table}
+\noindent $^\dagger$One-time OSQP problem setup on the episode's first tick;
+excluding it, the steady-state maximum is 1.04\,ms and both rates have zero
+misses. Timing excludes the separate MuJoCo dynamics query and is not
+validated on an embedded or real-time-kernel target.
 
 \section{Simulation Evaluation}
 
@@ -539,6 +576,20 @@ contact transient in this protocol, while the estimator primarily removes
 the constant-load offset; the effects are not claimed to be orthogonal in
 general.
 
+To isolate the estimator's credit from the receding-horizon prediction's,
+Table~\ref{tab:ablation} adds a non-predictive \textbf{observer-impedance}
+baseline: the same Kalman estimator drives $F=K_ee+K_{\dot e}\dot e-\dhat$
+with $[K_e,K_{\dot e}]$ fixed to C5's own unconstrained first-move gain
+(\eqref{eq:unconstrained}, evaluated once), so no horizon is re-optimized
+online. It matches C5 closely (0.52 vs.\ 0.53\,mm contact RMS, 2.44 vs.\
+2.58\,mm peak) and lands between C4 and C5 on steady-state error. The
+$65.8\times$ headline improvement is therefore attributable mainly to the
+disturbance estimate, not to horizon optimization as such. This comparison
+does not establish that receding-horizon prediction earns its keep beyond
+the estimator; \S V-E instead finds a genuine cost of coupling the
+applied-torque constraint to the multi-step horizon under a tightened
+budget.
+
 \begin{table}[t]
 \caption{Controlled MPC Ablation, 15\,N Repeated Step}
 \label{tab:ablation}
@@ -552,6 +603,7 @@ Controller & Rate & Contact RMS & Peak & SS error\\
 \midrule
 C4: DI-MPC, no estimator & 100 & 2.20 & 2.92 & 2.77\\
 C5: DI-MPC + estimator & 100 & 0.53 & 2.58 & \textbf{0.042}\\
+Observer: fixed gain + est. & 100 & 0.52 & \textbf{2.44} & 0.055\\
 C6: DI-MPC, no estimator & 500 & 0.80 & \textbf{1.10} & 1.10\\
 C7: DI-MPC + estimator & 500 & \textbf{0.32} & 1.48 & \textbf{0.029}\\
 \bottomrule
@@ -674,53 +726,64 @@ test is achieving 0.042\,mm without a force measurement.
 
 \subsection{Loss of corrective authority}
 
-The comparison above assumes the QP always retains its full corrective
-authority; we next test what happens when that authority is deliberately
-restricted. In the standard realization, the QP output is the entire
-translational feedback term. If its force box is tightened toward zero, the
-commanded translation channel approaches feedforward-only cancellation and
-retains no restoring stiffness. This is a meaningful deployment failure mode
-even though it is outside the nominal $F_{\max}=150$\,N benchmark. We
-therefore test an optional architecture, C8, that places a fixed damped
-backbone outside the optimizer,
-\begin{equation}
-F_{\rm bb}=K_{\rm bb}e+D_{\rm bb}\dot e,\qquad K_{\rm bb}=300I_3\ {\rm N/m},
-\label{eq:backbone}
-\end{equation}
-and lets the QP choose only an additive bounded correction. The full command
-$F_{\rm bb}+F_{\rm mpc}$ is included in the torque-feasibility rows. Unlike the
-default controller, C8 repeats a frozen-current-configuration torque row at
-every horizon step. This is a local realizability approximation, not an exact
-future joint-space rollout.
+If the force box $F_{\max}$ is instead tightened toward zero, the QP loses
+its entire corrective authority and the commanded translation channel
+degrades to feedforward-only cancellation. An optional fixed-backbone
+architecture (C8: $F_{\rm bb}=K_{\rm bb}e+D_{\rm bb}\dot e$ commanded outside
+the QP, which then shapes only an additive bounded correction, with the
+full command $F_{\rm bb}+\Fmpc$ in the torque-feasibility row) recovers
+$5.5$--$7.7\times$ lower contact RMS than the default realization once
+$F_{\max}\le5$\,N, at the cost of a fixed, always-on restoring stiffness;
+it still cannot reproduce offset-free control without additive correction
+at $F_{\max}=0$. Full parameter sweep in the journal version.
+
+\subsection{Active torque-constraint stress test}
+\label{sec:tauactive}
+
+Every benchmark above keeps $F_{\max}=150$\,N as the binding limit; the
+applied-torque row \eqref{eq:taubox} never saturates there (raw excess
+$<2\times10^{-5}$\,Nm, \S V-C). We test what \eqref{eq:taubox} costs and
+buys by tightening $\tau_{\max}$ directly via a multiplicative scale $s$
+and comparing three otherwise-identical 100\,Hz controllers: \textbf{C5}
+(the row embedded per \eqref{eq:taubox}), \textbf{Unconstrained} (the row
+omitted; the plant still clips physically per \eqref{eq:torque}, so this
+tests whether the QP's own optimum matters, not whether the robot ever
+exceeds $\tau_{\max}$), and \textbf{Observer} (Table~\ref{tab:ablation}'s
+fixed-gain baseline under the same tightened budget).
 
 \begin{table}[t]
-\caption{Corrective-Authority Stress Test: Contact RMS / Peak (mm)}
-\label{tab:authority}
+\caption{Torque-Budget Sweep: Contact RMS (mm) / QP Failures (\%)}
+\label{tab:tauactive}
 \centering
 \footnotesize
-\setlength{\tabcolsep}{2.8pt}
-\begin{tabular}{@{}lrrrrr@{}}
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{@{}lrrr@{}}
 \toprule
-$F_{\max}$ (N) & 150 & 20 & 5 & 1 & 0\\
+$\tau_{\max}$ scale & 1.0 & 0.32 & 0.2\\
 \midrule
-C7 RMS & 0.32 & 0.32 & 317.9 & 416.1 & 430.0\\
-C7 peak & 1.48 & 1.47 & 412.4 & 554.3 & 565.9\\
-C8 RMS & 0.32 & 0.32 & 41.3 & 69.8 & 78.5\\
-C8 peak & 1.47 & 1.47 & 53.5 & 95.8 & 109.3\\
+C5 & 0.53 / 0\% & 550.5 / 72.5\% & 517.1 / 23.7\%\\
+Unconstrained & \textbf{0.53} / 0\% & \textbf{0.53} / 0\% & \textbf{0.53} / 0\%\\
+Observer & 0.52 / 0\% & 0.51 / 0\% & 232.9 / 30.9\%\\
 \bottomrule
 \end{tabular}
 \end{table}
 
-At 150 and 20\,N, C8 matches C7 to the reported precision; the backbone does
-not cost nominal performance because it replaces force that the unconstrained
-QP would otherwise generate. At 5\,N and below, both controllers degrade
-severely, but C8's retained stiffness reduces contact RMS by 5.5--7.7 times
-over this 24\,s protocol. At $F_{\max}=0$, C8 still has 78.5\,mm contact RMS:
-the backbone improves graceful degradation but cannot reproduce offset-free
-control without additive correction. This finite-duration stress test is not
-a boundedness, recursive-feasibility, or actuator-fault guarantee. It does,
-however, expose a practical distinction between limiting an optional
-predictive correction and limiting the controller's entire restoring action.
+At the paper's operating point (scale 1.0) all three are indistinguishable,
+confirming \eqref{eq:taubox} costs nothing when it never binds. Tightening to
+scale 0.32 makes C5's QP infeasible on 72.5\% of solves; \S III-C's
+documented zero-correction fallback then applies, degrading tracking to
+550\,mm --- far worse than either alternative. Unconstrained is essentially
+untouched, since the plant's physical clip alone recovers a usable command;
+Observer's single-step, decoupled QP also survives this scale and only
+degrades once tightened further (scale 0.2: 233\,mm, versus C5's persistent
+517\,mm). This is a genuine limitation of the current all-or-nothing
+infeasibility fallback under a severely tightened budget, not evidence that
+embedding a torque row is unhelpful in general: at every scale tested here,
+the receding-horizon-coupled feasibility requirement is more fragile than
+either a single-step-decoupled QP or no embedded row at all. We do not
+resolve this within the present scope; a soft/slack relaxation of
+\eqref{eq:taubox} in place of the current hard zero-correction fallback is
+the natural next step.
 
 \subsection{Waypoint generalization}
 
@@ -848,25 +911,14 @@ exposes the bandwidth limit of the random-walk estimator. They do not imply
 amplitude-independent performance after the 150\,N force box or joint-torque
 limits become active.
 
-\subsection{Boundary and robustness checks}
+\subsection{Robustness checks}
 
-The 20\,cm boundary circle deliberately exercises the soft null-space barrier
-and workspace projection, not the final CBF. Nominal impedance reaches a
-fractional joint margin of 0.049 and crosses the chosen 5\% threshold; C5
-maintains 0.083 at both 100 and 30\,Hz, with 13.33 and 11.76\,mm tracking RMSE.
-This is empirical avoidance under the stated trajectory, not forward-invariant
-safety certification.
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=.78\columnwidth]{figures/trajectory_boundary.png}
-\caption{Boundary-circle trajectories. The workspace correction trades
-tracking accuracy for clearance: the nominal impedance crosses the selected
-5\% fractional margin (minimum 0.049), whereas C5 maintains 0.083 in this
-test. The plotted result exercises the soft mechanisms in
-\eqref{eq:softbarrier}--\eqref{eq:workspace}, not the optional CBF.}
-\label{fig:boundary}
-\end{figure}
+A 20\,cm boundary circle deliberately exercising the soft null-space barrier
+and workspace projection (not the final CBF) confirms empirical avoidance
+under the stated trajectory: nominal impedance crosses the chosen 5\%
+fractional joint margin (0.049), C5 maintains 0.083 at both 100 and 30\,Hz;
+this is not a forward-invariant safety certificate, and the corresponding
+figure is deferred to the journal version.
 
 \begin{table}[t]
 \caption{C5 Robustness Checks (100\,Hz QP)}
@@ -903,33 +955,38 @@ on the complete applied torque. The C4--C5 ablation attributes a $65.8\times$
 steady-state improvement to disturbance augmentation under identical MPC
 tuning. Stiffness/damping calibration also shows that much of the nominal
 impedance-versus-MPC gap is simply stiffness, while ideal force cancellation
-confirms that offset rejection is not unique to predictive control.
+confirms that offset rejection is not unique to predictive control. At
+500\,Hz, disturbance augmentation improves contact RMS and steady-state
+offset but increases the first-contact peak relative to C6 (Table~\ref{tab:ablation}):
+the disturbance estimate rises quickly after the step and briefly
+overcorrects before settling, so estimator bandwidth must be tuned jointly
+with the desired transient compliance rather than treated as a free
+improvement.
 
-\textbf{Where this places the contribution.} The double-integrator
-representation is a general pattern for physical interaction, not one
-particular to a fixed base: in selected task coordinates, after nominal
-dynamic compensation, interaction reduces to a fixed linear system driven
-by a single disturbance state, which is what makes it a predictive
-quantity rather than a property re-modeled per contact or configuration.
-In a model-based Physical AI stack --- perception and planning reasoning
-about the world and the task, and a fast interaction interface turning
-that into torque --- this paper establishes the base case of that shared
-representation: a single fixed contact point, exact in force coordinates.
-``Physical AI'' names that placement; it is not an additional
-experimental claim. We call the shared double-integrator, force-domain
-representation itself \textbf{Interaction Dynamics}; extending it to
-other embodiments and contact regimes (legged locomotion, multi-agent
-interaction, dexterous manipulation, continuum instruments) is not
-evaluated in this paper.
+\textbf{Where this places the contribution.} The fixed-$A_d$, force-coordinate
+representation --- which we call \textbf{Interaction Dynamics} --- may serve
+as one building block of a broader interaction framework in which
+higher-level perception and planning provide reference and contact
+information to a fast, model-based execution layer; ``Physical AI'' names
+that placement, not an additional experimental claim. This paper
+establishes only the fixed-base translational reference-holding case, with
+the configuration- and motion-dependent remainder of $d$ left to the
+random-walk estimator rather than modeled in closed form (Section~II);
+transfer to other embodiments and contact regimes remains future work.
 
 The evidence remains limited to torque-controlled FR3 simulation. The
 predictor lumps human force and model error, assumes accurate position and
 velocity feedback, and provides a frozen-configuration offset result. The
 boundary test is not a CBF certificate, and the optional energy tank does not
-establish full-port passivity. Hardware evaluation should compare against a
-canonical predictive interaction controller under shared tuning while logging
-force estimates, applied torque, solver status, safety-filter slack, and energy
-state.
+establish full-port passivity. The observer-impedance comparison does not
+establish that receding-horizon prediction earns its keep beyond the
+estimator under nominal actuation headroom, and \S V-E's stress test shows
+the current hard, zero-correction torque-constraint fallback is a real
+liability, not yet an asset, once the budget is tightened enough to bind;
+a soft/slack relaxation is future work. Hardware evaluation should compare
+against a canonical predictive interaction controller under shared tuning
+while logging force estimates, applied torque, solver status, safety-filter
+slack, and energy state.
 
 \bibliographystyle{IEEEtran}
 \bibliography{references}
