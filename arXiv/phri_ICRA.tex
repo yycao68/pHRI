@@ -145,10 +145,10 @@ complete torque command $\tau_{\rm base}+J_v^\top F_{\mathrm{mpc},0}$ rather
 than to the corrective force alone. Operational-space cancellation exposes
 the normalized translational error model these mechanisms share. Two
 controlled comparisons below deliberately separate credit: \S V-A shows
-the disturbance estimate, not receding-horizon prediction, drives offset
-rejection; \S V-F shows this paper's slack-relaxed constraint embedding,
-not deeper prediction, drives torque-feasibility robustness. The
-contributions are:
+that the disturbance estimate, not receding-horizon prediction, drives
+offset rejection; \S V-F shows that this paper's slack-relaxed constraint
+embedding, not deeper prediction, drives torque-feasibility robustness.
+The contributions are:
 
 \begin{enumerate}[leftmargin=*,itemsep=1pt,topsep=2pt]
 \item a \textbf{double-integrator interaction-error representation}:
@@ -972,8 +972,9 @@ Five-seed average, end-effector position noise only (velocity, delay,
 force-sensor noise absent): numerical tolerance over the tested range, not
 a robust-stability guarantee. A separate controller-inertia-mismatch sweep
 (0--30\% error, feedforward model only, plant unchanged) confirms the
-Kalman estimator keeps free-circle RMSE nearly flat (0.24$\to$0.23\,mm)
-where disabling it degrades 3--4$\times$ (0.94$\to$0.73\,mm); full table
+Kalman estimator keeps free-circle RMSE nearly flat across the sweep
+(0.24 to 0.23\,mm); disabling it is 3--4$\times$ worse at each mismatch
+level (0.94 vs.\ 0.24\,mm at 0\%, 0.73 vs.\ 0.23\,mm at 30\%); full table
 in the journal version.
 
 
@@ -1009,12 +1010,12 @@ boundary test is not a CBF certificate, and the optional energy tank does not
 establish full-port passivity. By design, the observer-impedance
 comparison confirms that the estimator alone accounts for the reported
 offset-rejection improvement under nominal actuation headroom, not
-receding-horizon prediction; \S V-F instead credits the slack-relaxed
-constraint embedding, on the same receding-horizon policy whose
-hard-bounded torque row fails, for torque-feasibility robustness --
-matching unconstrained tracking without exceeding the hardware limit, at
-the cost of a bounded overshoot of the test budget itself; an adaptive
-penalty weight is future work. Hardware evaluation should compare
+receding-horizon prediction; \S V-F instead credits torque-feasibility
+robustness to the slack-relaxed constraint embedding, tested on the same
+receding-horizon policy whose hard-bounded torque row fails -- matching
+unconstrained tracking without exceeding the hardware limit, at the cost
+of a bounded overshoot of the test budget itself; an adaptive penalty
+weight is future work. Hardware evaluation should compare
 against a canonical predictive interaction controller under shared tuning
 while logging force estimates, applied torque, solver status, safety-filter
 slack, and energy state.
