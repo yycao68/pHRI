@@ -335,6 +335,7 @@ class ImpedanceMPCController:
         self._osqp_prob: object = None
         self.last_qp_success = True
         self.last_qp_status = "not solved"
+        self.last_slack: np.ndarray | None = None  # soft-torque slack s (n_s,), diagnostic only
 
         # MPVIC baseline: last selected stiffness (for logging / warm continuity)
         self._vic_K_last = float(np.median(params.vic_K_set))
@@ -889,7 +890,9 @@ class ImpedanceMPCController:
         )
         self.last_qp_status = str(res.info.status)
         if not self.last_qp_success:
+            self.last_slack = None
             return np.zeros(n_u)
+        self.last_slack = res.x[n_u:].copy() if soft else None
         return res.x[:n_u] if soft else res.x
 
     # ------------------------------------------------------------------
@@ -905,6 +908,7 @@ class ImpedanceMPCController:
         self.F_seq[:]    = 0.0
         self.last_qp_success = True
         self.last_qp_status = "not solved"
+        self.last_slack = None
         # Destroy the OSQP instance so the next control() call re-creates it
         # with fresh rho scaling.  warm_start() alone resets primal/dual
         # variables but leaves adaptive-rho at whatever value the previous

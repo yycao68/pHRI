@@ -115,6 +115,8 @@ def run(spec, cycles: int, *, verbose: bool = False):
     qp_solve_count = 0
     qp_failure_count = 0
     qp_update_mask = np.zeros(n_steps, dtype=bool)
+    slack_max_log = []
+    slack_rms_log = []
 
     for i in range(n_steps):
         t = env.time
@@ -131,6 +133,10 @@ def run(spec, cycles: int, *, verbose: bool = False):
                 qp_solve_count += 1
                 if not controller.mpc_ctrl.last_qp_success:
                     qp_failure_count += 1
+                slack = controller.mpc_ctrl.last_slack
+                if slack is not None:
+                    slack_max_log.append(float(np.max(slack)))
+                    slack_rms_log.append(float(np.sqrt(np.mean(slack**2))))
         else:
             tau = controller.torque(env, state, dyn, p_d, dp_d, ddp_d, wrench)
         tau_app = np.clip(tau, -TAU_LIMIT, TAU_LIMIT)
@@ -155,11 +161,29 @@ def run(spec, cycles: int, *, verbose: bool = False):
     # the raw maximum excess separately.
     clipped = magnitude_excess > 1e-3
     power = tau_app_log * dq_log
+    # max_command_excess_Nm (above) is measured against the robot's FULL,
+    # fixed physical limit TAU_LIMIT -- a claim about whether the plant ever
+    # has to clip. Under phri.TAU_MAX_SCALE (the torque-budget stress test),
+    # the QP's own constraint row is built around a TIGHTER budget
+    # (TAU_LIMIT * TAU_MAX_SCALE); excess relative to THAT budget is a
+    # different, generally larger quantity and must not be conflated with
+    # max_command_excess_Nm when reporting what a controller "respects".
+    true_tau_max = TAU_LIMIT * (
+        phri.TAU_MAX_SCALE if phri.TAU_MAX_SCALE is not None else 1.0)
+    budget_excess = np.abs(tau_cmd_log) - true_tau_max[None, :]
     metrics.update({
         "z_ss_error": float(np.mean(zerr_log[steady])),
         "clip_sample_fraction": float(np.mean(np.any(clipped, axis=1))),
         "max_command_excess_Nm": float(max(0.0, np.max(magnitude_excess))),
+        "max_command_excess_vs_tested_budget_Nm": float(max(0.0, np.max(budget_excess))),
         "clip_excess_threshold_Nm": 1e-3,
+        "soft_slack_max": max(slack_max_log) if slack_max_log else None,
+        "soft_slack_rms": (
+            float(np.sqrt(np.mean(np.array(slack_rms_log) ** 2)))
+            if slack_rms_log else None),
+        "soft_slack_nonzero_fraction": (
+            float(np.mean(np.array(slack_max_log) > 1e-6))
+            if slack_max_log else None),
         "peak_applied_torque": float(np.max(np.abs(tau_app_log))),
         "rms_applied_torque": float(np.sqrt(np.mean(tau_app_log**2))),
         "peak_positive_joint_power": float(np.max(np.maximum(power, 0.0))),

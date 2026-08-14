@@ -305,7 +305,9 @@ ZETA_IMP_OVERRIDE: float | None = None
 # Monkeypatchable override for ImpedanceMPCParams.soft_torque_rho's
 # magnitude, used only when the controller name contains "Soft"
 # (soft_torque_rho is otherwise None -- hard constraint, every existing
-# controller/table). None -> 1e4 default.
+# controller/table). None -> 1.0 default (the value reported in the paper's
+# torque-budget sweep; a much larger rho, e.g. 1e4, makes slack expensive
+# enough that Soft tracks Hard's failure mode instead of relaxing it).
 SOFT_TORQUE_RHO_OVERRIDE: float | None = None
 
 # FR3 joint torque limits (Nm), libfranka values — same numbers as
@@ -427,7 +429,7 @@ def make_mpc_controller(name: str, dt_sim: float, *,
         horizon_torque_schedule=schedule_horizon,
         apply_torque_constraint=not no_tau_row,
         soft_torque_rho=(
-            (SOFT_TORQUE_RHO_OVERRIDE if SOFT_TORQUE_RHO_OVERRIDE is not None else 1e4)
+            (SOFT_TORQUE_RHO_OVERRIDE if SOFT_TORQUE_RHO_OVERRIDE is not None else 1.0)
             if soft_tau else None),
         observer_only=observer_mode,
         impedance_track=imp_track_mode,
