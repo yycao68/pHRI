@@ -73,10 +73,10 @@ transiently to contact yet recover a commanded reference under a sustained
 load.  Finite-stiffness impedance control retains a static deflection in this
 setting, whereas existing predictive interaction controllers often optimize a
 nonlinear robot or impedance model online.  Operational-space cancellation
-exposes a translational error \textbf{double integrator with a
-configuration-independent transition matrix}, turning physical interaction
-into a predictive quantity on a fixed linear model rather than a property
-re-derived per contact or configuration.  Built on that representation, we
+exposes a translational error \textbf{double integrator with a fixed
+transition matrix and a configuration-scheduled input map}, turning
+physical interaction into a predictive quantity on that representation
+rather than a property re-derived per contact or configuration.  Built on that representation, we
 present a compact offset-free interaction-error MPC realization for
 torque-controlled manipulators.  A
 force-domain random-walk state estimates persistent interaction and model
@@ -467,13 +467,18 @@ applied torque satisfies $|\tau_i|\leq\tau_{\max,i}$ whenever the QP is
 feasible. Runtime clipping and rate limiting remain as final safety guards;
 horizon-wide torque rows can be added but are not required for feasibility of
 the applied receding-horizon action. If an over-aggressive reference makes
-$\tau_{\text{base}}(0)$ alone exceed $\tau_{\max}$, the constraint could
-similarly be softened with a penalized slack $s\geq0$ so the QP stays
-feasible and returns a minimum-violation command --- analogous to the
-joint-limit CBF relaxation of Sec.~\ref{sec:cbf}, though the present
-implementation instead returns a zero correction on infeasibility (see the
-correction-authority ablation in the supplementary material, Sec.~S9),
-which is simpler but not minimum-violation.
+$\tau_{\text{base}}(0)$ alone exceed $\tau_{\max}$, the released
+implementation returns a zero correction on infeasibility (correction-
+authority ablation, supplementary material Sec.~S9), which is simple but
+not minimum-violation. The constraint can instead be softened with a
+penalized slack $s\geq0$ so the QP stays feasible and returns a
+minimum-violation-like command, analogous to the joint-limit CBF
+relaxation of Sec.~\ref{sec:cbf}; \S\ref{sec:tauactive} implements and
+stress-tests exactly this relaxation under a deliberately tightened
+$\tau_{\max}$, with a genuine but partial positive result --- it recovers
+the hard constraint's lost tracking quality at practically relevant
+tightening, but not, with a single fixed penalty weight, at every scale
+tested.
 
 The following conditional identification relates the unconstrained feedback
 component to classical impedance; it is not a claim that predictive control
@@ -1050,8 +1055,34 @@ Null-space  & Barrier gradient + projection         & 1\,kHz   & $<$0.1\,ms\\
 \textbf{QP solver.}
 We use OSQP~\cite{stellato2020osqp} with warm-starting, which in our
 simulation implementation reduced cold-start latency from 5\,ms to under
-0.5\,ms (single-threaded, commodity CPU; full timing statistics are future
-hardware work).
+0.5\,ms (single-threaded, commodity CPU). Table~\ref{tab:timing} reports
+measured per-tick wall-clock time (Kalman step, $\Gamma$/$H$/$h$ rebuild,
+warm-started OSQP solve, and torque assembly) for C5 and C7 over the
+Benchmark~I protocol, on a single-threaded Python/OSQP implementation
+(Apple M1 Max) --- a simulation-side timing characterization, not a
+validated embedded or real-time-kernel deployment.
+
+\begin{table}[!t]
+\caption{Per-Tick Solve Time and Deadline Misses}
+\label{tab:timing}
+\renewcommand{\arraystretch}{1.0}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{@{}lrrrrrr@{}}
+\toprule
+\textbf{Rate} & \textbf{Mean} & \textbf{p50} & \textbf{p99} & \textbf{Max} & \textbf{Deadline} & \textbf{Misses}\\
+ & \textbf{[ms]} & \textbf{[ms]} & \textbf{[ms]} & \textbf{[ms]} & \textbf{[ms]} &\\
+\midrule
+100\,Hz (C5) & 0.57 & 0.54 & 0.75 & 24.15$^\dagger$ & 10.0 & 1/2400\\
+500\,Hz (C7) & 0.51 & 0.49 & 0.71 & 1.65 & 2.0 & 0/12000\\
+\bottomrule
+\end{tabular}
+\end{table}
+\noindent $^\dagger$One-time OSQP problem setup on the episode's first
+tick; excluding it, the steady-state maximum is 1.04\,ms and both rates
+have zero misses. Timing excludes the separate MuJoCo dynamics query.
+
 Although $H=\Gamma^\top\bar{Q}\Gamma+\bar{R}$ varies with configuration
 through $B_d(\rho_k)$, updating it requires only overwriting the
 pre-allocated non-zero elements of the upper-triangular CSC sparse
@@ -1140,6 +1171,7 @@ C3 -- PI Impedance  & 36.2 & 27.4 & 43.7 & 21.4\\
 MPVIC -- Var.-Imp. MPC & 12.9 & 4.5 & 7.5 & 4.8\\
 C4 -- MPC 100\,Hz   & \textbf{11.4} & 2.2 & 2.9 & 2.8\\
 C5 -- MPC+K 100\,Hz & \textbf{11.4} & 0.5 & 2.6 & $<$0.05\\
+Observer -- fixed gain+K & 11.6 & 0.5 & \textbf{2.4} & 0.055\\
 C6 -- MPC 500\,Hz   & 12.8 & 0.8 & \textbf{1.1} & 1.1\\
 C7 -- MPC+K 500\,Hz & 12.7 & \textbf{0.32} & 1.48 & \textbf{0.029}\\
 \bottomrule
@@ -1169,6 +1201,18 @@ free response drives steady-state error below 0.05\,mm --- down from
 2.8\,mm over C4 and 44.8\,mm over C1. Only the offset-free
 disturbance-augmentation mechanism differs between C4 and C5; horizon,
 weights, update rate, and torque interface are identical.
+\item \textbf{The estimator, not horizon prediction, drives the
+improvement (Observer vs.\ C5).} To isolate the estimator's credit from
+the receding-horizon optimization's, the \emph{Observer} row tracks
+$F=K_ee+K_{\dot e}\dot e-\hat d$ with $[K_e,K_{\dot e}]$ fixed to C5's own
+realized unconstrained first-move gain (Theorem~\ref{thm:equiv}), evaluated
+once, so no horizon is re-optimized online; it uses the identical Kalman
+estimator. It matches C5 closely (0.5\,mm contact RMS both, 2.4 vs.\
+2.6\,mm peak) and nearly matches its steady-state error (0.055 vs.\
+$<$0.05\,mm). This comparison does not establish that receding-horizon
+prediction earns its keep beyond the estimator under nominal actuation
+headroom; \S\ref{sec:tauactive} finds where the horizon-coupled QP
+structure instead becomes a liability.
 \item \textbf{Nominal impedance versus MPC is gain-confounded (C1 vs.\ C4).}
 The 300\,N/m C1 setting is intentionally compliant and is not C4's realized
 closed-loop gain.  We therefore do not interpret their ratio as an
@@ -1870,7 +1914,10 @@ $\varepsilon_i=\mathrm{RMS}_k\|d_{k+i}-\dhat_{k|k}\|_2$. We also report
 $e_K=\mathrm{RMS}_k\|d_k-\dhat_{k|k}\|_2$. By Minkowski's inequality,
 the pointwise rate assumption in the main paper's horizon-prediction bound
 gives $\varepsilon_N\le e_K+L_dN\Delta t$; Table~\ref{tab:tv} evaluates it
-with $L_d=L_{d,\mathrm{emp}}$. Origins are restricted
+with $L_d=L_{d,\mathrm{emp}}$. Both $e_K$ and $L_{d,\mathrm{emp}}$ are
+estimated from this same logged trajectory, so what follows checks the
+bound's internal arithmetic against its own inputs, not an a priori bound
+validated against unseen data. Origins are restricted
 to the settled portion of the force window and all $N$ target samples
 remain inside that window (704 origins per row).
 
@@ -2067,6 +2114,134 @@ This deployment ablation is distinct from the energy tank, which addresses
 coupled-system stability rather than QP-authority loss. Reproduced by
 \texttt{stable\_backbone\_comparison.py --n-cycles 3}.
 
+% ----------------------------------------------------------
+\section{Active Torque-Constraint Stress Test}\label{sec:tauactive}
+
+The stress test above tightens the \emph{force} box $F_\text{max}$; every
+benchmark elsewhere in this paper keeps $\tau_\text{max}$ at its full FR3
+value, where the applied-torque row (eq.~(9b) of the main paper) never
+actually saturates (raw excess $<2\times10^{-5}$\,Nm, Table~\ref{tab:fair} discussion).
+This section tightens $\tau_\text{max}$ directly via a multiplicative
+scale $s$ and asks what the torque row costs and buys once it can
+genuinely bind, comparing four otherwise-identical 100\,Hz controllers on
+the Benchmark~I protocol:
+
+\begin{itemize}[leftmargin=*,itemsep=1pt,topsep=2pt]
+\item \textbf{C5} --- the row embedded as in the main paper: on
+infeasibility, the released implementation returns zero correction rather
+than claiming recursive feasibility (\S\ref{sec:layer2}).
+\item \textbf{Unconstrained} --- the row omitted entirely; the plant
+still clips physically (\texttt{FR3MuJoCoEnv.apply\_torque}), so this
+isolates whether the QP's own optimum accounts for $\tau_\text{max}$, not
+whether the robot ever exceeds it.
+\item \textbf{Observer} --- the fixed-gain baseline of
+\S\ref{sec:experiments} under the same tightened budget, using the same
+torque row as C5 but a single-step, non-predictive QP.
+\item \textbf{Soft} --- the same row relaxed with a slack variable
+$s\ge0$: $-\tau_\text{max}-\text{tb}-s\le\tau_\text{base}+J_v^\top\Fmpck{0}\le\tau_\text{max}-\text{tb}+s$,
+penalized $\tfrac12\rho\|s\|^2$ in the QP cost instead of the hard
+zero-correction fallback, so the QP is always feasible. Implemented as an
+extended decision variable $[U;s]$ added to the same QP (not a separate
+solve); $\rho=1$, selected by a small sweep.
+\end{itemize}
+
+\begin{table}[!t]
+\caption{Torque-Budget Sweep: Contact RMS [mm] / QP Failures [\%]}
+\label{tab:tauactive}
+\renewcommand{\arraystretch}{1.0}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{lccc}
+\toprule
+$\tau_\text{max}$ scale & 1.0 & 0.32 & 0.2\\
+\midrule
+C5            & 0.53 / 0\%          & 550.5 / 72.5\%       & 517.1 / 23.7\%\\
+Unconstrained & \textbf{0.53} / 0\% & 0.53 / 0\%           & \textbf{0.53} / 0\%\\
+Observer      & 0.52 / 0\%          & 0.51 / 0\%           & 232.9 / 30.9\%\\
+Soft          & 0.53 / 0\%          & \textbf{0.52} / 0\%  & 303.6 / 0\%\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis.} At the paper's operating point (scale 1.0) all four are
+indistinguishable, confirming the torque row costs nothing when it never
+binds. Tightening to scale 0.32 makes C5's QP infeasible on 72.5\% of
+solves; the zero-correction fallback then degrades tracking to 550\,mm ---
+far worse than every alternative. Unconstrained is essentially untouched,
+since the plant's physical clip alone recovers a usable command; Soft
+recovers essentially all of the lost performance (0.52\,mm, matching
+Unconstrained) while, unlike Unconstrained, keeping the raw commanded
+torque within budget: zero measured excess at this scale, versus
+Unconstrained's 5.2\,Nm maximum. This is the constraint's positive case:
+the same row that fails catastrophically when hard succeeds cleanly once
+relaxed, respecting the budget more closely than ignoring it while
+tracking equally well. That success does not generalize to scale 0.2:
+Soft still solves every QP (0\% failures, by construction) but contact
+RMS degrades to 303.6\,mm, worse than Observer's 232.9\,mm and better than
+C5's 517.1\,mm but far from Unconstrained's 0.53\,mm; a brief sweep over
+$\rho\in\{0.01,0.1,1,10,100,10^4\}$ did not find a single value that
+performs well at both stress scales. We read this as a genuine, partial
+result: the slack relaxation converts the hard constraint's catastrophic,
+unpredictable failure mode (a coin-flip between near-perfect and
+near-total loss of tracking, mediated by solver infeasibility) into an
+always-feasible, monotonically-degrading one, and at practically relevant
+tightening fully recovers the unconstrained tracking quality while
+genuinely respecting the torque budget --- but does not, with a single
+fixed $\rho$, solve the problem at every scale tested. An adaptive or
+scale-aware $\rho$ is the natural next step; we do not implement one here.
+Reproduced by \texttt{torque\_constraint\_active\_experiment.py}.
+
+% ----------------------------------------------------------
+\section{Low-Stiffness Transient Compliance and Recovery}\label{sec:lowk}
+
+Every comparison elsewhere in this paper realizes a high closed-loop
+stiffness (5441\,N/m calibrated per Table~\ref{tab:fair}, or C4/C5's own
+Riccati-image gain), so peak deflection under the 15\,N push is only a
+few mm --- closer to a stiff trajectory tracker with a disturbance
+observer than to a controller that visibly yields to contact and then
+recovers. This section tests the architecture's other end of the design
+space: a deliberately low prescribed stiffness $K_d=100$\,N/m (matching
+C2's admittance virtual-spring stiffness), realized through the
+impedance-equivalence QP branch of Theorem~\ref{thm:equiv},
+$\Fmpc=K_de+D_d\dot e-\hat d$ --- exact by construction when unconstrained,
+by the same centered-cost argument as the theorem's proof --- with and
+without the $-\hat d$ term. $D_d=2\zeta\sqrt{K_d}$ assumes a unit
+effective mass; $\Laminv$ is generally anisotropic (the same caveat
+already noted for the C8 backbone's $D_\text{bb}$ above), so $\zeta=1$ is
+only nominal critical damping and produced a visibly underdamped,
+oscillating response at this low $K_d$ when traced directly (raw error
+vs.\ time, not just the summary RMS); a small sweep selects $\zeta=3$ for
+clean, non-oscillatory settling.
+
+\begin{table}[!t]
+\caption{Low-Stiffness (100\,N/m) Yield-Then-Recover}
+\label{tab:lowk}
+\renewcommand{\arraystretch}{1.0}
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Controller} & \textbf{Peak [mm]} & \textbf{Settle$<$2\,mm [s]} & \textbf{SS [mm]} & \textbf{Peak power [W]}\\
+\midrule
+No estimator   & 114.2         & never          & 113.2         & 5.7\\
+With estimator & \textbf{12.9} & \textbf{2.67}  & \textbf{1.16} & 11.0\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Without the estimator, the response approaches (not fully, since the
+reference moves along the circle while the push is one-directional and
+$K_d$ acts on all three axes) the static equilibrium bias
+$F_h/K_d\approx150$\,mm and never drops below the 2\,mm settling
+tolerance: a permanent offset, as expected of any finite-stiffness law.
+With the estimator, the same prescribed stiffness visibly yields to
+contact --- a genuine 12.9\,mm transient, an order of magnitude more
+compliant than C4/C5's few-mm response at their calibrated stiffness ---
+and then recovers to 1.16\,mm within 2.67\,s: transient compliance
+followed by offset-free recovery, not only disturbance rejection around a
+stiff equilibrium. Peak positive joint power stays low in both cases (5.7
+and 11.0\,W) since the prescribed stiffness itself is low. Reproduced by
+\texttt{low\_stiffness\_reference\_holding.py}.
 
 \bibliographystyle{IEEEtran}
 \bibliography{references}
