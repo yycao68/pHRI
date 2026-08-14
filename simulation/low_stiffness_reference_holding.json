@@ -1,0 +1,22 @@
+{
+  "k_imp_N_per_m": 100.0,
+  "zeta_imp": 3.0,
+  "results": {
+    "No estimator": {
+      "peak_defl_mm": 114.17605288965338,
+      "peak_time_s": 2.99999999999768,
+      "settle_time_s": NaN,
+      "settle_tol_mm": 2.0,
+      "ss_err_mm": 113.16489641558532,
+      "peak_positive_power_W": 5.70810915975299
+    },
+    "With estimator": {
+      "peak_defl_mm": 12.85930501946079,
+      "peak_time_s": 0.2349999999992125,
+      "settle_time_s": 2.6739999999978608,
+      "settle_tol_mm": 2.0,
+      "ss_err_mm": 1.1577198019774693,
+      "peak_positive_power_W": 11.026791455442249
+    }
+  }
+}

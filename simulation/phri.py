@@ -287,6 +287,27 @@ MPC_DT_FAST = 0.002   # s — 500 Hz QP for the "500 Hz" MPC variants
 # duplicating make_mpc_controller.
 F_MAX_OVERRIDE: float | None = None
 
+# Monkeypatchable override for the realized/prescribed translational
+# stiffness (N/m), shared by the classical-impedance branch (EpisodeController
+# k_pos) and the "ImpTrack" MPC branch (ImpedanceMPCParams.k_imp) so both are
+# built at the SAME nominal stiffness for a fair transient-compliance
+# comparison. None -> each branch's own default (300 N/m classical impedance;
+# ImpedanceMPCParams.k_imp's dataclass default for ImpTrack).
+IMPEDANCE_K_OVERRIDE: float | None = None
+
+# Monkeypatchable override for ImpedanceMPCParams.zeta_imp (ImpTrack branch
+# only). D_d=2*zeta*sqrt(K_d) assumes a unit effective mass; Lambda^-1 is
+# generally anisotropic (same caveat as the C8 backbone's D_bb), so zeta=1
+# is only nominal critical damping and can be visibly underdamped at low
+# k_imp. None -> 1.0.
+ZETA_IMP_OVERRIDE: float | None = None
+
+# Monkeypatchable override for ImpedanceMPCParams.soft_torque_rho's
+# magnitude, used only when the controller name contains "Soft"
+# (soft_torque_rho is otherwise None -- hard constraint, every existing
+# controller/table). None -> 1e4 default.
+SOFT_TORQUE_RHO_OVERRIDE: float | None = None
+
 # FR3 joint torque limits (Nm), libfranka values — same numbers as
 # ImpedanceMPCParams.tau_max's default, duplicated here so TAU_MAX_SCALE
 # below can scale it without instantiating a throwaway params object.
@@ -339,12 +360,27 @@ def make_mpc_controller(name: str, dt_sim: float, *,
     # accounts for tau_max or is corrected downstream by clipping. See
     # ImpedanceMPCParams.apply_torque_constraint.
     no_tau_row       = "NoTauRow" in name
+    # "Soft" keeps the torque row (9b) but slack-relaxes it (quadratic
+    # penalty, OSQP-only) instead of the hard infeasible->zero-correction
+    # fallback -- see ImpedanceMPCParams.soft_torque_rho.
+    soft_tau         = "Soft" in name
     # "Observer" selects the observer-impedance baseline: a FIXED gain
     # [K_e,K_edot] taken from the MPC's own realized unconstrained
     # first-move gain (eq:unconstrained), evaluated once, with the same
     # Kalman estimator but no horizon re-optimization each tick. See
     # ImpedanceMPCParams.observer_only.
     observer_mode    = "Observer" in name
+    # "ImpTrack" selects the impedance-equivalence branch (Theorem 1 of the
+    # journal version): the QP tracks a prescribed low-stiffness impedance
+    # law F=K_d*e+D_d*edot-d_hat (with the -d_hat feedforward when Kalman is
+    # also selected) instead of the double-integrator LQR cost, so the
+    # unconstrained realized gain is EXACTLY [K_d,D_d] by construction
+    # (not a Riccati image that can end up much stiffer, as in the
+    # calibrated fair comparison's 5441 N/m). Used for the low-stiffness
+    # transient-compliance-then-recovery experiment; k_imp is set via
+    # IMPEDANCE_K_OVERRIDE for a shared nominal stiffness with the
+    # classical-impedance comparator. See ImpedanceMPCParams.impedance_track.
+    imp_track_mode   = "ImpTrack" in name
     # "Schedule" selects the reference-scheduled horizon-wide constraint
     # instead of freezing at q_k: J_v,i/τ_ff,i are recomputed along the
     # redundancy-resolved joint reference q_d(t) precomputed by
@@ -390,7 +426,13 @@ def make_mpc_controller(name: str, dt_sim: float, *,
         horizon_torque_constraint=backbone or frozen_horizon,
         horizon_torque_schedule=schedule_horizon,
         apply_torque_constraint=not no_tau_row,
+        soft_torque_rho=(
+            (SOFT_TORQUE_RHO_OVERRIDE if SOFT_TORQUE_RHO_OVERRIDE is not None else 1e4)
+            if soft_tau else None),
         observer_only=observer_mode,
+        impedance_track=imp_track_mode,
+        k_imp=IMPEDANCE_K_OVERRIDE if IMPEDANCE_K_OVERRIDE is not None else 100.0,
+        zeta_imp=ZETA_IMP_OVERRIDE if ZETA_IMP_OVERRIDE is not None else 1.0,
         schedule_rho=SCHEDULE_RHO_OVERRIDE if SCHEDULE_RHO_OVERRIDE is not None else 0.0,
         F_max=F_MAX_OVERRIDE if F_MAX_OVERRIDE is not None else 150.0,
         tau_max=BASE_TAU_MAX * TAU_MAX_SCALE if TAU_MAX_SCALE is not None else BASE_TAU_MAX,
@@ -434,7 +476,8 @@ class EpisodeController:
         dt_sim    = env.dt
 
         self.imp_params = make_impedance_params(
-            k_pos=300.0, k_rot=20.0, damping_ratio=1.0, q_null=Q_NEUTRAL)
+            k_pos=IMPEDANCE_K_OVERRIDE if IMPEDANCE_K_OVERRIDE is not None else 300.0,
+            k_rot=20.0, damping_ratio=1.0, q_null=Q_NEUTRAL)
 
         self.adm_ctrl = None
         self.mpc_ctrl = None

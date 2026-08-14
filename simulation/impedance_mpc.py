@@ -185,6 +185,24 @@ class ImpedanceMPCParams:
     # where it actually binds.
     apply_torque_constraint: bool = True
 
+    # ── Soft (slack-relaxed) torque row, OSQP path only ──────────────────
+    # None -> the hard constraint above (infeasible QP -> zero correction,
+    # the default/reported behavior everywhere else in the paper). A float
+    # -> the torque row -tau_max-tb <= A_tau u <= tau_max-tb is relaxed to
+    # -tau_max-tb-s <= A_tau u <= tau_max-tb+s with slack s>=0 penalized by
+    # 0.5*soft_torque_rho*||s||^2 in the cost, added to the SAME QP (never
+    # a separate solve) so the box/torque structure and warm-start reuse
+    # are unaffected when this is None. Makes the QP ALWAYS feasible
+    # (assuming the force box alone is; it is, being a simple decoupled
+    # box) instead of falling back to zero correction the moment the exact
+    # constraint can't be met -- the commanded torque can then exceed
+    # tau_max by an amount the physical clip in FR3MuJoCoEnv.apply_torque
+    # absorbs, same as the Unconstrained/NoTauRow variant, but only by as
+    # much as the QP's own optimum requires rather than dropping to zero
+    # correction outright. Opt-in via the "Soft" controller-name substring;
+    # every existing controller/table keeps soft_torque_rho=None untouched.
+    soft_torque_rho: float | None = None
+
     # Error-decay correction blended into reference scheduling: q̄_i =
     # q_d,i + rho^i·(q_k − q_d,k) (and analogously for q̇), rho in [0,1].
     # rho=0 (default) is PURE reference scheduling (q̄_i = q_d,i exactly) —
@@ -807,25 +825,49 @@ class ImpedanceMPCController:
         import scipy.sparse as sp
 
         n_u  = 3 * self.p.N
-        P_sp = sp.triu(H, format='csc')   # upper-triangular CSC — OSQP convention
         A_force = sp.eye(n_u, format='csc')
         lb_force = -self.p.F_max * np.ones(n_u)
         ub_force =  self.p.F_max * np.ones(n_u)
         A_tau = self._torque_constraint_matrix(J_list, n_u)
-        if A_tau is not None and tau_base_list is not None:
-            A_sp = sp.vstack([A_force, self._torque_constraint_sparse(J_list, n_u, sp)], format='csc')
-            lb = np.concatenate([lb_force] + [-self.p.tau_max - tb for tb in tau_base_list])
-            ub = np.concatenate([ub_force] + [ self.p.tau_max - tb for tb in tau_base_list])
+        soft = self.p.soft_torque_rho is not None and A_tau is not None and tau_base_list is not None
+
+        if soft:
+            # Extended decision variable z=[u; s], s>=0, slack-relaxed torque
+            # row: lb_tau-s <= A_tau u <= ub_tau+s, penalized 0.5*rho*||s||^2.
+            n_s = A_tau.shape[0]
+            P_sp = sp.block_diag(
+                [sp.triu(H, format='csc'), self.p.soft_torque_rho * sp.eye(n_s)],
+                format='csc')
+            q_ext = np.concatenate([h, np.zeros(n_s)])
+            A_tau_sp = self._torque_constraint_sparse(J_list, n_u, sp)
+            lb_tau = np.concatenate([-self.p.tau_max - tb for tb in tau_base_list])
+            ub_tau = np.concatenate([ self.p.tau_max - tb for tb in tau_base_list])
+            row_force = sp.hstack([A_force, sp.csc_matrix((n_u, n_s))], format='csc')
+            row_slack_pos = sp.hstack([sp.csc_matrix((n_s, n_u)), sp.eye(n_s)], format='csc')
+            row_tau_upper = sp.hstack([A_tau_sp, -sp.eye(n_s)], format='csc')  # A u - s <= ub_tau
+            row_tau_lower = sp.hstack([A_tau_sp,  sp.eye(n_s)], format='csc')  # A u + s >= lb_tau
+            A_sp = sp.vstack([row_force, row_slack_pos, row_tau_upper, row_tau_lower], format='csc')
+            lb = np.concatenate([lb_force, np.zeros(n_s),
+                                  -np.inf * np.ones(n_s), lb_tau])
+            ub = np.concatenate([ub_force, np.inf * np.ones(n_s),
+                                  ub_tau, np.inf * np.ones(n_s)])
         else:
-            A_sp = A_force
-            lb = lb_force
-            ub = ub_force
+            P_sp = sp.triu(H, format='csc')   # upper-triangular CSC — OSQP convention
+            if A_tau is not None and tau_base_list is not None:
+                A_sp = sp.vstack([A_force, self._torque_constraint_sparse(J_list, n_u, sp)], format='csc')
+                lb = np.concatenate([lb_force] + [-self.p.tau_max - tb for tb in tau_base_list])
+                ub = np.concatenate([ub_force] + [ self.p.tau_max - tb for tb in tau_base_list])
+            else:
+                A_sp = A_force
+                lb = lb_force
+                ub = ub_force
+            q_ext = h
 
         if self._osqp_prob is None:
             import osqp
             self._osqp_prob = osqp.OSQP()
             self._osqp_prob.setup(
-                P_sp, h, A_sp, lb, ub,
+                P_sp, q_ext, A_sp, lb, ub,
                 warm_starting  = True,
                 verbose        = False,
                 eps_abs        = 1e-6,
@@ -836,7 +878,7 @@ class ImpedanceMPCController:
             )
         else:
             # Reuse the same sparsity pattern — only values change
-            self._osqp_prob.update(Px=P_sp.data, q=h, Ax=A_sp.data, l=lb, u=ub)
+            self._osqp_prob.update(Px=P_sp.data, q=q_ext, Ax=A_sp.data, l=lb, u=ub)
 
         res = self._osqp_prob.solve(raise_error=False)
         # status_val 1 = solved, 2 = solved (inaccurate but acceptable)
@@ -848,7 +890,7 @@ class ImpedanceMPCController:
         self.last_qp_status = str(res.info.status)
         if not self.last_qp_success:
             return np.zeros(n_u)
-        return res.x
+        return res.x[:n_u] if soft else res.x
 
     # ------------------------------------------------------------------
     # Reset

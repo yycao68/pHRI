@@ -157,10 +157,13 @@ centered input cost that admits the steady balancing input $\Fmpc=-\dhat$
 at no cost; and
 \item a first-move applied-torque constraint on the same representation,
 isolated from the estimator by a non-predictive observer-impedance
-baseline and stress-tested by tightening the torque budget until it
-actually binds; and
+baseline, stress-tested by tightening the torque budget until it actually
+binds, and repaired at practically relevant tightening by a slack
+relaxation of the same row; and
 \item a controlled FR3 simulation comparison against nominal, calibrated,
-integral, variable-impedance, and ideal measured-force baselines.
+integral, variable-impedance, and ideal measured-force baselines, including
+a deliberately low-stiffness condition demonstrating transient compliance
+followed by offset-free recovery.
 \end{enumerate}
 
 The conference version focuses on the implemented controller and its causal
@@ -549,10 +552,9 @@ Rate & Mean & p50 & p99 & Max & Deadline & Misses\\
 \bottomrule
 \end{tabular}
 \end{table}
-\noindent $^\dagger$One-time OSQP problem setup on the episode's first tick;
-excluding it, the steady-state maximum is 1.04\,ms and both rates have zero
-misses. Timing excludes the separate MuJoCo dynamics query and is not
-validated on an embedded or real-time-kernel target.
+\noindent $^\dagger$One-time OSQP setup cost; steady-state max is 1.04\,ms
+(zero misses both rates). Excludes the MuJoCo dynamics query; not validated
+on an embedded/real-time-kernel target.
 
 \section{Simulation Evaluation}
 
@@ -587,7 +589,7 @@ online. It matches C5 closely (0.52 vs.\ 0.53\,mm contact RMS, 2.44 vs.\
 $65.8\times$ headline improvement is therefore attributable mainly to the
 disturbance estimate, not to horizon optimization as such. This comparison
 does not establish that receding-horizon prediction earns its keep beyond
-the estimator; \S V-E instead finds a genuine cost of coupling the
+the estimator; \S V-F instead finds a genuine cost of coupling the
 applied-torque constraint to the multi-step horizon under a tightened
 budget.
 
@@ -645,18 +647,10 @@ C7: DI-MPC + est. 500\,Hz & 12.7 & \textbf{0.32} & 1.48 & \textbf{0.029}\\
 \end{tabular}
 \end{table}
 
-\begin{figure}[t]
-\centering
-\includegraphics[width=.78\columnwidth]{figures/mpc_comparison_results.png}
-\caption{Representative trajectories from the broad screen. The compliant
-admittance response is intentional; its large displacement is not a failure
-for a guidance task, but it is unsuitable for the reference-holding objective
-studied here. The calibrated-impedance study below removes the largest
-stiffness confound between impedance and MPC.}
-\label{fig:broad}
-\end{figure}
-
-The broad screen makes two mechanism-level points. The predictive
+The compliant admittance response is intentional; its large displacement
+is not a failure for a guidance task, but it is unsuitable for the
+reference-holding objective studied here (representative trajectories in
+the journal version). The broad screen makes two mechanism-level points. The predictive
 variable-impedance row improves on reactive finite-stiffness controllers but
 retains a 4.8\,mm bias because scheduling stiffness does not provide an
 internal model of a constant load. At fixed MPC rate and tuning, C4 versus C5
@@ -730,6 +724,49 @@ without increasing peak positive joint power. Ideal measured-force cancellation 
 that constant-load rejection is not unique to MPC; C5's distinction in this
 test is achieving 0.042\,mm without a force measurement.
 
+\subsection{Low-stiffness transient compliance and recovery}
+\label{sec:lowk}
+
+Every comparison above realizes a high closed-loop stiffness (5441\,N/m
+calibrated, or C4/C5's own Riccati-image gain), so peak deflection is only
+a few mm: closer to a stiff trajectory tracker with a disturbance observer
+than to a controller that visibly yields to contact. We test the
+architecture's other end of the design space with a deliberately low
+prescribed stiffness $K_d=100$\,N/m (matching the admittance baseline's
+virtual-spring stiffness), realized through the impedance-equivalence QP
+branch $\Fmpc=K_de+D_d\dot e-\dhat$, exact by construction when
+unconstrained (same argument as \eqref{eq:unconstrained}), with and
+without the $-\dhat$ term. $D_d=2\zeta\sqrt{K_d}$ assumes a unit effective
+mass; $\Lambda^{-1}$ is generally anisotropic, so $\zeta=1$ is only
+nominal critical damping and is visibly underdamped at this low $K_d$ (a
+small sweep selects $\zeta=3$ for clean, non-oscillatory settling).
+
+\begin{table}[t]
+\caption{Low-Stiffness (100\,N/m) Yield-Then-Recover}
+\label{tab:lowk}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+Controller & Peak (mm) & Settle$<$2\,mm (s) & SS (mm) & Peak power (W)\\
+\midrule
+No estimator & 114.2 & never & 113.2 & 5.7\\
+With estimator & \textbf{12.9} & \textbf{2.67} & \textbf{1.16} & 11.0\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Without the estimator, the response approaches (not fully, since the
+reference moves while the push is one-directional) the static equilibrium
+$F_h/K_d\approx150$\,mm and never drops below the 2\,mm tolerance: a
+permanent offset. With the estimator, the same stiffness visibly yields
+--- a genuine 12.9\,mm transient, an order of magnitude more compliant
+than C4/C5's few-mm response --- then recovers to 1.16\,mm within 2.67\,s:
+transient compliance followed by offset-free recovery, not only
+disturbance rejection around a stiff equilibrium. Peak positive joint
+power stays low in both cases (5.7 and 11.0\,W).
+
 \subsection{Loss of corrective authority}
 
 If the force box $F_{\max}$ is instead tightened toward zero, the QP loses
@@ -750,46 +787,61 @@ Every benchmark above keeps $F_{\max}=150$\,N as the binding limit; the
 applied-torque row \eqref{eq:taubox} never saturates there (raw excess
 $<2\times10^{-5}$\,Nm, \S V-C). We test what \eqref{eq:taubox} costs and
 buys by tightening $\tau_{\max}$ directly via a multiplicative scale $s$
-and comparing three otherwise-identical 100\,Hz controllers: \textbf{C5}
+and comparing four otherwise-identical 100\,Hz controllers: \textbf{C5}
 (the row embedded per \eqref{eq:taubox}), \textbf{Unconstrained} (the row
 omitted; the plant still clips physically per \eqref{eq:torque}, so this
 tests whether the QP's own optimum matters, not whether the robot ever
-exceeds $\tau_{\max}$), and \textbf{Observer} (Table~\ref{tab:ablation}'s
-fixed-gain baseline under the same tightened budget).
+exceeds $\tau_{\max}$), \textbf{Observer} (Table~\ref{tab:ablation}'s
+fixed-gain baseline under the same tightened budget), and \textbf{Soft}
+(the same row relaxed with a slack variable $s\ge0$ penalized
+$\frac12\rho\|s\|^2$ in the cost instead of the hard zero-correction
+fallback, so the QP is always feasible; $\rho=1$, selected by a small
+sweep).
 
 \begin{table}[t]
 \caption{Torque-Budget Sweep: Contact RMS (mm) / QP Failures (\%)}
 \label{tab:tauactive}
 \centering
 \footnotesize
-\setlength{\tabcolsep}{3.5pt}
+\setlength{\tabcolsep}{3.0pt}
 \begin{tabular}{@{}lrrr@{}}
 \toprule
 $\tau_{\max}$ scale & 1.0 & 0.32 & 0.2\\
 \midrule
 C5 & 0.53 / 0\% & 550.5 / 72.5\% & 517.1 / 23.7\%\\
-Unconstrained & \textbf{0.53} / 0\% & \textbf{0.53} / 0\% & \textbf{0.53} / 0\%\\
+Unconstrained & \textbf{0.53} / 0\% & 0.53 / 0\% & \textbf{0.53} / 0\%\\
 Observer & 0.52 / 0\% & 0.51 / 0\% & 232.9 / 30.9\%\\
+Soft & 0.53 / 0\% & \textbf{0.52} / 0\% & 303.6 / 0\%\\
 \bottomrule
 \end{tabular}
 \end{table}
 
-At the paper's operating point (scale 1.0) all three are indistinguishable,
+At the paper's operating point (scale 1.0) all four are indistinguishable,
 confirming \eqref{eq:taubox} costs nothing when it never binds. Tightening to
 scale 0.32 makes C5's QP infeasible on 72.5\% of solves; \S III-C's
 documented zero-correction fallback then applies, degrading tracking to
-550\,mm --- far worse than either alternative. Unconstrained is essentially
-untouched, since the plant's physical clip alone recovers a usable command;
-Observer's single-step, decoupled QP also survives this scale and only
-degrades once tightened further (scale 0.2: 233\,mm, versus C5's persistent
-517\,mm). This is a genuine limitation of the current all-or-nothing
-infeasibility fallback under a severely tightened budget, not evidence that
-embedding a torque row is unhelpful in general: at every scale tested here,
-the receding-horizon-coupled feasibility requirement is more fragile than
-either a single-step-decoupled QP or no embedded row at all. We do not
-resolve this within the present scope; a soft/slack relaxation of
-\eqref{eq:taubox} in place of the current hard zero-correction fallback is
-the natural next step.
+550\,mm --- far worse than every alternative. Here Soft recovers essentially
+all of the lost performance (0.52\,mm, matching Unconstrained) while, unlike
+Unconstrained, keeping the raw commanded torque within budget: zero
+measured excess at this scale, versus Unconstrained's 5.2\,Nm maximum. This
+is the constraint's positive case: the same row that fails catastrophically
+when hard succeeds cleanly once relaxed, respecting the budget more closely
+than ignoring it while tracking equally well. That success does not
+generalize to scale 0.2: Soft still solves every QP (0\% failures, by
+construction) but contact RMS degrades to 303.6\,mm, worse than Observer's
+232.9\,mm and better than C5's 517.1\,mm but far from Unconstrained's
+0.53\,mm; the fixed penalty $\rho$ that works well at scale 0.32 is no
+longer well matched to the problem at this more severe scale, and a brief
+sweep did not find a single $\rho$ that performs well at both. We read this
+as a genuine, partial result: the slack relaxation converts the hard
+constraint's catastrophic, unpredictable failure mode (a coin-flip between
+near-perfect and near-total loss of tracking, mediated by solver
+infeasibility) into an always-feasible, monotonically-degrading one, and
+at practically relevant tightening (scale 0.32) fully recovers the
+unconstrained tracking quality while genuinely respecting the torque
+budget --- but does not, with a single fixed $\rho$, solve the problem at
+every scale tested. An adaptive or scale-aware $\rho$ is the natural next
+step; we do not implement one here.
 
 \subsection{Waypoint generalization}
 
@@ -797,70 +849,28 @@ A second task checks whether the conclusion is specific to a periodic circle.
 The end effector visits three waypoints forming a triangle. At each waypoint,
 a 15\,N push in a different direction begins 0.8\,s after arrival and lasts
 2\,s; the robot must then dwell within 35\,mm of the target for 1\,s. All
-controllers reach all three waypoints. Table~\ref{tab:waypoints} repeats the
-controlled 100\,Hz estimator ablation: contact RMS falls from 2.2 to 0.6\,mm
-when the disturbance state is enabled. At 500\,Hz the estimator continues to
-reduce contact RMS (0.8 to 0.37\,mm) but, under the rate-proportional $Q_w$
-scaling of Table~\ref{tab:params}, no longer has the lowest peak error: C6's
-1.0\,mm undercuts C7's 1.42\,mm, mirroring the same pattern in
-Table~\ref{tab:broad}.
+controllers reach all three waypoints (stiff impedance and predictive
+variable impedance included), repeating the controlled estimator ablation:
+at 100\,Hz, contact RMS falls from 2.2 to 0.6\,mm when the disturbance
+state is enabled (C4$\to$C5); at 500\,Hz the estimator continues to reduce
+contact RMS (0.8 to 0.37\,mm, C6$\to$C7) but, under the rate-proportional
+$Q_w$ scaling of Table~\ref{tab:params}, no longer has the lowest peak
+error: C6's 1.0\,mm undercuts C7's 1.42\,mm, mirroring the same pattern in
+Table~\ref{tab:broad}; full per-controller table in the journal version.
 
-\begin{table}[t]
-\caption{Three-Waypoint Hold Under Directionally Varied Pushes}
-\label{tab:waypoints}
-\centering
-\footnotesize
-\setlength{\tabcolsep}{1.6pt}
-\begin{tabular}{@{}lrrrr@{}}
-\toprule
-Controller & Waypoints & Free RMS & Contact RMS & Peak\\
- & reached & (mm) & (mm) & (mm)\\
-\midrule
-Stiff impedance & 3/3 & 63.6 & 41.4 & 47.1\\
-Predictive variable imp. & 3/3 & 51.2 & 5.0 & 6.0\\
-C4: DI-MPC 100\,Hz & 3/3 & 47.9 & 2.2 & 2.6\\
-C5: DI-MPC + est. 100\,Hz & 3/3 & 47.9 & 0.6 & 2.4\\
-C6: DI-MPC 500\,Hz & 3/3 & 51.9 & 0.8 & \textbf{1.0}\\
-C7: DI-MPC + est. 500\,Hz & 3/3 & 51.5 & \textbf{0.37} & 1.42\\
-\bottomrule
-\end{tabular}
-\end{table}
+The predictive variable-impedance comparator is the same
+scheduler as \S V-B (in-house, family of \cite{liu2025model,roveda2019optimal});
+its 5.0\,mm result again reflects a load-dependent offset from adapting a
+finite stiffness rather than cancelling the load. The large free-motion
+errors across methods include waypoint travel, not contact regulation.
 
-The predictive variable-impedance comparator rolls out the same horizon and
-uses $\dhat$ only to choose a stiffness from
-$\{200,400,800,1500,3000\}$\,N/m; it does not subtract the estimated load.
-It is an in-house scheduler in the family of predictive variable-impedance
-methods \cite{liu2025model,roveda2019optimal}, not a reproduction of a
-published implementation. Its 5.0\,mm result
-therefore supports only the mechanism-level observation that adapting a finite
-stiffness leaves a load-dependent offset. The large free-motion errors across
-methods include waypoint travel and are not a measure of contact regulation.
-
-The moving-reference behavior is also checked on four circle planes without
-plane-specific retuning (Table~\ref{tab:planes}). C5 remains below 0.35\,mm
-free-space RMS on every plane. The much larger nominal-impedance errors
-reflect the same stiffness confound noted above; the table evidences
-directional consistency of the scheduled operational-space model, not a
-performance ratio.
-
-\begin{table}[t]
-\caption{Free-Space Circle Generalization, $R=12$\,cm, $T=8$\,s}
-\label{tab:planes}
-\centering
-\footnotesize
-\setlength{\tabcolsep}{3.5pt}
-\begin{tabular}{@{}lrr@{}}
-\toprule
-Circle plane & Nominal impedance RMS & C5 RMS\\
- & (mm) & (mm)\\
-\midrule
-XZ sagittal & 23.54 & 0.24\\
-XY horizontal & 25.06 & 0.33\\
-YZ frontal & 16.25 & 0.21\\
-Tilted XZ-to-XY & 25.07 & 0.31\\
-\bottomrule
-\end{tabular}
-\end{table}
+The moving-reference behavior is also checked on four circle planes (XZ
+sagittal, XY horizontal, YZ frontal, tilted XZ-to-XY) without
+plane-specific retuning: C5 remains below 0.35\,mm free-space RMS on every
+plane, versus 16--25\,mm for nominal impedance (the same stiffness confound
+noted above), evidencing directional consistency of the scheduled
+operational-space model rather than a performance ratio; full per-plane
+table in the journal version.
 
 \subsection{Time-varying interaction and horizon validity}
 
@@ -888,13 +898,11 @@ For C7, steady-state deflection remains approximately 0.023\,mm throughout the
 tested unsaturated range, whereas first-contact peak error increases from 0.57
 to 2.45\,mm. The estimator cancels a constant force after convergence, but it
 cannot cancel an unseen step at its first sample; this separates steady-state
-offset rejection from transient compliance. The reported SS value is
-consistent with the load-independent mean-equilibrium prediction rather
-than a rounding artifact: Proposition~1 predicts rejection in expectation
-for any constant $d$, and this near-constant $\approx$0.023\,mm empirically
-matches that pattern, reflecting a numerical/discretization,
-trajectory-tracking, and estimator-fluctuation floor rather than a
-residual scaling with the applied force.
+offset rejection from transient compliance. The near-constant
+$\approx$0.023\,mm SS value is consistent with Proposition~1's
+load-independent mean-equilibrium prediction, reflecting a numerical/
+estimator-fluctuation floor rather than a residual scaling with the
+applied force.
 
 \begin{table}[t]
 \caption{Sustained-Force Sweep: Steady-State / Peak Error (mm)}
@@ -915,13 +923,12 @@ C7, peak & 0.57 & 0.96 & 1.46 & 1.96 & 2.45\\
 \end{table}
 
 At 15\,N, changing the force profile from a step to a linear ramp lowers C7
-contact RMS from 0.32 to 0.19\,mm and peak error from 1.46 to 0.57\,mm. A
-1\,Hz sinusoid raises contact RMS to 0.87\,mm while peak error is a
-comparable 1.30\,mm. These results agree with the direct prediction study: smoother
-onset reduces the unobserved transient, while a persistent time-varying load
-exposes the bandwidth limit of the random-walk estimator. They do not imply
-amplitude-independent performance after the 150\,N force box or joint-torque
-limits become active.
+contact RMS from 0.32 to 0.19\,mm and peak error from 1.46 to 0.57\,mm; a
+1\,Hz sinusoid raises contact RMS to 0.87\,mm with a comparable 1.30\,mm
+peak, agreeing with \S V-H: smoother onset reduces the unobserved
+transient, while a persistent time-varying load exposes the estimator's
+bandwidth limit. Not evidence of amplitude-independent performance once
+the force box or joint-torque limits become active.
 
 \subsection{Robustness checks}
 
@@ -942,19 +949,17 @@ figure is deferred to the journal version.
 \toprule
 Position noise $1\sigma$ (mm) & 0 & 1 & 2 & 5\\
 10\,N-step SS error (mm) & 0.08 & $0.19\pm.03$ & $0.37\pm.04$ & $0.89\pm.07$\\
-\midrule
-Controller inertia error & 0\% & +10\% & +20\% & +30\%\\
-Circle RMSE, estimator on (mm) & 0.24 & 0.24 & 0.24 & 0.23\\
-Circle RMSE, estimator off (mm) & 0.94 & 0.86 & 0.79 & 0.73\\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Position-noise results average five seeds and model only end-effector position
-noise; velocity noise, delay, and force-sensor noise are absent. The inertia
-test perturbs only the controller's feedforward model while the plant remains
-unchanged. These tests show numerical tolerance over the selected ranges, not
-robust-stability guarantees.
+Five-seed average, end-effector position noise only (velocity, delay,
+force-sensor noise absent): numerical tolerance over the tested range, not
+a robust-stability guarantee. A separate controller-inertia-mismatch sweep
+(0--30\% error, feedforward model only, plant unchanged) confirms the
+Kalman estimator keeps free-circle RMSE nearly flat (0.24$\to$0.23\,mm)
+where disabling it degrades 3--4$\times$ (0.94$\to$0.73\,mm); full table
+in the journal version.
 
 
 \section{Discussion and Conclusion}
@@ -992,10 +997,13 @@ velocity feedback, and provides a frozen-configuration offset result. The
 boundary test is not a CBF certificate, and the optional energy tank does not
 establish full-port passivity. The observer-impedance comparison does not
 establish that receding-horizon prediction earns its keep beyond the
-estimator under nominal actuation headroom, and \S V-E's stress test shows
-the current hard, zero-correction torque-constraint fallback is a real
-liability, not yet an asset, once the budget is tightened enough to bind;
-a soft/slack relaxation is future work. Hardware evaluation should compare
+estimator under nominal actuation headroom. \S V-F's hard, zero-correction
+torque-constraint fallback is a genuine liability once the budget is
+tightened enough to bind, but a slack-relaxed version of the same row
+recovers the lost tracking quality --- while respecting the budget better
+than ignoring it --- at practically relevant tightening; it does not do so
+at every scale tested with a single fixed penalty weight, and an adaptive
+weight is future work. Hardware evaluation should compare
 against a canonical predictive interaction controller under shared tuning
 while logging force estimates, applied torque, solver status, safety-filter
 slack, and energy state.
