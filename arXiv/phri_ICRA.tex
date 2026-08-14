@@ -49,7 +49,7 @@ re-derived per contact or configuration. Built on that representation, we presen
 offset-free model-predictive controller for torque-controlled
 manipulators that matches the reference-holding requirement under the same
 physical torque limits as a stiffness-and-damping-calibrated
-impedance baseline, using no force/torque sensor: a recursive Kalman
+impedance baseline, using no force/torque sensor. A recursive Kalman
 filter estimates the persistent interaction and model mismatch directly
 in force coordinates, and a 30-variable quadratic program predicts the
 error while constraining the complete first applied joint-torque
@@ -59,10 +59,10 @@ sensorless controller reaches 0.042\,mm repeated-step steady-state error at
 113\,W peak positive joint power with no torque saturation, versus 2.59\,mm
 at 378\,W and 0.45\% saturated samples for a stiffness-and-damping-calibrated
 impedance
-baseline calibrated to the same closed-loop stiffness --- about a third of
-the power in this task, no force measurement, and an architecturally
-zero-mean offset under the stated frozen-configuration assumptions
-(Proposition~1). Controlled
+baseline calibrated to the same closed-loop stiffness. This is about a
+third of the power in this task, with no force measurement, and an
+architecturally zero-mean offset under the stated frozen-configuration
+assumptions (Proposition~1). Controlled
 ablation attributes the offset rejection to the disturbance-augmented
 estimator: adding it to an otherwise identical MPC reduces steady-state
 error from 2.77 to 0.042\,mm, consistent with the paper's frozen-configuration
@@ -143,7 +143,11 @@ makes the steady balancing input $\Fmpc=-\dhat$ exactly cost-free, avoiding a
 separate offset calculation, and a first-move constraint applied to the
 complete torque command $\tau_{\rm base}+J_v^\top F_{\mathrm{mpc},0}$ rather
 than to the corrective force alone. Operational-space cancellation exposes
-the normalized translational error model these mechanisms share. The
+the normalized translational error model these mechanisms share. Two
+controlled comparisons below deliberately separate credit: \S V-A shows
+the disturbance estimate, not receding-horizon prediction, drives offset
+rejection; \S V-F shows this paper's slack-relaxed constraint embedding,
+not deeper prediction, drives torque-feasibility robustness. The
 contributions are:
 
 \begin{enumerate}[leftmargin=*,itemsep=1pt,topsep=2pt]
@@ -154,11 +158,11 @@ current task inertia, making interaction a predictive state on a shared
 model rather than a property re-modeled per contact or configuration;
 \item force-domain disturbance augmentation on that representation, with a
 centered input cost that admits the steady balancing input $\Fmpc=-\dhat$
-at no cost; and
-\item a first-move applied-torque constraint on the same representation,
-isolated from the estimator by a non-predictive observer-impedance
-baseline and, under a deliberately tightened torque budget, shown to
-recover full tracking quality via a slack relaxation of the same row; and
+at no cost, validated by a non-predictive observer-impedance baseline;
+\item a first-move applied-torque constraint on the complete torque
+command, and a slack relaxation of that row that, at a practically
+relevant tightened budget, recovers full tracking quality where the hard
+bound fails on 72.5\% of solves; and
 \item a controlled FR3 simulation comparison against nominal, calibrated,
 integral, variable-impedance, and ideal measured-force baselines, including
 a deliberately low-stiffness condition demonstrating transient compliance
@@ -991,29 +995,26 @@ overcorrects before settling, so estimator bandwidth must be tuned jointly
 with the desired transient compliance rather than treated as a free
 improvement.
 
-\textbf{Where this places the contribution.} The fixed-$A_d$, force-coordinate
-representation --- which we call \textbf{Interaction Dynamics} --- may serve
-as one building block of a broader interaction framework in which
-higher-level perception and planning provide reference and contact
-information to a fast, model-based execution layer; ``Physical AI'' names
-that placement, not an additional experimental claim. This paper
-establishes only the fixed-base translational reference-holding case, with
-the configuration- and motion-dependent remainder of $d$ left to the
-random-walk estimator rather than modeled in closed form (Section~II);
-transfer to other embodiments and contact regimes remains future work.
+\textbf{Scope.} This paper establishes only the fixed-base translational
+reference-holding case of the fixed-$A_d$, force-coordinate representation
+introduced above, with the configuration- and motion-dependent remainder
+of $d$ left to the random-walk estimator rather than modeled in closed
+form (Section~II); transfer to other embodiments and contact regimes
+remains future work.
 
 The evidence remains limited to torque-controlled FR3 simulation. The
 predictor lumps human force and model error, assumes accurate position and
 velocity feedback, and provides a frozen-configuration offset result. The
 boundary test is not a CBF certificate, and the optional energy tank does not
-establish full-port passivity. The observer-impedance comparison isolates
-the estimator as the primary source of the reported improvement; the
-distinct contribution of receding-horizon prediction under nominal
-actuation headroom is a direction for further study. \S V-F characterizes
-the operating range where a slack-relaxed torque row matches
-unconstrained tracking without exceeding the hardware limit, at the cost
-of a bounded overshoot of the test budget itself; an adaptive penalty
-weight is future work. Hardware evaluation should compare
+establish full-port passivity. By design, the observer-impedance
+comparison confirms that the estimator alone accounts for the reported
+offset-rejection improvement under nominal actuation headroom, not
+receding-horizon prediction; \S V-F instead credits the slack-relaxed
+constraint embedding, on the same receding-horizon policy whose
+hard-bounded torque row fails, for torque-feasibility robustness --
+matching unconstrained tracking without exceeding the hardware limit, at
+the cost of a bounded overshoot of the test budget itself; an adaptive
+penalty weight is future work. Hardware evaluation should compare
 against a canonical predictive interaction controller under shared tuning
 while logging force estimates, applied torque, solver status, safety-filter
 slack, and energy state.
