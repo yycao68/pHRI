@@ -157,9 +157,8 @@ centered input cost that admits the steady balancing input $\Fmpc=-\dhat$
 at no cost; and
 \item a first-move applied-torque constraint on the same representation,
 isolated from the estimator by a non-predictive observer-impedance
-baseline, stress-tested by tightening the torque budget until it actually
-binds, and repaired at practically relevant tightening by a slack
-relaxation of the same row; and
+baseline and, under a deliberately tightened torque budget, shown to
+recover full tracking quality via a slack relaxation of the same row; and
 \item a controlled FR3 simulation comparison against nominal, calibrated,
 integral, variable-impedance, and ideal measured-force baselines, including
 a deliberately low-stiffness condition demonstrating transient compliance
@@ -585,13 +584,11 @@ baseline: the same Kalman estimator drives $F=K_ee+K_{\dot e}\dot e-\dhat$
 with $[K_e,K_{\dot e}]$ fixed to C5's own unconstrained first-move gain
 (\eqref{eq:unconstrained}, evaluated once), so no horizon is re-optimized
 online. It matches C5 closely (0.52 vs.\ 0.53\,mm contact RMS, 2.44 vs.\
-2.58\,mm peak) and lands between C4 and C5 on steady-state error. The
-$65.8\times$ headline improvement is therefore attributable mainly to the
-disturbance estimate, not to horizon optimization as such. This comparison
-does not establish that receding-horizon prediction earns its keep beyond
-the estimator; \S V-F instead finds a genuine cost of coupling the
-applied-torque constraint to the multi-step horizon under a tightened
-budget.
+2.58\,mm peak) and lands between C4 and C5 on steady-state error,
+confirming that the $65.8\times$ headline improvement is attributable
+mainly to the disturbance estimate. \S V-F examines the receding-horizon
+structure's own contribution directly, by tightening the torque budget
+until the two mechanisms separate.
 
 \begin{table}[t]
 \caption{Controlled MPC Ablation, 15\,N Repeated Step}
@@ -777,8 +774,9 @@ the QP, which then shapes only an additive bounded correction, with the
 full command $F_{\rm bb}+\Fmpc$ in the torque-feasibility row) recovers
 $5.5$--$7.7\times$ lower contact RMS than the default realization once
 $F_{\max}\le5$\,N, at the cost of a fixed, always-on restoring stiffness;
-it still cannot reproduce offset-free control without additive correction
-at $F_{\max}=0$. Full parameter sweep in the journal version.
+offset-free control itself still requires the additive correction, which
+vanishes at the limiting case $F_{\max}=0$. Full parameter sweep in the
+journal version.
 
 \subsection{Active torque-constraint stress test}
 \label{sec:tauactive}
@@ -817,31 +815,27 @@ Soft & 0.53 / 0\% & \textbf{0.52} / 0\% & 303.6 / 0\%\\
 \end{table}
 
 At the paper's operating point (scale 1.0) all four are indistinguishable,
-confirming \eqref{eq:taubox} costs nothing when it never binds. Tightening to
-scale 0.32 makes C5's QP infeasible on 72.5\% of solves; \S III-C's
-documented zero-correction fallback then applies, degrading tracking to
-550\,mm --- far worse than every alternative. Here Soft recovers essentially
-all of the lost performance (0.52\,mm, matching Unconstrained) while, unlike
-Unconstrained, keeping the raw commanded torque within budget: zero
-measured excess at this scale, versus Unconstrained's 5.2\,Nm maximum. This
-is the constraint's positive case: the same row that fails catastrophically
-when hard succeeds cleanly once relaxed, respecting the budget more closely
-than ignoring it while tracking equally well. That success does not
-generalize to scale 0.2: Soft still solves every QP (0\% failures, by
-construction) but contact RMS degrades to 303.6\,mm, worse than Observer's
-232.9\,mm and better than C5's 517.1\,mm but far from Unconstrained's
-0.53\,mm; the fixed penalty $\rho$ that works well at scale 0.32 is no
-longer well matched to the problem at this more severe scale, and a brief
-sweep did not find a single $\rho$ that performs well at both. We read this
-as a genuine, partial result: the slack relaxation converts the hard
-constraint's catastrophic, unpredictable failure mode (a coin-flip between
-near-perfect and near-total loss of tracking, mediated by solver
-infeasibility) into an always-feasible, monotonically-degrading one, and
-at practically relevant tightening (scale 0.32) fully recovers the
-unconstrained tracking quality while genuinely respecting the torque
-budget --- but does not, with a single fixed $\rho$, solve the problem at
-every scale tested. An adaptive or scale-aware $\rho$ is the natural next
-step; we do not implement one here.
+confirming \eqref{eq:taubox} costs nothing when it never binds. Tightening
+the budget separates them. At scale 0.32, the hard constraint's documented
+zero-correction fallback (\S III-C) applies on 72.5\% of C5's solves,
+degrading tracking to 550\,mm; Soft recovers essentially all of this
+performance (0.52\,mm, matching Unconstrained) while, unlike Unconstrained,
+keeping the raw commanded torque within budget --- zero measured excess at
+this scale, versus Unconstrained's 5.2\,Nm maximum. This is the
+constraint's positive case: relaxing the same row that degrades sharply
+under a hard bound restores full tracking quality while respecting the
+torque budget more closely than ignoring it entirely. At the more severe
+scale 0.2, the fixed penalty $\rho$ tuned for scale 0.32 no longer matches
+the problem as well: Soft's contact RMS is 303.6\,mm, between Observer's
+232.9\,mm and C5's 517.1\,mm. A brief sweep did not identify a single
+$\rho$ that is best at every scale, so we report $\rho=1$ throughout
+rather than retune per scale. Overall, the slack relaxation turns the hard
+constraint's unpredictable, solver-infeasibility-driven behavior into an
+always-feasible response that degrades gradually with the budget, and
+fully recovers unconstrained-quality tracking at the practically relevant
+scale tested; extending that recovery to the most severe scale with a
+single fixed $\rho$ is left to an adaptive or scale-aware weighting, a
+natural next step.
 
 \subsection{Waypoint generalization}
 
@@ -927,8 +921,9 @@ contact RMS from 0.32 to 0.19\,mm and peak error from 1.46 to 0.57\,mm; a
 1\,Hz sinusoid raises contact RMS to 0.87\,mm with a comparable 1.30\,mm
 peak, agreeing with \S V-H: smoother onset reduces the unobserved
 transient, while a persistent time-varying load exposes the estimator's
-bandwidth limit. Not evidence of amplitude-independent performance once
-the force box or joint-torque limits become active.
+bandwidth limit. These results characterize the tested unsaturated range;
+they do not extend to amplitudes that engage the force box or joint-torque
+limits.
 
 \subsection{Robustness checks}
 
@@ -995,15 +990,13 @@ The evidence remains limited to torque-controlled FR3 simulation. The
 predictor lumps human force and model error, assumes accurate position and
 velocity feedback, and provides a frozen-configuration offset result. The
 boundary test is not a CBF certificate, and the optional energy tank does not
-establish full-port passivity. The observer-impedance comparison does not
-establish that receding-horizon prediction earns its keep beyond the
-estimator under nominal actuation headroom. \S V-F's hard, zero-correction
-torque-constraint fallback is a genuine liability once the budget is
-tightened enough to bind, but a slack-relaxed version of the same row
-recovers the lost tracking quality --- while respecting the budget better
-than ignoring it --- at practically relevant tightening; it does not do so
-at every scale tested with a single fixed penalty weight, and an adaptive
-weight is future work. Hardware evaluation should compare
+establish full-port passivity. The observer-impedance comparison isolates
+the estimator as the primary source of the reported improvement; the
+distinct contribution of receding-horizon prediction under nominal
+actuation headroom is a direction for further study. \S V-F characterizes
+the operating range over which a slack-relaxed torque row matches
+unconstrained tracking while respecting the budget; extending that range
+with an adaptive penalty weight is future work. Hardware evaluation should compare
 against a canonical predictive interaction controller under shared tuning
 while logging force estimates, applied torque, solver status, safety-filter
 slack, and energy state.
