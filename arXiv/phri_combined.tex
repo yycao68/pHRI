@@ -163,6 +163,21 @@ and the robot-specific realization enters the complete applied-torque
 constraint rather than bounding the correction alone.  The result is a small
 convex QP whose state-transition block can be precomputed.
 
+Two controlled comparisons in \S\ref{sec:experiments} and
+\S\ref{sec:tauactive} deliberately separate what each mechanism is
+credited for, rather than crediting the receding-horizon MPC architecture
+as a whole: the disturbance estimate, not receding-horizon prediction,
+drives the reported offset-rejection improvement, established against a
+non-predictive fixed-gain observer-impedance baseline using the identical
+estimator; and this paper's slack-relaxed constraint embedding, not
+deeper prediction, drives torque-feasibility robustness once the
+actuation budget is tightened enough to bind, established by relaxing the
+same optimized policy's hard torque row rather than by extending the
+horizon. Receding-horizon MPC is the vehicle in which both mechanisms are
+realized and evaluated together; neither mechanism's own credit depends
+on the horizon being predictive as opposed to single-step, and the
+experiments below test that directly rather than assuming it.
+
 The contributions are therefore threefold:
 
 \begin{enumerate}[leftmargin=*,itemsep=2pt,topsep=2pt]
@@ -475,10 +490,11 @@ penalized slack $s\geq0$ so the QP stays feasible and returns a
 minimum-violation-like command, analogous to the joint-limit CBF
 relaxation of Sec.~\ref{sec:cbf}; \S\ref{sec:tauactive} implements and
 stress-tests exactly this relaxation under a deliberately tightened
-$\tau_{\max}$, with a genuine but partial positive result --- it recovers
-the hard constraint's lost tracking quality at practically relevant
-tightening, but not, with a single fixed penalty weight, at every scale
-tested.
+$\tau_{\max}$: it recovers the hard constraint's lost tracking quality at
+a practically relevant tightening while never triggering the plant's
+physical clip, though it does draw on genuinely nonzero slack relative to
+the tightened test budget itself, a distinction \S\ref{sec:tauactive}
+makes precise.
 
 The following conditional identification relates the unconstrained feedback
 component to classical impedance; it is not a claim that predictive control
@@ -1211,9 +1227,9 @@ estimator. It matches C5 closely (0.5\,mm contact RMS both, 2.4 vs.\
 2.6\,mm peak) and nearly matches its steady-state error (0.055 vs.\
 $<$0.05\,mm), confirming that the estimator accounts for most of the
 reported improvement under nominal actuation headroom.
-\S\ref{sec:tauactive} examines the receding-horizon structure's own
-contribution directly, by tightening the torque budget until the two
-mechanisms separate.
+\S\ref{sec:tauactive} isolates the effect of embedding and relaxing the
+applied-torque row under active actuation limits, by tightening the
+torque budget until the two mechanisms separate.
 \item \textbf{Nominal impedance versus MPC is gain-confounded (C1 vs.\ C4).}
 The 300\,N/m C1 setting is intentionally compliant and is not C4's realized
 closed-loop gain.  We therefore do not interpret their ratio as an
@@ -2142,8 +2158,11 @@ torque row as C5 but a single-step, non-predictive QP.
 $s\ge0$: $-\tau_\text{max}-\text{tb}-s\le\tau_\text{base}+J_v^\top\Fmpck{0}\le\tau_\text{max}-\text{tb}+s$,
 penalized $\tfrac12\rho\|s\|^2$ in the QP cost instead of the hard
 zero-correction fallback, so the QP is always feasible. Implemented as an
-extended decision variable $[U;s]$ added to the same QP (not a separate
-solve); $\rho=1$, selected by a small sweep.
+extended decision variable $[U;s]\in\mathbb R^{37}$ (one slack per joint
+row) added to the same QP (not a separate solve); $\rho=1$, selected by a
+small sweep --- the code's own monkeypatchable default is $\rho=10^4$,
+used only when this override is unset, so any independent reproduction
+must set it explicitly.
 \end{itemize}
 
 \begin{table}[!t]
@@ -2152,44 +2171,52 @@ solve); $\rho=1$, selected by a small sweep.
 \renewcommand{\arraystretch}{1.0}
 \footnotesize
 \setlength{\tabcolsep}{3pt}
-\begin{tabular}{lccc}
+\begin{tabular}{lcc}
 \toprule
-$\tau_\text{max}$ scale & 1.0 & 0.32 & 0.2\\
+$\tau_\text{max}$ scale & 1.0 & 0.32\\
 \midrule
-C5            & 0.53 / 0\%          & 550.5 / 72.5\%       & 517.1 / 23.7\%\\
-Unconstrained & \textbf{0.53} / 0\% & 0.53 / 0\%           & \textbf{0.53} / 0\%\\
-Observer      & 0.52 / 0\%          & 0.51 / 0\%           & 232.9 / 30.9\%\\
-Soft          & 0.53 / 0\%          & \textbf{0.52} / 0\%  & 303.6 / 0\%\\
+C5            & 0.53 / 0\%          & 550.5 / 72.5\%\\
+Unconstrained & \textbf{0.53} / 0\% & 0.53 / 0\%\\
+Observer      & 0.52 / 0\%          & 0.51 / 0\%\\
+Soft          & 0.53 / 0\%          & \textbf{0.52} / 0\%\\
 \bottomrule
 \end{tabular}
 \end{table}
+A third, more severe scale (0.2) was excluded from this table: there,
+Soft's own slack diverges to non-physical magnitudes (max 122{,}122\,Nm,
+RMS 3239\,Nm, active on 100\% of solves) alongside severe tracking loss
+(303.6\,mm) --- not graceful degradation, so not an informative
+comparison point.
 
 \textbf{Analysis.} At the paper's operating point (scale 1.0) all four are
 indistinguishable, confirming the torque row costs nothing when it never
-binds. Tightening the budget separates them. At scale 0.32, C5's QP is
-infeasible on 72.5\% of solves and the zero-correction fallback degrades
-tracking to 550\,mm --- worse than every alternative. Unconstrained is
+binds; Soft itself draws on at most 0.35\,Nm of slack here, active on
+0.3\% of solves. Tightening the budget separates them. At scale 0.32,
+C5's QP is infeasible on 72.5\% of solves --- 1740 of those 1741 solves
+reported by the solver as genuinely primal infeasible, not a numerical or
+iteration-limit artifact --- and the zero-correction fallback degrades
+tracking to 550\,mm, worse than every alternative. Unconstrained is
 essentially untouched, since the plant's physical clip alone recovers a
-usable command; Soft recovers essentially all of the lost performance
-(0.52\,mm, matching Unconstrained) while, unlike Unconstrained, keeping
-the raw commanded torque within budget: zero measured excess at this
-scale, versus Unconstrained's 5.2\,Nm maximum. This is the constraint's
-positive case: relaxing the same row that degrades sharply under a hard
-bound restores full tracking quality while respecting the torque budget
-more closely than ignoring it entirely. That recovery does not extend to
-scale 0.2: Soft still solves every QP (0\% failures, by construction) but
-contact RMS rises to 303.6\,mm, between Observer's 232.9\,mm and C5's
-517.1\,mm and short of Unconstrained's 0.53\,mm; a sweep over
-$\rho\in\{0.01,0.1,1,10,100,10^4\}$ did not identify a single value that
-performs well at both stress scales, so we report $\rho=1$ throughout
-rather than retune per scale. Overall, the slack relaxation turns the
-hard constraint's unpredictable, solver-infeasibility-driven behavior into
-an always-feasible response that degrades gradually with the budget, and
-fully recovers unconstrained-quality tracking at the practically relevant
-scale tested; extending that recovery to the most severe scale with a
-single fixed $\rho$ is left to an adaptive or scale-aware weighting, a
+usable command, at the cost of that clip itself: its raw command exceeds
+the robot's actual hardware limit by up to 5.2\,Nm on 0.05\% of samples,
+at every scale, since it never consults $\tau_\text{max}$ at all. Soft
+recovers essentially all of the lost performance (0.52\,mm, matching
+Unconstrained) by drawing on genuinely nonzero slack: up to 10.55\,Nm,
+RMS 0.65\,Nm, active on 42\% of solves --- Soft does exceed the tightened
+test row it relaxes, so its raw command is not held within that synthetic
+budget. What it respects instead is the robot's actual, full-scale
+hardware limit: Soft never triggers the plant's physical clip at this
+scale (0\% clipped samples). This is the constraint's positive case,
+stated precisely: relaxing the same row that degrades sharply under a
+hard bound trades a bounded, quantified overshoot of the synthetic test
+budget for a solution that, unlike Unconstrained's, never needs the
+plant's clip to stay within the robot's real limit, while matching
+Unconstrained's tracking and avoiding the hard row's all-or-nothing
+failure. Extending this behavior to the excluded, more severe scale with
+a single fixed $\rho$ is left to an adaptive or scale-aware weighting, a
 natural next step.
-Reproduced by \texttt{torque\_constraint\_active\_experiment.py}.
+Reproduced by \texttt{torque\_constraint\_active\_experiment.py} and
+\texttt{soft\_constraint\_diagnostic.py} (slack/excess instrumentation).
 
 % ----------------------------------------------------------
 \section{Low-Stiffness Transient Compliance and Recovery}\label{sec:lowk}
@@ -2201,11 +2228,14 @@ few mm --- closer to a stiff trajectory tracker with a disturbance
 observer than to a controller that visibly yields to contact and then
 recovers. This section tests the architecture's other end of the design
 space: a deliberately low prescribed stiffness $K_d=100$\,N/m (matching
-C2's admittance virtual-spring stiffness), realized through the
-impedance-equivalence QP branch of Theorem~\ref{thm:equiv},
-$\Fmpc=K_de+D_d\dot e-\hat d$ --- exact by construction when unconstrained,
-by the same centered-cost argument as the theorem's proof --- with and
-without the $-\hat d$ term. $D_d=2\zeta\sqrt{K_d}$ assumes a unit
+C2's admittance virtual-spring stiffness), realized through a
+cost-shaped QP variant that directly penalizes deviation of the force
+sequence from the prescribed law's own rollout ($H=\bar R$,
+$h=-\bar RU_\text{imp}$ in the main paper's condensed-QP notation):
+unlike Theorem~\ref{thm:equiv}'s general Riccati image, which reports
+whatever gain the LQ cost happens to realize, this shaping makes the
+unconstrained minimizer exactly $\Fmpc=K_de+D_d\dot e-\hat d$ for any
+chosen $K_d,D_d$, with and without the $-\hat d$ term. $D_d=2\zeta\sqrt{K_d}$ assumes a unit
 effective mass; $\Laminv$ is generally anisotropic (the same caveat
 already noted for the C8 backbone's $D_\text{bb}$ above), so $\zeta=1$ is
 only nominal critical damping and produced a visibly underdamped,
