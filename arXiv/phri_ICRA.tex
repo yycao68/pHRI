@@ -47,8 +47,8 @@ configuration-scheduled input map}, turning physical interaction into a
 predictive quantity on that representation rather than a property
 re-derived per contact or configuration. Built on that representation, we present a compact
 offset-free model-predictive controller for torque-controlled
-manipulators that matches the reference-holding requirement under a
-stricter actuation budget than a stiffness-and-damping-calibrated
+manipulators that matches the reference-holding requirement under the same
+physical torque limits as a stiffness-and-damping-calibrated
 impedance baseline, using no force/torque sensor: a recursive Kalman
 filter estimates the persistent interaction and model mismatch directly
 in force coordinates, and a 30-variable quadratic program predicts the
@@ -229,7 +229,8 @@ aggregate $d$ need not be constant even when the human force is. This is
 exactly why $d$ is modeled as a random walk rather than a known constant.
 
 For error state $x=[e^\top,\dot e^\top]^\top$ and sample period $\Delta t$,
-exact zero-order-hold discretization gives
+exact zero-order-hold discretization of this frozen-$q_k$ reduced predictor
+(not the full nonlinear robot dynamics) gives
 \begin{equation}
 x_{k+1}=A_dx_k+B_d(q_k)(F_{\mathrm{mpc},k}+d_k),
 \label{eq:discrete}
@@ -689,7 +690,7 @@ scenarios.
 \setlength{\tabcolsep}{1.4pt}
 \begin{tabular}{@{}lrrrr@{}}
 \toprule
-Controller & Contact & SS & Raw-limit & Peak $P^+$\\
+Controller & Contact & SS & Raw-limit & Peak $P_{\rm pos}$\\
  & RMS (mm) & (mm) & excess (\%) & (W)\\
 \midrule
 Nominal impedance & 41.07 & 44.82 & 0 & 22.5\\
@@ -714,9 +715,14 @@ load-axis bias but retains the matched impedance's saturation and power cost.}
 
 The calibrated impedance and C4 have similar steady-state errors (2.59
 and 2.77\,mm), so the nominal impedance/C4 ratio is not an architectural
-result. Their resource use differs: the matched impedance reaches 378.2\,W
-peak positive joint power and exceeds a physical torque limit in 0.45\% of
-samples, compared with 113.2\,W and no thresholded saturation for C4. C4 and
+result. Their resource use differs: $P_{\rm pos}$, the instantaneous peak
+of $\sum_i\max(\tau_i\dot q_i,0)$ over the trial, reaches 378.2\,W for the
+matched impedance, which also exceeds a physical torque limit in 0.45\% of
+samples, compared with 113.2\,W and no thresholded saturation for C4. The
+integrated positive joint energy over the same window is much closer
+(124.1 vs.\ 103.0\,J), so the peak-power gap reflects a sharper transient
+during contact onset rather than a proportionally larger total energy
+cost. C4 and
 C5 each complete 2400 QP solves without failure; their maximum raw limit
 excesses are below $2\times10^{-5}$\,Nm, beneath the $10^{-3}$\,Nm saturation
 threshold. Adding the estimator reduces steady-state error by $65.8\times$
@@ -861,7 +867,12 @@ Tilted XZ-to-XY & 25.07 & 0.31\\
 The random-walk model predicts $d$ as constant over the short horizon; we
 test that approximation at a static target under $F_z=-12\sin(2\pi ft)$\,N
 for $f\in\{0,0.1,0.2,0.4,0.8\}$\,Hz, reconstructing the aggregate ground-truth
-disturbance from the simulator dynamics and applied correction. Across all
+disturbance from the simulator dynamics and applied correction. Both
+$e_K$ and $L_d$ in \eqref{eq:predictionbound} are estimated empirically from
+this same logged trajectory (RMS current-estimate error and the maximum
+observed disturbance rate, respectively), so what follows checks the
+bound's internal arithmetic against its own inputs, not an a priori bound
+validated against unseen data. Across all
 five rates, the measured $N$-step prediction error stays below the bound of
 \eqref{eq:predictionbound}, and contact tracking degrades gracefully with
 disturbance rate, from 0.08\,mm at $f=0$ to 1.04\,mm at $f=0.8$\,Hz (full
@@ -878,10 +889,11 @@ tested unsaturated range, whereas first-contact peak error increases from 0.57
 to 2.45\,mm. The estimator cancels a constant force after convergence, but it
 cannot cancel an unseen step at its first sample; this separates steady-state
 offset rejection from transient compliance. The reported SS value is
-load-independent by construction rather than a rounding artifact:
-Proposition~1 predicts rejection in expectation for any constant $d$, so
-this near-constant $\approx$0.023\,mm reflects a load-independent numerical/
-discretization, trajectory-tracking, and estimator-fluctuation floor, not a
+consistent with the load-independent mean-equilibrium prediction rather
+than a rounding artifact: Proposition~1 predicts rejection in expectation
+for any constant $d$, and this near-constant $\approx$0.023\,mm empirically
+matches that pattern, reflecting a numerical/discretization,
+trajectory-tracking, and estimator-fluctuation floor rather than a
 residual scaling with the applied force.
 
 \begin{table}[t]
