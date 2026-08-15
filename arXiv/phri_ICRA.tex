@@ -310,17 +310,25 @@ predicted errors $X$. With $d_N=\bm 1_N\otimes\dhat$, solve
  \frac12(U+d_N)^\top\bar R(U+d_N),\label{eq:cost}\\
 \text{s.t.}\quad &-F_{\max}\le F_{\mathrm{mpc},i}\le F_{\max},\quad i=0{:}N-1,
 \label{eq:forcebox}\\
-&-\tau_{\max}\le\tau_{\rm base}+J_v^\top F_{\mathrm{mpc},0}
-\le\tau_{\max},\label{eq:taubox}
+&-\tau_{\max}\le\tau_{{\rm base},i}+J_{v,i}^\top F_{\mathrm{mpc},i}
+\le\tau_{\max},\ i=0{:}N_c\!-\!1,\label{eq:taubox}
 \end{align}
 \label{eq:qp}
 \end{subequations}
-where
-$\tau_{\rm base}=\tau_{\rm ff}+J_\omega^\top F_{\rm ori}
-+\Nbar^\top\tau_{\rm null}$.
+where $\tau_{{\rm base},i}=\tau_{{\rm ff},i}+J_\omega^\top F_{\rm ori}
++\Nbar^\top\tau_{\rm null}$. The step-0 quantities
+$\tau_{{\rm ff},0},J_{v,0}$ are the exact current-configuration values; for
+$i\ge1$ they are evaluated at the reference-scheduled configuration
+$\bar q_i=q_d(t+i\Delta t)$ --- the best available prediction of the
+future state, since the realized trajectory is not yet known --- while
+orientation and null-space terms stay frozen at their step-0 value.
+$N_c\in\{1,\ldots,N\}$ sets how many leading rows are enforced; the
+reported experiments use $N_c=1$ (first-move only), with the
+reference-scheduled extension to $N_c=N$ implemented but not separately
+benchmarked here.
 
 \emph{Slack-relaxed variant} (\S V-F): under a deliberately tightened
-budget, \eqref{eq:taubox} is instead relaxed to
+budget, \eqref{eq:taubox}'s $N_c=1$ row is instead relaxed to
 $-\tau_{\max}-s\le\tau_{\rm base}+J_v^\top F_{\mathrm{mpc},0}\le\tau_{\max}+s$,
 $s\in\mathbb R^7_{\ge0}$, penalized $\frac12\rho\|s\|^2$ added to
 \eqref{eq:cost}, extending the decision variable to $[U;s]\in\mathbb
@@ -899,44 +907,15 @@ future work.
 
 \subsection{Force magnitude and shape}
 
-The circular experiment is repeated with sustained loads from 5 to 25\,N to
-check the operating range of the offset claim (Table~\ref{tab:forcesweep}).
-For C7, steady-state deflection remains approximately 0.023\,mm throughout the
-tested unsaturated range, whereas first-contact peak error increases from 0.57
-to 2.45\,mm. The estimator cancels a constant force after convergence, with
-cancellation of an unseen step beginning the sample after it first
-appears; this separates steady-state offset rejection from transient
-compliance. The near-constant
-$\approx$0.023\,mm SS value is consistent with Proposition~1's
-load-independent mean-equilibrium prediction, reflecting a numerical/
-estimator-fluctuation floor rather than a residual scaling with the
-applied force.
-
-\begin{table}[t]
-\caption{Sustained-Force Sweep: Steady-State / Peak Error (mm)}
-\label{tab:forcesweep}
-\centering
-\footnotesize
-\setlength{\tabcolsep}{3.0pt}
-\begin{tabular}{@{}lrrrrr@{}}
-\toprule
-Applied load (N) & 5 & 10 & 15 & 20 & 25\\
-\midrule
-Nominal impedance, SS & 26.9 & 33.7 & 45.0 & 58.5 & 73.1\\
-Nominal impedance, peak & 28.4 & 37.0 & 51.2 & 70.1 & 88.9\\
-C7, SS & 0.024 & 0.023 & 0.023 & 0.023 & 0.023\\
-C7, peak & 0.57 & 0.96 & 1.46 & 1.96 & 2.45\\
-\bottomrule
-\end{tabular}
-\end{table}
-
-At 15\,N, changing the force profile from a step to a linear ramp lowers C7
-contact RMS from 0.32 to 0.19\,mm and peak error from 1.46 to 0.57\,mm; a
-1\,Hz sinusoid raises contact RMS to 0.87\,mm with a comparable 1.30\,mm
-peak, agreeing with \S V-H: smoother onset reduces the unobserved
-transient, while a persistent time-varying load exposes the estimator's
-bandwidth limit. These results characterize the range tested here,
-safely below the force box and joint-torque limits.
+Repeating the circular experiment with sustained loads from 5 to 25\,N
+confirms the offset claim across the tested unsaturated range: C7's
+steady-state deflection stays within 0.023--0.024\,mm regardless of load
+magnitude, consistent with Proposition~1's load-independent prediction,
+while transient peak error scales with the step's severity (0.57 to
+2.45\,mm). Varying the force profile at 15\,N shows the same transient
+sensitivity from a different angle: a linear ramp nearly halves peak
+error relative to a step, and a sustained sinusoid raises it, agreeing
+with \S V-H (full sweep table in the journal version).
 
 \subsection{Robustness checks}
 
