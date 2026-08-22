@@ -432,17 +432,25 @@ $U=[\Fmpck{0};\ldots;\Fmpck{N-1}]$, is:
   \min_U\;& \tfrac{1}{2}U^\top HU+h^\top U \label{eq:QP_cost}\\
   \text{s.t.}\;&
   -\tau_{\max}\leq
-  \tau_{\text{base}}(0)+J_v^\top(q_0)\Fmpck{0}
-  \leq\tau_{\max}, \label{eq:QP_torque}\\
+  \tau_{\text{base}}(i)+J_v^\top(q_i)\Fmpck{i}
+  \leq\tau_{\max}, \quad i=0,\ldots,N_c\!-\!1, \label{eq:QP_torque}\\
   & -F_{\max}\leq\Fmpck{k}\leq F_{\max},
   \quad k=0,\ldots,N-1. \label{eq:QP_force}
 \end{align}
 \end{subequations}
 where $F_{\max}$ is the task-space (Cartesian) corrective-force bound on the
 QP's decision variable (distinct from the joint-torque limit $\tau_{\max}$),
-and $\tau_{\text{base}}(0)=\tau_{\text{ff}}+J_\omega^\top F_{\text{orient}}+\bar{N}^\top\tau_{\text{null}}$
-is the known non-MPC torque offset at the current configuration
-(Sec.~\ref{sec:layer1}). $H=\Gamma^\top\bar{Q}\Gamma+\bar{R}$, stage cost
+and $\tau_{\text{base}}(i)=\tau_{\text{ff}}(i)+J_\omega^\top F_{\text{orient}}+\bar{N}^\top\tau_{\text{null}}$
+is the known non-MPC torque offset (Sec.~\ref{sec:layer1}). Step~0 uses the
+exact current-configuration values $\tau_{\text{ff}}(0),J_v(q_0)$; for
+$i\geq1$, $\tau_{\text{ff}}(i)$ and $J_v(q_i)$ are evaluated at the
+reference-scheduled configuration $q_i=q_d(t+i\Delta t)$ --- the best
+available prediction of the future state, since the realized trajectory is
+not yet known --- while orientation and null-space terms stay frozen at
+their step-0 value. $N_c\in\{1,\ldots,N\}$ sets how many leading rows are
+enforced; the reported experiments use $N_c=1$ (first-move only), with the
+reference-scheduled extension to $N_c=N$ implemented but not separately
+benchmarked here. $H=\Gamma^\top\bar{Q}\Gamma+\bar{R}$, stage cost
 $Q=\text{blkdiag}(K_d,D_d)$, terminal cost $Q_f=\gamma Q$ ($\gamma=5$),
 $\bar{Q}=\text{blkdiag}(Q,\ldots,Q,Q_f)$,
 $\bar{R}=\text{blkdiag}(R,\ldots,R)$.
@@ -485,7 +493,7 @@ the applied receding-horizon action. If an over-aggressive reference makes
 $\tau_{\text{base}}(0)$ alone exceed $\tau_{\max}$, the released
 implementation returns a zero correction on infeasibility (correction-
 authority ablation, supplementary material Sec.~S9), which is simple but
-not minimum-violation. The constraint can instead be softened with a
+not minimum-violation. The $i=0$ ($N_c=1$) row can instead be softened with a
 penalized slack $s\geq0$ so the QP stays feasible and returns a
 minimum-violation-like command, analogous to the joint-limit CBF
 relaxation of Sec.~\ref{sec:cbf}; \S\ref{sec:tauactive} implements and
