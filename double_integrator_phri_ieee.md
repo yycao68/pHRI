@@ -1,7 +1,7 @@
 # Toward Interaction Dynamics: A Predictive Framework for Safe Physical Human-Robot Interaction
 
 **Yongyan Cao$^{1}$ and Jinshan Tang$^{2}$**  
-*$^{1}$Voryx Robotic LLC, San Jose, CA 95136, USA — yongyancao@gmail.com*  
+*$^{1}$Voryx Robotics LLC, San Jose, CA 95136, USA — yongyancao@gmail.com*  
 *$^{2}$George Mason University, Dept. of Health Administration and Policy, Fairfax, VA, USA — jtang25@gmu.edu*
 
 ---
@@ -431,7 +431,7 @@ The framework is one realization, not a replacement for all pHRI modes: for inte
 
 [4] G. Pannocchia and J. B. Rawlings, "Disturbance models for offset-free model-predictive control," *AIChE Journal*, vol. 49, no. 2, pp. 426–437, 2003.
 
-[5] Y. Cao, K. Cheng, and G. Li, "Passive model-predictive impedance control for safe physical human–robot interaction," *IEEE Trans. Cognitive Developmental Syst.*, 2023, doi: 10.1109/TCDS.2023.3275217.
+[5] R. Cao, L. Cheng, and H. Li, "Passive model-predictive impedance control for safe physical human–robot interaction," *IEEE Trans. Cognitive Developmental Syst.*, vol. 16, no. 2, pp. 426–435, Apr. 2024, doi: 10.1109/TCDS.2023.3275217.
 
 [6] K. Haninger, C. Hegeler, and L. Peternel, "Model predictive impedance control with Gaussian processes for human and environment interaction," *Robotics Autonomous Syst.*, vol. 165, p. 104431, 2023.
 
