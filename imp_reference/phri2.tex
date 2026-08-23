@@ -20,7 +20,7 @@
 \title{Behavior--Realization Separation for Constrained Physical Human--Robot Interaction}
 
 \author{Yongyan~Cao%
-\thanks{Y. Cao is with Voryx Robotic LLC, San Jose, CA 95136, USA
+\thanks{Y. Cao is with Voryx Robotics LLC, San Jose, CA 95136, USA
 (e-mail: yongyancao@gmail.com).}}
 
 \maketitle
@@ -1038,7 +1038,7 @@ for the nonlinear plant. Nontrivial slack occurs in 110 impedance and
 186 admittance solves, with peak position slack of 0.077~mm (impedance)
 and 0.027~mm (admittance) and peak speed slack below $10^{-6}$~m/s in
 both conditions. This slack is smaller than Table~\ref{tab:fr3}'s
-executed peak $|e_z|$ violation (0.0002~m impedance, 0.0001~m
+executed peak $|e_z|$ violation (0.0001~m impedance, 0.0001~m
 admittance) because the two measure different objects: slack is the
 QP's own relaxation of its frozen-model prediction, while the executed
 violation is measured against the real nonlinear MuJoCo trajectory,
@@ -1115,9 +1115,9 @@ and, for admittance, never recovers.}
 Generator & Controller & RMSE$^{*}$ & Peak $|e_z|$ & Peak spd. & Torque util. & Violation \\
 & & (m/s$^2$) & (m) & (m/s) & & \\
 \midrule
-Impedance & Predictive & 1.39 / 1.45 & 0.0602 & 0.300 & 37.0\% & 0.0002~m \\
+Impedance & Predictive & 1.39 / 1.45 & 0.0601 & 0.300 & 37.0\% & 0.0001~m \\
 Impedance & Reactive & 0.223 / 0.062 & 0.1044 & 0.415 & 37.2\% & 0.0444~m, 0.065~m/s \\
-Admittance & Predictive & 0.212 / 0.290 & 0.0601 & 0.070 & 34.4\% & 0.0001~m \\
+Admittance & Predictive & 0.212 / 0.289 & 0.0601 & 0.070 & 34.4\% & 0.0001~m \\
 Admittance & Reactive & 0.200 / 0.034 & 0.1066 & 0.041 & 31.7\% & 0.0466~m \\
 \bottomrule
 \end{tabular}
@@ -1183,7 +1183,7 @@ bound. Reactive clipping tracks toward that equilibrium and peaks at
 effect as the planar case in Section~\ref{sec:planar-results}),
 overshooting the bound by 4.4~cm. Predictive realization instead departs
 from the desired behavioral acceleration while the bound is active,
-holding displacement to 0.0602~m.
+holding displacement to 0.0601~m.
 
 The admittance reference has no equilibrium displacement to compare
 against, only a steady-state velocity $Y F_h=0.01\times20=0.2$~m/s while

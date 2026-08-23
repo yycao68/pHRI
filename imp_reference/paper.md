@@ -477,9 +477,9 @@ The impedance generator (Section 3.2) uses \(M_d=2.0\) kg, \(D_d=28\) Ns/m, \(K_
 
 | Generator | Controller | Residual RMSE, empirical / predicted (m/s²) | Peak \(\lvert e_z\rvert\) (m) | Peak speed (m/s) | Peak torque utilization | State-limit violation |
 |---|---:|---:|---:|---:|---:|---:|
-| Impedance | Predictive realization | 1.39 / 1.45 | 0.0602 | 0.300 | 37.0% | 0.0002 m |
+| Impedance | Predictive realization | 1.39 / 1.45 | 0.0601 | 0.300 | 37.0% | 0.0001 m |
 | Impedance | Reactive clipping | 0.223 / 0.062 | 0.1044 | 0.415 | 37.2% | 0.0444 m, 0.065 m/s |
-| Admittance | Predictive realization | 0.212 / 0.290 | 0.0601 | 0.070 | 34.4% | 0.0001 m |
+| Admittance | Predictive realization | 0.212 / 0.289 | 0.0601 | 0.070 | 34.4% | 0.0001 m |
 | Admittance | Reactive clipping | 0.200 / 0.034 | 0.1066 | 0.041 | 31.7% | 0.0466 m |
 
 **Table 2.** The *predicted* residual uses the frozen local model in Section 6.1. The *empirical* residual instead finite-differences the 1 kHz MuJoCo end-effector velocity and compares that acceleration with the generator request; it is the appropriate measure of behavior delivered by the simulated nonlinear plant. Their gap measures local-model and differentiation error, so the predicted residual must not be interpreted as an exact plant residual. As in Table 1, both use component-wise RMSE: all three residual components and all time samples are pooled into one mean before the square root. This harmonizes the aggregation convention but does not make cross-plant values direct performance rankings. Speed is reported component-wise to match the box constraint. Maximum torque utilization is the largest ratio \(\lvert\tau_j\rvert/\tau_{\max,j}\), which avoids comparing unlike 87 Nm and 12 Nm joint limits. Predictive solve times are reported in the text below because the reactive comparator does not solve a QP.
@@ -488,7 +488,7 @@ No condition violates a per-joint torque limit at the executed sample, no solve 
 
 Correct horizon-wide enforcement is also protected by `test_horizon_wide_torque_feasibility_binding` in `simulation/test_fr3_interaction_dynamics_mpc.py`, which tightens one joint limit until the constraint activates.
 
-The impedance reference has an unconstrained static displacement \(F_h/K_d=20/200=0.10\) m, which by itself already exceeds the 0.06 m bound. Reactive clipping tracks toward that equilibrium and peaks at 0.104 m (slightly above the static value, from the same ramp-overshoot effect as the planar case in Section 5.2), overshooting the bound by 4.4 cm. Predictive realization instead departs from the desired behavioral acceleration while the bound is active, holding displacement to 0.0602 m.
+The impedance reference has an unconstrained static displacement \(F_h/K_d=20/200=0.10\) m, which by itself already exceeds the 0.06 m bound. Reactive clipping tracks toward that equilibrium and peaks at 0.104 m (slightly above the static value, from the same ramp-overshoot effect as the planar case in Section 5.2), overshooting the bound by 4.4 cm. Predictive realization instead departs from the desired behavioral acceleration while the bound is active, holding displacement to 0.0601 m.
 
 The admittance reference has no equilibrium displacement to compare against, only a steady-state velocity \(Y F_h=0.01\times20=0.2\) m/s while the force is held, with no restoring term to pull it back after release. Reactive clipping accumulates displacement through the hold and continues briefly after force release before the velocity decays (time constant \(T_a=0.3\) s), peaking at 0.1066 m — a 4.7 cm overshoot — and never recovers it, since the generator itself has no position-restoring term (Section 3.2) and the reactive comparator has no lookahead to anticipate the boundary. Predictive realization begins departing from the requested velocity before the bound is reached and stays within 0.0601 m.
 
