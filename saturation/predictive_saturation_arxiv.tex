@@ -19,8 +19,7 @@
 
 \title{A Behavior-Coordinate Realization Interface for Predictive Saturation Management}
 
-\author{Yongyan~Cao%
-\thanks{Preprint. This work has been submitted for possible publication; copyright may be transferred without notice.}%
+\author{Yongyan~Cao %
 \thanks{Y.~Cao is with Voryx Robotics LLC, San Jose, CA 95136, USA (e-mail: yongyancao@gmail.com).}%
 }
 
@@ -33,7 +32,7 @@
 When a robot controller requests behavior that its actuators cannot realize, torque clipping keeps the hardware 
 command legal but changes the behavior actually executed. Reference governors, action governors, and predictive 
 safety filters already establish the general idea of supervising a nominal controller; this paper addresses a 
-narrower interface question: how to expose a common task-acceleration request while retaining each robot's 
+natural interface question: how to expose a common task-acceleration request while retaining each robot's 
 configuration-dependent torque geometry and making the assumptions behind behavior preservation auditable. 
 The nominal PD, impedance, trained-policy, neural-policy, or conditioned-motion interface runs at 1~kHz. 
 A 50~Hz manager maps its requested acceleration through a robot-specific realization model, predicts an 
@@ -98,7 +97,10 @@ The proposed answer is an interface decomposition, not a new class of constraine
 \item A reproducible 111-run reduced-order study, including a matched horizon trajectory-reference-governor comparison, deterministic held-out plant perturbations, repeated anchor cases across matrices, five controller interfaces, three realization maps, eight stress scenarios, the T1--T3 audit, and explicit negative cases (parameters and complete artifacts in the supplementary archive).
 \end{enumerate}
 
-The experiments establish internal operation and failure detection for this interface. The implemented comparison is an ERG-style finite-horizon trajectory-reference governor matched in model and computation budget, not an exact reproduction of the Lyapunov/dynamic-safety-margin construction in \cite{r17}. The experiments therefore do not establish that other reference/action governors or predictive safety filters cannot implement the same behavior coordinates, and they do not replace hardware validation.
+The experiments establish internal operation and failure detection for this interface. The implemented comparison is an ERG-style 
+finite-horizon trajectory-reference governor matched in model and computation budget, not an exact reproduction of the 
+Lyapunov/dynamic-safety-margin construction in \cite{r17}. The experiments therefore do not establish that other 
+reference/action governors or predictive safety filters cannot implement the same behavior coordinates.
 
 \textbf{Notation.} Everything in the paper uses the following symbols. All vector inequalities are componentwise (joint by joint).
 
@@ -173,13 +175,19 @@ If the nominal rollout is already feasible everywhere, the QP returns the nomina
 
 Impedance control specifies a desired motion--force relation \cite{r1}, and operational-space control maps task accelerations or wrenches to joint torque \cite{r2}. Both rely on adequate actuator authority. Anti-windup methods treat saturation-induced degradation inside a particular closed loop \cite{r6,r7}, while model-reference adaptive impedance control seeks to reproduce a target impedance despite uncertain dynamics \cite{r11}. Interaction-control MPC methods instead adapt impedance parameters or trajectories using learned interaction dynamics, Gaussian processes, or environment estimates \cite{r12,r13,r14,r15}. The present work does not replace these controllers: it requires an upstream controller to expose a task-acceleration request and supervises whether a robot can realize it.
 
-Reference and command governors are established add-on mechanisms that modify a reference to keep a pre-stabilized system within constraints \cite{r3}. Ambrosino \emph{et al.} directly addressed robotic actuator saturation with a trajectory-based explicit reference governor, retaining an internal PD controller and validating position, velocity, and saturation handling on a seven-degree-of-freedom KUKA arm \cite{r17}. Generalized action governors move the supervisor after the controller, modify an action rather than a reference, and provide all-time constraint results through safe and returnable sets under bounded uncertainty \cite{r18}. Predictive safety filters similarly accept a nominal action, use a predictive model and uncertainty description, and minimally replace unsafe actions; their terminal safety policy supports a recursive guarantee absent here \cite{r5,r16}. Consequently, retaining a controller, predicting constraints, and minimizing action modification are prior art. Our narrower design choice is the \emph{action representation}: heterogeneous controllers expose task acceleration, while a separate realization object maps it into configuration-dependent robot torque and exposes T1--T3 audit quantities.
+Reference and command governors are established add-on mechanisms that modify a reference to keep a pre-stabilized system 
+within constraints \cite{r3}. Ambrosino \emph{et al.} directly addressed robotic actuator saturation with a trajectory-based explicit reference governor, retaining an internal PD controller and validating position, velocity, and saturation handling on a seven-degree-of-freedom KUKA arm \cite{r17}. Generalized action governors move the supervisor after the controller, modify an action rather than a reference, and provide all-time constraint results through safe and returnable sets under bounded uncertainty \cite{r18}. Predictive safety filters similarly accept a nominal action, use a predictive model and uncertainty description, and minimally replace unsafe actions; their terminal safety policy supports a recursive guarantee absent here \cite{r5,r16}. 
+Consequently, retaining a controller, predicting constraints, and minimizing action modification are prior art. 
+Our design choice is the \emph{action representation}: heterogeneous controllers expose task acceleration, 
+while a separate realization object maps it into configuration-dependent robot torque and exposes T1--T3 audit quantities.
 
 Robot capability and acceleration polytopes already map joint torque boxes into task-space force or acceleration sets, and ray-to-boundary calculations already quantify directional capacity \cite{r20}. We use those ideas to construct $\mathcal A(x)$ and $\alpha^+$, not as new polytope theory, but as the robot-specific half of the behavior--realization interface.
 
 The certificate argument likewise builds on approximate simulation, refinement, and contract-based design \cite{r8,r9,r10}. Recent transferred-control-barrier-function work uses simulation functions and explicit margins to transfer a certificate from a double integrator to full nonlinear quadrotor dynamics and enforce it with a QP filter \cite{r19}. That framework is more general and provides a substantive continuous-time transfer construction. Section~\ref{sec:certificate} instead gives a deliberately elementary discrete one-step specialization for actuator realization: T1 and T2 isolate whether a predicted behavior request survives the torque interface without clipping, and T3 isolates whether its physical successor stays within the behavior certificate's error budget.
 
-Contact-oriented governors further show the breadth of modular constraint-management architectures. The compliant ERG of Gautam \emph{et al.} inserts a reference manager between planner and controller and uses an energy certificate for contact-friendly manipulation, including hardware validation \cite{r21}. It differs in supervised variable and certificate, but reinforces why the present claim must be about a specific interface and audit decomposition rather than the existence of an add-on safety layer.
+Contact-oriented governors further show the breadth of modular constraint-management architectures. The compliant ERG of 
+Gautam \emph{et al.} inserts a reference manager between planner and controller and uses an energy certificate for 
+contact-friendly manipulation\cite{r21}. It differs in supervised variable and certificate, but reinforces why the present claim must be about a specific interface and audit decomposition rather than the existence of an add-on safety layer.
 
 \begin{table*}[t]
 \caption{Positioning Against the Closest Method Families}
@@ -191,12 +199,12 @@ Contact-oriented governors further show the breadth of modular constraint-manage
 \toprule
 Approach & Quantity supervised & Main guarantee or evidence & Distinction from this work \\
 \midrule
-Saturation-aware trajectory ERG \cite{r17} & Joint reference & Predicted joint/velocity constraints and KUKA hardware validation & Uses a PD-specific reference channel; no common behavior-acceleration/realization audit \\
+Saturation-aware trajectory ERG \cite{r17} & Joint reference & Predicted joint/velocity constraints and KUKA validation & Uses a PD-specific reference channel; no common behavior-acceleration/realization audit \\
 Predictive safety filter \cite{r16} & Plant input/action & Uncertainty-aware predictive filtering with terminal safety policy & More general and recursively grounded; does not isolate the acceleration-to-torque T1--T3 interface \\
 Generalized action governor \cite{r18} & Post-controller action & State/input constraints with safe-returnable-set guarantees & General action supervision; no robot task-acceleration realization object \\
 Task-space capacity polytope \cite{r20} & Capability set, not a supervisor & Real-time force/velocity/acceleration capacity computation & Supplies geometry used here, but not the two-rate correction or interface contract \\
 Transferred CBF \cite{r19} & Concrete-system safety-filter input & Simulation-function-based certificate transfer to nonlinear dynamics & General continuous-time transfer theory; not specialized to clipping and torque realizability \\
-Compliant ERG \cite{r21} & Motion reference & Contact-energy certificate with simulation and hardware evidence & Reference and energy interface rather than behavior acceleration and T1--T3 \\
+Compliant ERG \cite{r21} & Motion reference & Contact-energy certificate & Reference and energy interface rather than behavior acceleration and T1--T3 \\
 This work & Task-acceleration request & Finite-horizon QP plus sampled one-step realization audit & Explicit behavior request/robot realization split; no recursive or hardware guarantee \\
 \bottomrule
 \end{tabular}
@@ -236,9 +244,8 @@ Realizing a requested acceleration $a$ costs torque. For the full-rigid-body mod
 +N_\tau\tau_{\mathrm{sec}}, \nonumber\\
 H(x)&=J(q)^\top\Lambda(q),
 \quad
-\Lambda=\left(JM^{-1}J^\top\right)^{-1},
-\quad
-G_F(x)=\Lambda^{-1}(x).
+\Lambda=\left(JM^{-1}J^\top\right)^{-1}, \nonumber\\
+G_F(x)&=\Lambda^{-1}(x).
 \label{eq:iv0}
 \end{align}
 The commanded torque is
@@ -634,7 +641,9 @@ This paper introduced a behavior-coordinate realization interface for predictive
 
 Across 111 deterministic reduced-order runs, full-horizon enforcement eliminates a planned future violation that remains in the first-step-only variant, and the same interface accepts five nominal-controller forms. A sampled audit applies the same behavior-mismatch threshold while retaining distinct realization maps for three robot surrogates. Slow saturation, directional authority collapse, and near-boundary braking are handled within the tested region. A matched ERG-style trajectory-reference governor handles those constraints comparably; the vector behavior correction has lower correction RMSE in three of the four successful or horizon-isolation cases, but not in directional collapse. Abrupt disturbance and severe mismatch instead make the contract fail and frequently render the QP infeasible, leaving only the reactive fallback and final projection. These results establish that the interface operates, exposes a measurable representation tradeoff, and rejects assumptions as designed; they do not establish universal advantage over governor or safety-filter architectures.
 
-The next decisive evaluations are exact reproductions of saturation-aware ERG, generalized action-governor, or predictive-safety-filter implementations and validation with independently identified error bounds on full rigid-body or hardware realizations. Extensions to position certificates and recursive feasibility are separate theoretical directions.
+The next decisive evaluations are exact reproductions of saturation-aware ERG, generalized action-governor, 
+or predictive-safety-filter implementations and validation with independently identified error bounds on full 
+rigid-body realizations. Extensions to position certificates and recursive feasibility are separate theoretical directions.
 
 \appendices
 \section{Benchmark Parameters}
