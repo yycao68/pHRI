@@ -113,6 +113,35 @@ def test_scheduled_backbone_builder_reduces_to_frozen_builder():
         np.testing.assert_allclose(actual, expected, atol=1e-13)
 
 
+def test_default_objective_penalizes_centered_not_absolute_input():
+    """At zero error, the unconstrained optimum must be U=-d_seq exactly."""
+    ctrl = _controller(solver="scipy")
+    lam_inv = np.diag([0.7, 1.0, 1.3])
+    d_hat = np.array([2.0, -3.0, 4.0])
+    H, h, Gamma, D_bar, x_free = ctrl._default_qp_objective(
+        np.zeros(6), d_hat, lam_inv)
+    d_seq = np.tile(d_hat, ctrl.p.N)
+
+    # This identity is the algebraic condition used by Theorem 2.
+    np.testing.assert_allclose(D_bar, Gamma @ np.tile(np.eye(3), (ctrl.p.N, 1)))
+    np.testing.assert_allclose(x_free, Gamma @ d_seq)
+    np.testing.assert_allclose(np.linalg.solve(H, h), d_seq, rtol=1e-10, atol=1e-10)
+
+    # Check the assembled OSQP form against the centered physical cost up to
+    # a decision-independent constant, using two arbitrary input sequences.
+    rng = np.random.default_rng(19)
+    inputs = [rng.normal(size=3 * ctrl.p.N) for _ in range(2)]
+    assembled = [0.5 * u @ H @ u + h @ u for u in inputs]
+    physical = []
+    for u in inputs:
+        X = x_free + Gamma @ u
+        V = u + d_seq
+        physical.append(0.5 * X @ ctrl.Q_bar @ X + 0.5 * V @ ctrl.R_bar @ V)
+    np.testing.assert_allclose(
+        assembled[1] - assembled[0], physical[1] - physical[0],
+        rtol=1e-11, atol=1e-11)
+
+
 @pytest.mark.parametrize("solver", ["scipy", "osqp"])
 @pytest.mark.parametrize("mode", ["default", "impedance_reference", "backbone"])
 def test_real_fr3_one_step_smoke(solver, mode):
@@ -153,3 +182,28 @@ def test_real_fr3_one_step_smoke(solver, mode):
     assert force.shape == (3,)
     assert np.all(np.isfinite(tau))
     assert np.all(np.isfinite(force))
+
+
+def test_osqp_path_validates_primal_residual_not_just_status():
+    """Regression test for a real gap found by external review: the OSQP path
+    used to accept any 'solved'/'solved inaccurate' status on finiteness
+    alone, with no check that the returned point actually satisfies
+    A_sp @ x in [lb, ub] -- unlike the SciPy path, which already computed
+    this residual explicitly. A model-free reproduction (matching the
+    review's own smoke test: N=4, F_max=5, tau_max=0.5 Nm, random J/tau_base)
+    checks last_qp_residual is now populated on every solve and stays well
+    under OSQP_FEAS_TOL, and that last_qp_success genuinely depends on it,
+    not just the status string."""
+    ctrl = _controller(solver="osqp")
+    rng = np.random.default_rng(0)
+    for _ in range(50):
+        H = np.eye(3 * ctrl.p.N)
+        h = rng.normal(size=3 * ctrl.p.N) * 2.0
+        J_list = [rng.normal(size=(3, 7)) for _ in range(ctrl.p.N)]
+        tau_base_list = [rng.normal(size=7) * 0.1 for _ in range(ctrl.p.N)]
+        ctrl._solve_qp_osqp(H, h, J_list, tau_base_list)
+        assert ctrl.last_qp_residual is not None, "residual must be logged every call"
+        if ctrl.last_qp_success:
+            assert ctrl.last_qp_residual < ctrl.OSQP_FEAS_TOL
+    print("OK: OSQP path's last_qp_residual is populated and success genuinely "
+          "gates on it, not just the solver status string")

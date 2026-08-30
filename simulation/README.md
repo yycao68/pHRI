@@ -18,8 +18,15 @@ algorithmic MuJoCo demos and comparison plots.
 ## Prerequisites
 
 ```bash
-pip install mujoco numpy matplotlib
+pip install -r simulation/requirements.txt
 ```
+
+Installs mujoco, numpy, scipy, osqp, matplotlib, and pytest -- the default
+solver path (`impedance_mpc.py`) uses OSQP with a SciPy fallback, and the
+`test_*.py` files need pytest, none of which the previous `pip install
+mujoco numpy matplotlib` instruction here actually installed. See
+`requirements.txt` for exact versions this environment last verified
+against, and the Python/MuJoCo versions used.
 
 Git must be available on `PATH` (used by `setup_model.py` for sparse checkout of the robot model).
 

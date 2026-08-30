@@ -1,0 +1,22 @@
+# Pinned dependencies for simulation/.
+#
+# The previously-documented `pip install mujoco numpy matplotlib` omitted
+# scipy, osqp, and pytest, all of which the code actually imports
+# (impedance_mpc.py's default OSQP solver path and SciPy fallback; every
+# test_*.py file) -- found by an external review that could not run the
+# controller or test suite from a clean checkout following that instruction.
+#
+# Versions below are exact-pinned to what this environment verified against
+# on 2026-08-30 (Python 3.13.12): `python3 -m pytest simulation/` and
+# `python3 simulation/verify_tables_3_4.py` both pass with these exact
+# versions. Re-verify and re-pin if you deliberately upgrade.
+#
+# Install with:
+#   pip install -r simulation/requirements.txt
+
+mujoco==3.10.0
+numpy==2.4.4
+scipy==1.17.1
+osqp==1.1.1
+matplotlib==3.10.8
+pytest==9.0.3

@@ -21,6 +21,13 @@ SCENE_XML   = DEST_DIR / "fr3_phri_scene.xml"
 
 MENAGERIE_REPO = "https://github.com/google-deepmind/mujoco_menagerie.git"
 SUBDIR         = "franka_fr3"
+# Pinned for reproducibility: unpinned `main` can change over time (models
+# added/updated upstream), which would make a downloaded model silently
+# diverge from the one used to produce this paper's committed numbers. Fixed
+# 2026-08-30 against the current mujoco_menagerie main
+# (https://github.com/google-deepmind/mujoco_menagerie/commit/da76818e269b82289eba39808e2fb91d679d6994),
+# verified directly (sparse-checkout + MuJoCo model load) before pinning.
+MENAGERIE_REF  = "da76818e269b82289eba39808e2fb91d679d6994"
 
 
 # ---------------------------------------------------------------------------
@@ -101,12 +108,12 @@ def download_with_git(force: bool = False):
         sparse_file = tmp / ".git" / "info" / "sparse-checkout"
         sparse_file.write_text(f"{SUBDIR}/\n")
 
-        # 3. Fetch only the top commit (--depth 1) and only needed blobs
-        print("[setup] Fetching (depth=1, blob:none filter)…")
+        # 3. Fetch only the pinned commit (--depth 1) and only needed blobs
+        print(f"[setup] Fetching pinned commit {MENAGERIE_REF} (depth=1, blob:none filter)…")
         _run([
             "git", "fetch", "--depth=1",
             "--filter=blob:none",
-            "origin", "main",
+            "origin", MENAGERIE_REF,
         ], cwd=tmp)
 
         # 4. Checkout only franka_fr3/
@@ -119,9 +126,16 @@ def download_with_git(force: bool = False):
             print(f"[setup] ERROR: '{SUBDIR}/' not found after sparse checkout.")
             sys.exit(1)
 
-        if DEST_DIR.exists():
-            shutil.rmtree(DEST_DIR)
-        shutil.copytree(src, DEST_DIR)
+        # Overlay rather than wipe-and-replace: a plain rmtree(DEST_DIR) here
+        # used to silently delete any locally-added, git-tracked files that
+        # aren't part of the upstream Menagerie download (found the hard way
+        # -- fr3_darkscene.xml/fr3_lightscene.xml, custom scene variants
+        # authored for this project, were deleted by a --force run during
+        # testing and had to be restored from git). dirs_exist_ok=True copies
+        # the fresh upstream files in, overwriting same-named files (the
+        # intended "re-download" behavior) without touching anything else
+        # already in DEST_DIR.
+        shutil.copytree(src, DEST_DIR, dirs_exist_ok=True)
 
     print(f"[setup] Extracted to {DEST_DIR}")
 
@@ -130,8 +144,26 @@ def download_with_git(force: bool = False):
 # Create scene XML
 # ---------------------------------------------------------------------------
 
-def write_scene_xml():
-    """Write models/fr3_scene.xml that includes the downloaded FR3 model."""
+def write_scene_xml(force: bool = False):
+    """Write models/fr3_scene.xml that includes the downloaded FR3 model.
+
+    Skips if SCENE_XML already exists (even under --force): this file is a
+    one-time-generated STARTING POINT, not a build artifact -- the project
+    hand-adds a <visual> block and a <sensor> block (joint pos/vel/torque,
+    EE pose/force -- read by the interactive MuJoCo viewer's sensor panel,
+    not regenerable from the template) directly into it after the first
+    run. An earlier version of this function unconditionally overwrote it
+    every run, which silently deleted those hand-added blocks on any
+    --force re-download (found the hard way: a --force run during testing
+    wiped the <sensor> block; recovered via `git checkout`). Pass
+    force=True only to intentionally regenerate a fresh, un-customized
+    scaffold (e.g. after deleting the file on purpose)."""
+    if SCENE_XML.exists() and not force:
+        print(f"[setup] Scene XML already present at {SCENE_XML} -- leaving it "
+              f"as-is (it may contain hand-added customizations). Delete it "
+              f"first if you really want a fresh scaffold.")
+        return
+
     # Prefer scene.xml (menagerie provides floor + lighting), else fr3.xml.
     # Use filename-only paths since fr3_phri_scene.xml lives alongside them.
     if (DEST_DIR / "scene.xml").exists():
