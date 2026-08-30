@@ -135,6 +135,8 @@ def prediction(a: np.ndarray, b: np.ndarray, horizon: int) -> tuple[np.ndarray, 
 
 
 class ResidualMPC3D:
+    FEAS_TOL = 100 * 1e-5  # see verify_residual_mpc.py's ResidualMPC.FEAS_TOL
+
     def __init__(self, cfg: Config):
         self.cfg = cfg
         self.solve_ms: list[float] = []
@@ -161,11 +163,27 @@ class ResidualMPC3D:
         # every other controller in this file.
         dseq = disturbance_seq.reshape(-1) if disturbance_seq is not None else np.tile(disturbance_hat, cfg.horizon)
         xfree = phi @ residual + gamma @ dseq
+        # Dense qbar/rbar deliberately, not scipy.sparse: horizon is small
+        # (default 20, so qbar is at most 60x60) and mixing dense ndarrays
+        # (gamma, xfree) with scipy.sparse matrices in the same `@` chain is
+        # a known source of platform/BLAS-dependent numerical warnings (an
+        # external review reported repeatable divide-by-zero/overflow/
+        # invalid-value RuntimeWarnings at this class of Hessian matmul on a
+        # different machine; the mixing itself is the identifiable, fixable
+        # risk regardless of which platform actually triggers it). Sparse is
+        # still used below, where OSQP's own constraint-matrix API requires
+        # it.
         q = np.diag([cfg.q_position] * 3 + [cfg.q_velocity] * 3)
-        qbar = sparse.block_diag([q] * cfg.horizon, format="csc")
-        rbar = sparse.eye(3 * cfg.horizon, format="csc") * cfg.r_wrench
-        hess = np.asarray(gamma.T @ qbar @ gamma + rbar)
-        linear = np.asarray(gamma.T @ qbar @ xfree).reshape(-1)
+        qbar = np.kron(np.eye(cfg.horizon), q)
+        rbar = np.eye(3 * cfg.horizon) * cfg.r_wrench
+        hess = gamma.T @ qbar @ gamma + rbar
+        linear = (gamma.T @ qbar @ xfree).reshape(-1)
+        if not (np.all(np.isfinite(hess)) and np.all(np.isfinite(linear))):
+            raise FloatingPointError(
+                "ResidualMPC3D: non-finite value in QP Hessian/gradient assembly "
+                f"(hess finite={np.all(np.isfinite(hess))}, "
+                f"linear finite={np.all(np.isfinite(linear))})"
+            )
 
         # Same current J and nominal torque over the short horizon.  The fast
         # layer remains authoritative for the realized nonlinear plant.
@@ -185,10 +203,27 @@ class ResidualMPC3D:
         start = time.perf_counter_ns()
         answer = solver.solve(raise_error=False)
         self.solve_ms.append((time.perf_counter_ns() - start) * 1e-6)
-        if answer.info.status_val not in (1, 2):
+        # Validate the actual primal residual, not just the status string
+        # (100x this problem's own eps_abs=eps_rel=1e-5 -- see
+        # verify_residual_mpc.py's ResidualMPC.FEAS_TOL for the general
+        # rationale). "solved inaccurate" alone does not guarantee the
+        # returned point actually satisfies the torque/force rows.
+        if answer.info.status_val not in (1, 2) or answer.x is None:
+            self.failures += 1
+            self.last_residual = float("inf")
+            return np.zeros(3)
+        x = answer.x
+        finite = bool(np.all(np.isfinite(x)))
+        au = (a_tau @ x) if finite else None
+        residual = (
+            float(np.maximum(np.maximum(lower - au, 0), np.maximum(au - upper, 0)).max())
+            if finite else float("inf")
+        )
+        self.last_residual = residual
+        if not finite or residual > self.FEAS_TOL:
             self.failures += 1
             return np.zeros(3)
-        return np.asarray(answer.x[:3])
+        return np.asarray(x[:3])
 
 
 def torque_scale(tau_nominal: np.ndarray, tau_residual: np.ndarray, limits: np.ndarray) -> tuple[float, bool]:
@@ -427,6 +462,15 @@ def run_trial(
         env.step()
 
     use = log["time"] >= 0.25
+    if not np.any(use):
+        raise ValueError(
+            f"run_trial: cfg.duration={cfg.duration}s leaves no samples past the "
+            f"0.25s warmup window used by every metric below -- found while adding "
+            f"a smoke test per an external review's request for a minimal "
+            f"'load-and-one-control-step' check; use duration >= 0.3s (or read "
+            f"env.step()/one control tick directly, bypassing this function, for a "
+            f"true single-step check)."
+        )
     residual_norm = np.linalg.norm(log["residual_position"], axis=1)
     metrics = {
         "residual_rms_mm": float(1e3 * np.sqrt(np.mean(residual_norm[use] ** 2))),

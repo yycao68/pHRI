@@ -7,8 +7,21 @@ verification, and test code lives in `simulation/`.
 ## Reproduce the results
 
 ```bash
+# One-time environment setup (Python >= 3.10).
 cd simulation
 python3 -m pip install -r requirements.txt
+
+# One-time FR3 model download -- the primary 7-DoF benchmark below imports
+# shared FR3/MuJoCo utilities from the repo-level pHRI/simulation/ (two
+# directories up), whose mesh assets are gitignored (large binaries) and
+# must be fetched once via that tree's own setup script. Skip this step and
+# the benchmark fails at MuJoCo model load (found by external review; see
+# ../../simulation/setup_model.py and its test_model_smoke.py).
+python3 ../../simulation/setup_model.py
+
+# Fast smoke test: does the model load and can a short trial run at all,
+# before paying for the full 20-trial benchmark below.
+python3 -m pytest -q test_fr3_smoke.py
 
 MPLCONFIGDIR=/tmp/phri_impedance_fr3_mpl \
 XDG_CACHE_HOME=/tmp/phri_impedance_fr3_mpl \
@@ -17,8 +30,26 @@ python3 verify_fr3_two_rate_benchmark.py --seeds 20 --leakage-seeds 5 --realism-
 python3 -m pytest -q \
   test_fr3_two_rate_benchmark.py \
   test_two_rate_passive_residual.py \
-  test_residual_mpc.py
+  test_residual_mpc.py \
+  test_fr3_smoke.py
 ```
+
+## Rebuild the paper PDF
+
+```bash
+# From this directory (impedance/); requires pandoc, KaTeX, and headless
+# Chrome, all resolved from the repo-level pHRI/build_paper_pdf.py.
+python3 ../build_paper_pdf.py impedance_residual.md --output impedance_residual.pdf
+```
+
+Note: the currently-committed `impedance_residual.pdf` was produced by a
+different toolchain (`LaTeX via pandoc`/`xdvipdfmx`, 17 pages) than this
+script currently produces (Pandoc+KaTeX+headless-Chrome, 11 pages, verified
+directly) -- both render the same manuscript content, just with different
+page counts/fonts from the different pipelines. This section documents how
+to build it, not which historical toolchain produced the currently-checked-
+in file; regenerate and review before replacing it if page-count/layout
+parity with the committed PDF matters for your purpose.
 
 ## Artifacts
 

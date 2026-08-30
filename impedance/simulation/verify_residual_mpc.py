@@ -88,13 +88,31 @@ class ResidualMPC:
         self.cfg = cfg
         self.a, self.b = residual_matrices(cfg.ts)
         self.phi, self.gamma = prediction_matrices(self.a, self.b, cfg.horizon)
+        # Dense qbar/rbar deliberately, not scipy.sparse: horizon is tiny
+        # (default 15, so qbar is at most 30x30) and mixing dense ndarrays
+        # (gamma, phi) with scipy.sparse matrices in the same `@` chain is a
+        # known source of platform/BLAS-dependent numerical warnings (an
+        # external review reported repeatable divide-by-zero/overflow/
+        # invalid-value RuntimeWarnings at this exact Hessian matmul on a
+        # different machine, not reproduced here, but the dense/sparse
+        # mixing itself is the identifiable, fixable risk regardless of
+        # which platform actually triggers it). Sparse is still used below,
+        # where OSQP's own API requires it.
         q = np.diag([cfg.q_position, cfg.q_velocity])
-        qbar = sparse.block_diag([q] * cfg.horizon, format="csc")
-        rbar = sparse.eye(cfg.horizon, format="csc") * cfg.r_acceleration
-        self.h = np.asarray(self.gamma.T @ qbar @ self.gamma + rbar)
-        self.f = np.asarray(self.gamma.T @ qbar @ self.phi)
+        qbar = np.kron(np.eye(cfg.horizon), q)
+        rbar = np.eye(cfg.horizon) * cfg.r_acceleration
+        self.h = self.gamma.T @ qbar @ self.gamma + rbar
+        self.f = self.gamma.T @ qbar @ self.phi
         self.gd = self.gamma @ np.ones(cfg.horizon)
-        self.fd = np.asarray(self.gamma.T @ qbar @ self.gd).reshape(-1)
+        self.fd = (self.gamma.T @ qbar @ self.gd).reshape(-1)
+        if not (np.all(np.isfinite(self.h)) and np.all(np.isfinite(self.f))
+                and np.all(np.isfinite(self.fd))):
+            raise FloatingPointError(
+                "ResidualMPC: non-finite value in QP Hessian/gradient assembly "
+                f"(h finite={np.all(np.isfinite(self.h))}, "
+                f"f finite={np.all(np.isfinite(self.f))}, "
+                f"fd finite={np.all(np.isfinite(self.fd))})"
+            )
         self.problem = osqp.OSQP()
         self.problem.setup(
             P=sparse.csc_matrix((self.h + self.h.T) / 2.0),
@@ -114,6 +132,15 @@ class ResidualMPC:
     def first_move_gain(self) -> np.ndarray:
         return np.linalg.solve(self.h, self.f)[0]
 
+    # Post-solve acceptance tolerance, deliberately looser than the
+    # solver's own eps_abs=eps_rel=1e-7 convergence target (100x): "solved
+    # inaccurate" means OSQP did not close that gap, not that the returned
+    # point is unusable, so this checks the ACTUAL primal residual against
+    # the constraint the QP was actually given rather than trusting the
+    # status string alone (found missing by external review, mirroring a
+    # near-identical gap and fix in pHRI/simulation/impedance_mpc.py).
+    FEAS_TOL = 100 * 1e-7
+
     def control(self, state: np.ndarray, d_hat: float, uff_horizon: np.ndarray) -> tuple[float, str]:
         q = self.f @ state + self.fd * d_hat
         lower = (-self.cfg.force_limit - uff_horizon) / self.cfg.model_mass
@@ -122,9 +149,18 @@ class ResidualMPC:
         self.problem.update(q=q, l=lower, u=upper)
         result = self.problem.solve(raise_error=False)
         self.solve_times.append((time.perf_counter_ns() - start) * 1e-6)
-        if result.info.status_val not in (1, 2):
-            return 0.0, result.info.status
-        return float(result.x[0]), result.info.status
+        if result.info.status_val not in (1, 2) or result.x is None:
+            return 0.0, "infeasible_or_unsolved"
+        x = result.x
+        finite = bool(np.all(np.isfinite(x)))
+        residual = (
+            float(np.maximum(np.maximum(lower - x, 0), np.maximum(x - upper, 0)).max())
+            if finite else float("inf")
+        )
+        self.last_residual = residual
+        if not finite or residual > self.FEAS_TOL:
+            return 0.0, f"residual_exceeds_tol({residual:.3e})"
+        return float(x[0]), result.info.status
 
 
 def intentional_force(t: float) -> float:

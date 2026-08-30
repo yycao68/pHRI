@@ -76,15 +76,29 @@ class ResidualMPC:
         self.cfg = cfg
         self.a, self.b = discretize_impedance(cfg)
         self.phi, self.gamma = prediction_matrices(self.a, self.b, cfg.horizon)
-        qbar = sparse.block_diag(
-            [np.diag([cfg.q_position, cfg.q_velocity])] * cfg.horizon,
-            format="csc",
-        )
-        rbar = sparse.eye(cfg.horizon, format="csc") * cfg.r_force
-        self.h = np.asarray(self.gamma.T @ qbar @ self.gamma + rbar)
-        self.f = np.asarray(self.gamma.T @ qbar @ self.phi)
+        # Dense qbar/rbar deliberately, not scipy.sparse: horizon is tiny
+        # and mixing dense ndarrays (gamma, phi) with scipy.sparse matrices
+        # in the same `@` chain is a known source of platform/BLAS-dependent
+        # numerical warnings (an external review reported repeatable
+        # divide-by-zero/overflow/invalid-value RuntimeWarnings at this
+        # exact Hessian matmul on a different machine, not reproduced here,
+        # but the dense/sparse mixing itself is the identifiable, fixable
+        # risk regardless of which platform actually triggers it). Sparse
+        # is still used below, where OSQP's own API requires it.
+        qbar = np.kron(np.eye(cfg.horizon), np.diag([cfg.q_position, cfg.q_velocity]))
+        rbar = np.eye(cfg.horizon) * cfg.r_force
+        self.h = self.gamma.T @ qbar @ self.gamma + rbar
+        self.f = self.gamma.T @ qbar @ self.phi
         self.gd = self.gamma @ np.ones(cfg.horizon)
-        self.fd = np.asarray(self.gamma.T @ qbar @ self.gd).reshape(-1)
+        self.fd = (self.gamma.T @ qbar @ self.gd).reshape(-1)
+        if not (np.all(np.isfinite(self.h)) and np.all(np.isfinite(self.f))
+                and np.all(np.isfinite(self.fd))):
+            raise FloatingPointError(
+                "ResidualMPC: non-finite value in QP Hessian/gradient assembly "
+                f"(h finite={np.all(np.isfinite(self.h))}, "
+                f"f finite={np.all(np.isfinite(self.f))}, "
+                f"fd finite={np.all(np.isfinite(self.fd))})"
+            )
         self.problem = osqp.OSQP()
         self.problem.setup(
             P=sparse.csc_matrix((self.h + self.h.T) / 2),
@@ -100,6 +114,11 @@ class ResidualMPC:
         )
         self.solve_ms: list[float] = []
 
+    # See verify_residual_mpc.py's ResidualMPC.FEAS_TOL for rationale: 100x
+    # this problem's own eps_abs=eps_rel=1e-7, checked against the actual
+    # primal residual rather than trusting the OSQP status string alone.
+    FEAS_TOL = 100 * 1e-7
+
     def control(self, residual: np.ndarray, disturbance_hat: float, nominal_force: float) -> tuple[float, str]:
         linear = self.f @ residual + self.fd * disturbance_hat
         lo = np.full(self.cfg.horizon, -self.cfg.force_limit - nominal_force)
@@ -108,9 +127,18 @@ class ResidualMPC:
         self.problem.update(q=linear, l=lo, u=hi)
         answer = self.problem.solve(raise_error=False)
         self.solve_ms.append((time.perf_counter_ns() - start) * 1e-6)
-        if answer.info.status_val not in (1, 2):
-            return 0.0, answer.info.status
-        return float(answer.x[0]), answer.info.status
+        if answer.info.status_val not in (1, 2) or answer.x is None:
+            return 0.0, "infeasible_or_unsolved"
+        x = answer.x
+        finite = bool(np.all(np.isfinite(x)))
+        residual_viol = (
+            float(np.maximum(np.maximum(lo - x, 0), np.maximum(x - hi, 0)).max())
+            if finite else float("inf")
+        )
+        self.last_residual = residual_viol
+        if not finite or residual_viol > self.FEAS_TOL:
+            return 0.0, f"residual_exceeds_tol({residual_viol:.3e})"
+        return float(x[0]), answer.info.status
 
 
 def intentional_force(t: float) -> float:
