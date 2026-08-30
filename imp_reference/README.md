@@ -24,6 +24,18 @@ python3 -m pytest simulation/test_interaction_dynamics_mpc.py simulation/test_be
 python3 simulation/run_generator_switching_experiment.py
 python3 -m pytest simulation/test_generator_switching.py -q
 
+# One-time FR3 model download -- the FR3 study below imports shared FR3/
+# MuJoCo utilities from the repo-level pHRI/simulation/ (two directories
+# up), whose mesh assets are gitignored (large binaries) and must be
+# fetched once via that tree's own setup script. Skip this and the FR3
+# study fails at MuJoCo model load (found by external review; see
+# ../simulation/setup_model.py and its test_model_smoke.py).
+python3 ../simulation/setup_model.py
+
+# Fast smoke test: does the model load and can one MPC solve complete,
+# before paying for the full FR3 experiment suite below.
+python3 -m pytest simulation/test_fr3_smoke.py -q
+
 # FR3/MuJoCo manipulator study
 python3 simulation/run_fr3_experiments.py
 python3 simulation/sweep_null_space_gains.py
@@ -36,8 +48,17 @@ python3 -m pytest simulation/test_torque_activation_experiment.py -q
 # FR3 QP solve-time study (warm-start on/off, scaled/unscaled conditioning)
 python3 simulation/run_fr3_timing_study.py
 
-# Paper PDF (local files only; no rendering server)
+# Paper PDF (local files only; no rendering server) -- builds from paper.md,
+# the markdown source kept in sync with phri2.tex (see git history: phri2.tex
+# is manually synced to paper.md's content for arXiv-style LaTeX submission).
 python3 simulation/build_paper_pdf.py paper.md
+
+# phri2.tex itself (the LaTeX source phri2.pdf is built from) needs a TeX
+# Live install with the `cite` package (\usepackage{cite}); not included in
+# a minimal/basic TeX install, which is what an isolated review environment
+# hit. Verified directly (clean latexmk -C && latexmk -pdf rebuild,
+# 13 pages, matches the committed phri2.pdf):
+latexmk -pdf -interaction=nonstopmode phri2.tex
 ```
 
 `phri2.tex` is a hand-maintained IEEEtran-journal LaTeX rendering of the

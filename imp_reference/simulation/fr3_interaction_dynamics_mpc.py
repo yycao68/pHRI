@@ -569,6 +569,20 @@ class FR3RealizationMPC:
         p, q, a_con, lower, upper, labels, Lam_inv, tau_base, J_v, d_known = self._condense(
             dyn, state, p_nominal, R_d, force_forecast
         )
+        # lower/upper legitimately contain +-inf for intentionally
+        # unconstrained rows (see torque_constraint_steps and the one-sided
+        # position/speed box rows above) -- only reject NaN there, not inf.
+        # p, q, a_con are always computed values and should never be
+        # non-finite in either sense.
+        if (
+            not all(np.all(np.isfinite(m)) for m in (p, q, a_con))
+            or np.any(np.isnan(lower))
+            or np.any(np.isnan(upper))
+        ):
+            raise RuntimeError(
+                "FR3RealizationMPC: non-finite value in QP assembly "
+                "(p, q, a_con, or NaN in lower/upper)"
+            )
         solver = osqp.OSQP()
         solver.setup(
             P=sparse.csc_matrix(p),
@@ -594,6 +608,30 @@ class FR3RealizationMPC:
         solve_time = _time.perf_counter() - t0
         if result.info.status_val not in (1, 2):
             raise RuntimeError(f"OSQP failed: {result.info.status}")
+        sequence = np.asarray(result.x)
+        if not np.all(np.isfinite(sequence)):
+            raise RuntimeError(
+                f"OSQP status={result.info.status} but result.x is non-finite"
+            )
+        # Validate the actual primal residual against the system AS POSED
+        # to the solver (which already encodes the workspace/speed slack
+        # relaxation via the slack columns in a_con, so this does not
+        # penalize the intentional soft-constraint relaxation -- it only
+        # catches OSQP claiming success while failing to satisfy the rows
+        # it was actually given, including the hard torque rows). Found
+        # missing by external review; tolerance matches the same 100x-
+        # cfg.osqp_eps convention used in the planar controller and the
+        # sibling pHRI/impedance and pHRI/simulation controllers.
+        feas_tol = 100 * self.cfg.osqp_eps
+        primal_residual = float(np.maximum(
+            np.maximum(lower - a_con @ sequence, 0),
+            np.maximum(a_con @ sequence - upper, 0),
+        ).max())
+        if primal_residual > feas_tol:
+            raise RuntimeError(
+                f"OSQP status={result.info.status} but primal residual "
+                f"{primal_residual:.3e} exceeds tolerance {feas_tol:.3e}"
+            )
         if self.cfg.warm_start:
             self._warm_x = np.asarray(result.x)
             self._warm_y = np.asarray(result.y)
@@ -601,7 +639,6 @@ class FR3RealizationMPC:
         H = self.cfg.horizon
         n_i = 3 * H
         n_s = 2 * H
-        sequence = np.asarray(result.x)
         command = sequence[:3].copy()
 
         # Same-objective unconstrained counterfactual.  Slack variables are

@@ -246,6 +246,11 @@ class InteractionDynamicsMPC:
             )
 
         p, q, a_con, lower, upper, labels = self._condense(state, force_forecast)
+        if not all(np.all(np.isfinite(m)) for m in (p, q, a_con, lower, upper)):
+            raise RuntimeError(
+                "InteractionDynamicsMPC: non-finite value in QP assembly "
+                "(p, q, a_con, lower, or upper)"
+            )
         solver = osqp.OSQP()
         solver.setup(
             P=sparse.csc_matrix(p),
@@ -262,8 +267,31 @@ class InteractionDynamicsMPC:
         result = solver.solve(raise_error=False)
         if result.info.status_val not in (1, 2):
             raise RuntimeError(f"OSQP failed: {result.info.status}")
-
         sequence = np.asarray(result.x)
+        if not np.all(np.isfinite(sequence)):
+            raise RuntimeError(
+                f"OSQP status={result.info.status} but result.x is non-finite"
+            )
+        # Validate the actual primal residual, not just the status string:
+        # "solved inaccurate" means OSQP did not close its own eps_abs=
+        # eps_rel=cfg.osqp_eps convergence gap, not that the returned point
+        # is unusable, but it also does not guarantee A @ x actually stays
+        # within [lower, upper] -- found missing by external review (the
+        # existing `tolerance = 2.0e-4` below labels near-active rows for
+        # diagnostics, it does not reject an infeasible result). Tolerance
+        # is 100x cfg.osqp_eps, deliberately looser than the solver's own
+        # convergence target, mirroring the same fix applied to the sibling
+        # pHRI/impedance and pHRI/simulation controllers.
+        feas_tol = 100 * self.cfg.osqp_eps
+        primal_residual = float(np.maximum(
+            np.maximum(lower - a_con @ sequence, 0),
+            np.maximum(a_con @ sequence - upper, 0),
+        ).max())
+        if primal_residual > feas_tol:
+            raise RuntimeError(
+                f"OSQP status={result.info.status} but primal residual "
+                f"{primal_residual:.3e} exceeds tolerance {feas_tol:.3e}"
+            )
         command = sequence[:2].copy()
 
         # Counterfactual diagnostic, not a second controller: minimize the
