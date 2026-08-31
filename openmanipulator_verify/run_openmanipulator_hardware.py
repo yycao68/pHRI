@@ -10,8 +10,7 @@ Control law (operational-space-lite, Current Control Mode):
     Goal_Current = tau / K_t                              # per XM430 servo
 
 Because the arm is torque-driven, the offset-free property (SS error -> 0 under a
-constant disturbance) actually holds -- the reason this needs a torque interface
-and the JetCobot could not do it.
+constant disturbance) actually holds -- the reason this needs a torque interface.
 
 SAFETY: start with the arm supported and a low current_limit_ticks; torque is
 disabled on any exit. Use --backend sim to validate everything off-hardware.

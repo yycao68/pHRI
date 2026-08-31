@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Impedance-backbone architecture: standard benchmark + saturation stress test.
 
-Companion code for double_integrator_phri_ieee.md
+Companion code for the impedance-backbone (C8) ablation in
+arXiv/phri_combined.tex (the retired double_integrator_phri_ieee.md draft
+carried the same material)
 Sec. VI-I / arXiv/phri_main.tex's "Correction-Authority Robustness" ablation
 (Table VIII). Controller IDs below match the PAPER's numbering (Table
 "Benchmarked Controllers", Sec. VI-A) -- NOT the internal "C5/C6" shorthand

@@ -1,0 +1,20 @@
+Dear Editor-in-Chief,
+
+Please consider our manuscript, "A Behavior-Coordinate Realization Interface for Predictive Saturation Management," by Yongyan Cao, for publication in Systems & Control Letters.
+
+When a robot controller requests behavior that its actuators cannot realize, torque clipping keeps the hardware command legal but silently changes the behavior actually executed. Reference governors, action governors, and predictive safety filters already establish the general idea of supervising a nominal controller against constraints; our manuscript addresses a narrower, interface-level question that we believe is a good fit for a Letter: how to expose a single, common task-acceleration request to heterogeneous nominal controllers -- PD, impedance, trained-policy, or conditioned-motion -- while each executing robot retains its own configuration-dependent acceleration-to-torque map, and how to state the conditions under which that shared request is provably realized rather than silently altered.
+
+We formalize this as a behavior-coordinate realization interface: a fast (1 kHz) nominal controller exposes a requested task acceleration; a slower (50 Hz) manager, running in a two-rate architecture, maps that request through a robot-specific realization model, predicts an uncertainty-tightened feasible set, and returns a minimum-cost correction when a quadratic program certifying feasibility is solvable, with a fast actuator-level projection as a final guard. We specialize a general one-step certificate-refinement argument to this interface through three checkable conditions -- torque-prediction accuracy (T1), actuator margin (T2), and behavior-successor mismatch (T3) -- and a corollary giving the additional torque-drift and averaged-request bounds required by the two-rate implementation. We are explicit that these are implementation-level contracts rather than a new general safety-filter or certificate-transfer theory, and we position the result directly against the closest prior mechanisms (saturation-aware trajectory reference governors, generalized action governors, predictive safety filters, and task-space capacity polytopes) rather than claiming to supersede them.
+
+The manuscript reports a reproducible, deterministic 111-run reduced-order study spanning five controller interfaces, three realization maps, and eight stress scenarios, including a matched-budget ERG-style trajectory-reference-governor comparison and explicit negative cases in which the certificate's own premises are violated (abrupt disturbance, severe model mismatch) and the mechanism is shown to fail as designed rather than silently. We report where the proposed vector correction does and does not outperform the matched governor baseline, and we do not claim universal advantage over governor or safety-filter architectures; the study is designed to demonstrate and falsify the interface contract, not merely to demonstrate it.
+
+We believe this fits Systems & Control Letters' scope for concise, rigorous treatments of a well-posed supervisory-control problem, and that the explicit T1-T3 audit conditions will be of direct interest to the journal's readership working on reference governors, safety filters, and constrained control more broadly.
+
+This manuscript has not been published previously and is not under consideration elsewhere. Complete parameters and reproducibility artifacts for all reported runs are provided in the supplementary material.
+
+Thank you for your consideration.
+
+Sincerely,
+Yongyan Cao
+Voryx Robotics LLC, San Jose, CA 95136, USA
+yongyancao@gmail.com

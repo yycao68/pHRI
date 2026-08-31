@@ -3,8 +3,8 @@
 Real-robot verification of the pHRI interaction-dynamics controller on a ROBOTIS
 **OpenManipulator-X (RM-X52-TNM)** — a 4-DOF arm built from **XM430-W350**
 servos, every joint of which supports **Current Control Mode** (Operating_Mode 0,
-`Goal_Current`). Unlike the position-only JetCobot, this arm lets us validate the
-paper's **torque-level** claims (offset-free regulation, passivity, CBF safety).
+`Goal_Current`). This arm lets us validate the paper's **torque-level** claims
+(offset-free regulation, passivity, CBF safety).
 
 Torque control here goes through the **DYNAMIXEL SDK / Protocol 2.0**, not
 LeRobot. LeRobot's high-level API is position-only and is not used.
@@ -14,8 +14,8 @@ LeRobot. LeRobot's high-level API is position-only and is not used.
 Supported:
 - exact-ZOH double-integrator MPC + Kalman observer at torque level (`Goal_Current`);
 - Cartesian tracking (hold, small circle) with `tau = J^T F_mpc + gravity`;
-- **offset-free** disturbance rejection under a persistent load (the property the
-  JetCobot could not achieve — it needs a real torque interface);
+- **offset-free** disturbance rejection under a persistent load (needs a real
+  torque interface);
 - transient hand-push rejection with observer `d_hat` rise/decay;
 - compute-time distribution (mean/p99/max) on the control computer.
 
@@ -65,8 +65,7 @@ This loads the **real ROBOTIS URDF** into MuJoCo (independent physics) and check
 3. the J1–J4 control suite on MuJoCo physics reaches offset-free steady state.
 
 Latest result (MuJoCo physics): **hold SS 1.3 mm, circle SS 2.0 mm, push
-(2 N) recovers 103→1.9 mm, payload (1 N / 100 g) recovers 51→2.3 mm — offset-free**,
-the property the position-only JetCobot could not achieve.
+(2 N) recovers 103→1.9 mm, payload (1 N / 100 g) recovers 51→2.3 mm — offset-free**.
 
 ## Quick numpy-only smoke test (no MuJoCo)
 ```bash

@@ -38,7 +38,6 @@ and FR3 hardware-interface code for first real-robot tests).
 | `imp_reference/` | Behavior-realization separation — an interaction-behavior generator (desired acceleration) decoupled from a constrained realization layer (predictive QP). Paper: `phri2.tex` (kept in sync with `paper.md`). Code-reviewed 2026-08-30 (same three fixes as above); see `imp_reference/README.md`. | Active |
 | `openmanipulator_verify/` | Real-robot torque-level verification of the interaction-dynamics controller on a ROBOTIS OpenManipulator-X (4-DOF, current-control mode via the DYNAMIXEL SDK, not LeRobot). | Active |
 | `funding/` | Grant/demo material (Voryx Robotics), including a MuJoCo demo video and its MPC. | Supporting material |
-| `double_integrator_phri_ieee.md` | "Toward Interaction Dynamics: A Predictive Framework for Safe Physical Human-Robot Interaction" — a standalone IEEE-format paper draft, a sibling to the `arXiv/` split above rather than an ancestor or descendant of it. | Reference |
 | `TASE_FINAL.pdf` | Third-party related-work paper (Salt Ducaju, Olofsson, and Johansson, *IEEE T-ASE*) kept for reference/citation — not authored in this repo. | Reference (external) |
 | `paper_review_guide.md` | Internal checklist used when running a review pass over a paper draft in this repo. | Internal tooling |
 

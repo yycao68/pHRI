@@ -1,11 +1,11 @@
 """Exact-ZOH interaction-dynamics MPC + Kalman disturbance observer.
 
 This is the same normalized double-integrator controller used throughout the
-pHRI paper: the decision is a residual Cartesian acceleration u, the observer
-estimates a constant interaction disturbance d, and the offset-free equilibrium
-is u = -d_hat. On a TORQUE-controlled arm (unlike the position-level JetCobot),
-the plant really is the double integrator, so the observer must be fed the
-applied u and offset-free regulation holds.
+pHRI paper: the decision is a residual Cartesian acceleration sequence u_0..
+u_{N-1}, the observer estimates a constant interaction disturbance d, and the
+offset-free equilibrium is u = -d_hat. On a TORQUE-controlled arm, the plant
+really is the double integrator, so the observer must be fed the applied u
+and offset-free regulation holds.
 """
 from __future__ import annotations
 
@@ -25,35 +25,116 @@ class ControllerConfig:
     u_max: np.ndarray | None = None
     observer_q_d: float = 0.02
     observer_r_y: float = 0.0004
+    qp_iters: int = 200   # FISTA iterations per solve() call
 
 
 class NormalizedInteractionMPC:
-    """Finite-horizon LQR for x+ = A x + B (u + d). Feedback: u = -K0 x - d_hat."""
+    """Box-constrained finite-horizon QP for x+ = A x + B (u + d).
+
+    Matches the paper's Eq. (9): the decision is the full residual-
+    acceleration sequence u_0..u_{N-1}, and the box constraint
+    -u_max <= u_k <= u_max is enforced at EVERY horizon step k=0..N-1 (Eq.
+    9c), not just clipped on the first-step control after an unconstrained
+    solve. Only the first step is applied, then the QP is re-solved next
+    tick (receding horizon).
+
+    A, B are configuration-independent here (normalized residual-acceleration
+    units), so the horizon maps Phi/Gamma/D_bar and the QP Hessian are built
+    once in __init__; only the linear cost term changes per call. The QP is
+    solved by warm-started FISTA (accelerated projected gradient): box
+    constraints are separable, so a matrix-free iterative solve avoids
+    adding a QP-solver dependency (osqp/scipy) to this numpy-only
+    verification harness. The terminal cost is the converged discrete
+    Riccati solution for (A, B, Q, R), so the finite horizon approximates
+    the infinite-horizon LQR tail while the box constraint stays exact
+    over the whole planning horizon.
+    """
 
     def __init__(self, cfg: ControllerConfig):
         self.cfg = cfg
-        n, dt = cfg.dim, cfg.dt
+        n, dt, N = cfg.dim, cfg.dt, cfg.horizon
         self.A = np.block([[np.eye(n), dt * np.eye(n)], [np.zeros((n, n)), np.eye(n)]])
         self.B = np.vstack((0.5 * dt * dt * np.eye(n), dt * np.eye(n)))
         self.Q = np.diag([cfg.q_pos] * n + [cfg.q_vel] * n)
         self.R = cfg.r * np.eye(n)
-        self.K0 = self._finite_horizon_first_gain()
         self.u_max = np.asarray(cfg.u_max if cfg.u_max is not None else np.inf * np.ones(n), dtype=float)
 
-    def _finite_horizon_first_gain(self) -> np.ndarray:
+        # A_d^k for k = 0..N-1, and the free-response map Phi (A_d^1..A_d^N).
+        self._Ad_pow = [np.eye(2 * n)]
+        for _ in range(N - 1):
+            self._Ad_pow.append(self._Ad_pow[-1] @ self.A)
+        self.Phi = np.vstack([self._Ad_pow[k] @ self.A for k in range(N)])          # (2nN, 2n)
+
+        # Input-to-state map Gamma[i,j] = A_d^{i-j} B_d for i >= j, else 0.
+        Gam = np.zeros((2 * n * N, n * N))
+        for i in range(N):
+            for j in range(i + 1):
+                Gam[2*n*i:2*n*(i+1), n*j:n*(j+1)] = self._Ad_pow[i - j] @ self.B
+        self.Gamma = Gam
+
+        # Disturbance propagation D_bar[k] = (I + A_d + ... + A_d^k) B_d.
+        D_bar = np.zeros((2 * n * N, n))
+        cumsum = np.zeros((2 * n, n))
+        for k in range(N):
+            cumsum = cumsum + self._Ad_pow[k] @ self.B
+            D_bar[2*n*k:2*n*(k+1)] = cumsum
+        self.D_bar = D_bar
+
+        Q_f = self._riccati_terminal_cost()
+        self.Q_bar = np.zeros((2 * n * N, 2 * n * N))
+        for i in range(N - 1):
+            self.Q_bar[2*n*i:2*n*(i+1), 2*n*i:2*n*(i+1)] = self.Q
+        self.Q_bar[2*n*(N-1):, 2*n*(N-1):] = Q_f
+        self.R_bar = np.kron(np.eye(N), self.R)
+
+        self.H = self.Gamma.T @ self.Q_bar @ self.Gamma + self.R_bar
+        self.H = 0.5 * (self.H + self.H.T)
+        self._L = float(np.linalg.eigvalsh(self.H)[-1])  # FISTA step size 1/L
+
+        self._lb = np.tile(-self.u_max, N)
+        self._ub = np.tile(self.u_max, N)
+        self._u_warm = np.zeros(n * N)
+
+    def _riccati_terminal_cost(self) -> np.ndarray:
+        """Converged discrete-time Riccati solution for (A, B, Q, R), used as
+        the terminal cost so the finite-horizon QP approximates the
+        infinite-horizon LQR tail (the original design intent of the
+        Riccati-recursion controller this replaces)."""
         P = self.Q.copy()
-        K = np.zeros((self.cfg.dim, 2 * self.cfg.dim))
-        for _ in range(self.cfg.horizon):
-            H = self.R + self.B.T @ P @ self.B
-            K = np.linalg.solve(H, self.B.T @ P @ self.A)
+        for _ in range(500):
+            K = np.linalg.solve(self.R + self.B.T @ P @ self.B, self.B.T @ P @ self.A)
             P = self.Q + self.A.T @ P @ (self.A - self.B @ K)
-        return K
+        return P
+
+    def _solve_box_qp(self, h: np.ndarray) -> np.ndarray:
+        """min 0.5 u^T H u + h^T u  s.t.  lb <= u <= ub, via warm-started FISTA."""
+        u = np.clip(self._u_warm, self._lb, self._ub)
+        y = u.copy()
+        t = 1.0
+        for _ in range(self.cfg.qp_iters):
+            grad = self.H @ y + h
+            u_new = np.clip(y - grad / self._L, self._lb, self._ub)
+            t_new = 0.5 * (1.0 + np.sqrt(1.0 + 4.0 * t * t))
+            y = u_new + ((t - 1.0) / t_new) * (u_new - u)
+            u, t = u_new, t_new
+        return u
 
     def solve(self, x: np.ndarray, d_hat: np.ndarray) -> np.ndarray:
-        x = np.asarray(x, dtype=float).reshape(2 * self.cfg.dim)
-        d_hat = np.asarray(d_hat, dtype=float).reshape(self.cfg.dim)
-        u = -self.K0 @ x - d_hat
-        return np.clip(u, -self.u_max, self.u_max)
+        n, N = self.cfg.dim, self.cfg.horizon
+        x = np.asarray(x, dtype=float).reshape(2 * n)
+        d_hat = np.asarray(d_hat, dtype=float).reshape(n)
+
+        x_free = self.Phi @ x + self.D_bar @ d_hat
+        # Offset-free input centering (as in the FR3 controller): penalising
+        # V = U + d_seq, not U, makes the steady balancing input u = -d_hat
+        # cost-free rather than R-penalised.
+        d_seq = np.tile(d_hat, N)
+        h = self.Gamma.T @ self.Q_bar @ x_free + self.R_bar @ d_seq
+
+        u_seq = self._solve_box_qp(h)
+        # Warm-start next call: shift the horizon by one step.
+        self._u_warm = np.concatenate([u_seq[n:], u_seq[-n:]])
+        return u_seq[:n]
 
 
 class RandomWalkDisturbanceObserver:

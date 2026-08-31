@@ -1,0 +1,23 @@
+{
+  "protocol": {
+    "benchmark": "Benchmark I circular trajectory under 15 N step force",
+    "cycles": 3,
+    "duration_s": 24.0,
+    "inner_rate_hz": 1000,
+    "effort_cost": "0.5*(U+d_seq)^T*R_bar*(U+d_seq)"
+  },
+  "results": {
+    "DI-MPC + Kalman 100 Hz": {
+      "rms_total": 0.011417028544657449,
+      "rms_contact": 0.0005289720556920744,
+      "peak_defl": 0.002581783850119938,
+      "ss_err": 4.202819826923087e-05
+    },
+    "DI-MPC + Kalman 500 Hz": {
+      "rms_total": 0.012615742970703506,
+      "rms_contact": 0.00015288143723169118,
+      "peak_defl": 0.0007690665290154236,
+      "ss_err": 2.2577355815073383e-05
+    }
+  }
+}
