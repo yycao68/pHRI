@@ -161,7 +161,8 @@ class ImpedanceMPCParams:
     # horizon_torque_constraint's frozen-at-q_k behavior (reps=N, but not
     # scheduled) rather than any extrapolation scheme — there was previously
     # a constant-velocity "coast" fallback here; removed after §7 of
-    # stable_backbone_mpc.md found it added implementation complexity
+    # horizon_schedule_comparison.py's docstring records that it added
+    # implementation complexity
     # (shadow dynamics queries, a velocity cap to tune) without any
     # measurable benefit over just freezing at q_k, which the paper can
     # already justify directly from the 20 ms horizon being too short for
@@ -209,13 +210,13 @@ class ImpedanceMPCParams:
     # this is what a naive reading of "schedule along q_d(t)" gives, but it
     # is empirically WORSE than frozen-at-q_k in the regime where the torque
     # constraint actually binds without being globally infeasible
-    # (stable_backbone_mpc.md §7): q_d(t) is the UNDISTURBED reference, and
+    # (horizon_schedule_comparison.py docstring): q_d(t) is the UNDISTURBED reference, and
     # during contact the real q deliberately deflects away from it, so
     # scheduling J_v,i/τ_ff,i purely on q_d,i can be a WORSE local model
     # than the actual current state. rho>0 blends in a decaying correction
     # toward the actual (q_k, q̇_k) so step i=0 stays exact regardless of
     # rho and later steps relax toward the reference — see the Remark in
-    # stable_backbone_mpc.md §7 for when this recovers (but does not beat)
+    # horizon_schedule_comparison.py's docstring for when this recovers (but does not beat)
     # frozen-at-q_k empirically. NOT recommended for the manuscript — kept
     # as exploratory code, see §7's conclusion.
     schedule_rho: float = 0.0
@@ -580,7 +581,8 @@ class ImpedanceMPCController:
         scheduling, q̄_i = q_d,i exactly — the arm's planned motion,
         ignoring the actual current state entirely past i=0. This is NOT
         always better than tracking the actual state (see
-        ImpedanceMPCParams.schedule_rho and stable_backbone_mpc.md §7):
+        ImpedanceMPCParams.schedule_rho and horizon_schedule_comparison.py's
+        docstring):
         during contact the real q deliberately deflects away from the
         undisturbed q_d(t), so a nonzero schedule_rho — blending in a
         decaying correction toward (q_k, q̇_k) that vanishes as i grows —
@@ -590,7 +592,8 @@ class ImpedanceMPCController:
         otherwise it uses horizon_torque_constraint's frozen-at-q_k rows
         instead (see the ImpedanceMPCParams.horizon_torque_schedule
         docstring — an earlier constant-velocity "coast" fallback lived
-        here and was removed, see stable_backbone_mpc.md §7). Does not
+        here and was removed, see horizon_schedule_comparison.py's docstring).
+        Does not
         re-integrate through the QP's own solution, which would make the
         constraint depend on the decision variable and break QP
         linearity."""

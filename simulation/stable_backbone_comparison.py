@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Impedance-backbone architecture: standard benchmark + saturation stress test.
 
-Companion code for stable_backbone_mpc.md AND for double_integrator_phri_ieee.md
+Companion code for double_integrator_phri_ieee.md
 Sec. VI-I / arXiv/phri_main.tex's "Correction-Authority Robustness" ablation
 (Table VIII). Controller IDs below match the PAPER's numbering (Table
 "Benchmarked Controllers", Sec. VI-A) -- NOT the internal "C5/C6" shorthand
-used in earlier drafts of stable_backbone_mpc.md, which predates this being
+used in earlier drafts of the retired stable_backbone_mpc.md design note, which predates this being
 folded into the manuscript and would collide with the paper's own C6
 ("DI-MPC, 500 Hz, no Kalman"). Compares three controllers on the shared FR3
 circular-trajectory + step-force scenario of phri.py:

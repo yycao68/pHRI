@@ -152,7 +152,8 @@ def precompute_joint_reference(
     so q(t) can diverge from q_d(t) exactly when the horizon constraint
     matters most. Reference scheduling assumes this gap is small enough
     over one MPC horizon to still be a better local model than freezing
-    at q_k; see stable_backbone_mpc.md §7 for the empirical check.
+    at q_k; see horizon_schedule_comparison.py's docstring for the empirical
+    #     check (retired stable_backbone_mpc.md §7).
     """
     n_steps = int(round(duration / dt)) + 1
     t_grid  = np.arange(n_steps) * dt
@@ -344,7 +345,7 @@ def make_mpc_controller(name: str, dt_sim: float, *,
     high_freq  = "500" in name
     variable   = "Variable" in name
     # "Backbone" selects the exploratory impedance-backbone architecture
-    # (stable_backbone_mpc.md): a fixed restoring/damped impedance law is
+    # (see horizon_schedule_comparison.py's docstring): a fixed restoring/damped impedance law is
     # commanded independently of the QP, which only shapes a bounded ADDITIONAL
     # correction on top, with the torque-realizability constraint extended
     # to the whole horizon (frozen-Jacobian approximation) instead of only

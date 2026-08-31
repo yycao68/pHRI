@@ -39,7 +39,6 @@ and FR3 hardware-interface code for first real-robot tests).
 | `openmanipulator_verify/` | Real-robot torque-level verification of the interaction-dynamics controller on a ROBOTIS OpenManipulator-X (4-DOF, current-control mode via the DYNAMIXEL SDK, not LeRobot). | Active |
 | `funding/` | Grant/demo material (Voryx Robotics), including a MuJoCo demo video and its MPC. | Supporting material |
 | `double_integrator_phri_ieee.md` | "Toward Interaction Dynamics: A Predictive Framework for Safe Physical Human-Robot Interaction" — a standalone IEEE-format paper draft, a sibling to the `arXiv/` split above rather than an ancestor or descendant of it. | Reference |
-| `stable_backbone_mpc.md` | Design note for the impedance-backbone (C8) controller and the horizon-scheduling investigation (a negative result, kept out of the paper) — folded into `double_integrator_phri_ieee.md`/`arXiv/phri_main.tex` as a robustness ablation. | Reference / folded in |
 | `TASE_FINAL.pdf` | Third-party related-work paper (Salt Ducaju, Olofsson, and Johansson, *IEEE T-ASE*) kept for reference/citation — not authored in this repo. | Reference (external) |
 | `paper_review_guide.md` | Internal checklist used when running a review pass over a paper draft in this repo. | Internal tooling |
 
