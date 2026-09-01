@@ -14,6 +14,7 @@
 
 \newtheorem{theorem}{Theorem}
 \newtheorem{corollary}{Corollary}
+\newtheorem{proposition}{Proposition}
 
 \begin{document}
 
@@ -29,27 +30,32 @@
 \maketitle
 
 \begin{abstract}
-When a robot controller requests behavior that its actuators cannot realize, torque clipping keeps the hardware 
-command legal but changes the behavior actually executed. Reference governors, action governors, and predictive 
-safety filters already establish the general idea of supervising a nominal controller; this paper addresses a 
-natural interface question: how to expose a common task-acceleration request while retaining each robot's 
-configuration-dependent torque geometry and making the assumptions behind behavior preservation auditable. 
-The nominal PD, impedance, trained-policy, neural-policy, or conditioned-motion interface runs at 1~kHz. 
-A 50~Hz manager maps its requested acceleration through a robot-specific realization model, predicts an 
-uncertainty-tightened feasible set, and returns a minimum-cost behavior-coordinate correction when the QP 
-is feasible; a final projection remains as a fast actuator guard. A one-step lemma specializes 
-certificate-refinement logic to this interface through three conditions: torque-prediction accuracy, 
-actuator margin, and behavior-successor mismatch; a corollary identifies the additional drift bound 
-required by the two-rate signal. These are implementation contracts rather than a new general 
-safety-filter or certificate-transfer theory. In 111 deterministic reduced-order runs, full-horizon 
-enforcement removes a predicted 3.587~Nm future torque violation left by first-step-only enforcement. 
-Under deterministic held-out synthetic plant perturbations, a sampled start/end audit reports positive 
-T1 and T2 slacks and maximum $\ell_\infty$ T3 defects below 0.0069~m/s against a 0.03~m/s budget for 
-three realization maps. A matched horizon trajectory-reference governor achieves comparable constraint 
-handling in the successful cases; the proposed vector correction has lower correction RMSE in three of 
-the four successful or horizon-isolation cases, but not in all scenarios. Abrupt disturbance and severe 
-mismatch violate the audit premises for both predictive architectures. The study demonstrates and 
-falsifies the proposed interface contract in a controlled benchmark.
+When a robot controller requests behavior its actuators cannot realize, torque clipping keeps the
+hardware command legal but silently changes the behavior executed: the robot is no longer running
+the PD, impedance, or learned law that was designed or trained, and nothing in the loop announces
+it. This matters directly in physical interaction, where the requested acceleration sets apparent
+compliance and disturbance response. We present a behavior-coordinate realization interface that
+detects and corrects this condition before clipping is reached. Heterogeneous nominal controllers
+expose a common task-acceleration request at servo rate; a slower manager reconstructs the
+executing robot's configuration-dependent torque-feasible set, predicts loss of realizability over
+a short horizon, and returns a minimum-cost correction in the same behavior coordinates, with a
+fast projection retained as a last-resort actuator guard. The interface is designed to be
+auditable in deployment: three measurable conditions --- torque-prediction accuracy, actuator
+margin, and behavior-successor mismatch --- decide online whether the acceleration-to-torque
+interface can currently be trusted, and a one-step result establishes that the behavior
+certificate is preserved whenever they hold. A corollary gives the additional torque-drift and
+averaged-request conditions required by the two-rate implementation.
+A 111-run deterministic study evaluates the interface across five nominal-controller forms, three
+realization maps, eight stress scenarios, and a matched horizon trajectory-reference governor.
+Full-horizon enforcement removes a 3.587~Nm predicted future torque violation and 31.180~mm of
+workspace excess that first-step-only enforcement leaves behind. Under held-out plant
+perturbations the audit reports positive margins with maximum $\ell_\infty$ successor defects
+below 0.0069~m/s against a 0.03~m/s budget across all three realization maps. Against the matched
+governor the proposed vector correction attains lower correction RMSE in three of the four
+non-failure cases. The study also reports the conditions under which the interface fails:
+abrupt disturbance and severe model mismatch violate the audit premises for both predictive
+architectures, leaving only the reactive fallback. The benchmark is reduced-order and synthetic;
+scope and the resulting limits on generality are stated in Section~\ref{sec:discussion}.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -79,7 +85,7 @@ The manager does not choose the task and does not replace the controller. Becaus
 
 A one-step check answers ``is the command legal right now?'' That is not the same question as ``does this planned sequence remain legal?'' Position and velocity carry forward, so a future constraint can require changing acceleration before the limiting step arrives. This distinction is standard in predictive constraint management \cite{r3,r5,r16,r17,r18}. Fig.~\ref{fig:horizon} isolates its role inside the proposed interface: constraining every predicted move eliminates the planned torque excess in the horizon-ramp case, while constraining only the first move leaves a 3.587~Nm future violation and 31.180~mm of workspace excess (Section~\ref{sec:anticipatory}).
 
-Feedback linearization to a double-integrator-like behavior model is classical \cite{r1,r2}. Reference governors, generalized action governors, predictive safety filters, anti-windup control, model-predictive constraint handling, and task-space capacity polytopes are established \cite{r3,r4,r5,r6,r7,r16,r17,r18,r19,r20}. We claim none of them. The double integrator, the QP, and ray-to-polytope authority calculation are implementation ingredients, not standalone contributions.
+Feedback linearization to a double-integrator-like behavior model is classical \cite{r1,r2}. Reference governors, generalized action governors, predictive safety filters, anti-windup control, model-predictive constraint handling, and task-space capacity polytopes are established \cite{r3,r4,r5,r6,r7,r16,r17,r18,r19,r20}; the double integrator, the QP, and the ray-to-polytope authority calculation are used here as implementation ingredients. The contribution is their arrangement into an auditable interface, described next.
 
 The question we do ask is this:
 
@@ -92,8 +98,8 @@ The proposed answer is an interface decomposition, not a new class of constraine
 \textbf{Contributions.}
 \begin{enumerate}
 \item A behavior-coordinate realization interface in which heterogeneous nominal controllers expose the same task-acceleration request while every executing robot retains its own configuration-dependent acceleration-to-torque map and feasible set.
-\item A two-rate implementation that corrects the behavior request predictively, recomputes the robot-specific realization map on the fast path, and reports both scalar torque headroom and directional acceleration authority; these components are assembled to preserve the interface rather than proposed as new governor, MPC, or polytope theory.
-\item An actuator-realization specialization of one-step certificate refinement, separating torque-prediction accuracy (T1), actuator margin (T2), and behavior-successor mismatch (T3), together with a minimal velocity-certified action set enforced in the QP. A separate corollary states the additional torque-drift and averaged-request conditions needed by the two-rate implementation. These are checkable interface conditions, not a general certificate-transfer theorem.
+\item A two-rate implementation that corrects the behavior request predictively, recomputes the robot-specific realization map on the fast path, and reports both scalar torque headroom and directional acceleration authority; the components are assembled to preserve the interface across heterogeneous controllers and robots.
+\item An actuator-realization specialization of one-step certificate refinement, separating torque-prediction accuracy (T1), actuator margin (T2), and behavior-successor mismatch (T3), together with a minimal velocity-certified action set enforced in the QP. A separate corollary states the additional torque-drift and averaged-request conditions needed by the two-rate implementation. These are conditions an implementation can evaluate online.
 \item A reproducible 111-run reduced-order study, including a matched horizon trajectory-reference-governor comparison, deterministic held-out plant perturbations, repeated anchor cases across matrices, five controller interfaces, three realization maps, eight stress scenarios, the T1--T3 audit, and explicit negative cases (parameters and complete artifacts in the supplementary archive).
 \end{enumerate}
 
@@ -110,7 +116,7 @@ reference/action governors or predictive safety filters cannot implement the sam
 \centering
 \footnotesize
 \setlength{\tabcolsep}{3pt}
-\begin{tabular}{@{}p{1.7cm}p{5.3cm}p{0.7cm}@{}}
+\begin{tabular}{@{}p{1.65cm}p{5.05cm}p{1.0cm}@{}}
 \toprule
 Symbol & Meaning in words & Units \\
 \midrule
@@ -129,7 +135,7 @@ $p,v$ & task position and velocity, propagated directly & m, m/s \\
 $z=[p;v]$ & task state & --- \\
 $e_c=p-p_r(t)$ & a controller's own tracking error against its reference $p_r(t)$; internal to the controller, not part of $z$ & m \\
 $\mathcal X$ & running workspace-and-speed box on $z$ & --- \\
-$H(x)$ & maps a requested acceleration to the torque it costs & Nm\,s$^2$/m \\
+$H(x)$ & maps a requested acceleration to the torque it costs & Nm\,s$^2$\!/m \\
 $\mathcal A(x)$ & accelerations that are interface-realizable --- legal through $H(x)$ and $\tau_{\mathrm{base}}(x)$ --- at this configuration & m/s$^2$ \\
 $\mathcal A^{\mathrm{tight}}(x)$ & same set, shrunk by the uncertainty margin & m/s$^2$ \\
 $\bar\delta_\tau$ & how far the real torque can differ from the prediction & Nm \\
@@ -268,8 +274,9 @@ Call the set of $a$ satisfying \eqref{eq:iv1} the \textbf{feasible request set} 
 
 \textbf{Interface consistency.} The nominal interface supplies a requested task acceleration $a^0$, either directly --- as every controller evaluated in Section~\ref{sec:experiments} does --- or, for an opaque torque-only controller, through a robot-specific conversion satisfying the residual bound below. The induced nominal torque is
 \[
-\tau^0=\tau_{\mathrm{base}}(x)+H(x)(a^0-G_F(x)F_h)+r_\tau(x),
-\qquad
+\tau^0=\tau_{\mathrm{base}}(x)+H(x)\!\left(a^0-G_F(x)F_h\right)+r_\tau(x),
+\]
+\[
 |r_\tau(x)|\le\bar r_\tau,
 \]
 where $r_\tau$ is an interface-consistency residual, bounded by the tightening margin $\bar\delta_\tau$ below; the five interfaces evaluated in Section~\ref{sec:experiments} are constructed so $r_\tau\equiv0$.
@@ -576,6 +583,8 @@ Table~\ref{tab:controllers} separates the manager's deliberate correction ($a_{\
 \centering
 \footnotesize
 \setlength{\tabcolsep}{3pt}
+\setlength{\tabcolsep}{2pt}
+\resizebox{\columnwidth}{!}{%
 \begin{tabular}{@{}lcccc@{}}
 \toprule
 Interface & \shortstack{Correction\\RMSE (m/s$^2$)} & \shortstack{Tracking defect\\RMSE (m/s$^2$)} & \shortstack{Workspace\\excess (mm)} & Audit \\
@@ -586,7 +595,7 @@ Trained policy & 0.652 & 0.0111 & 0.016 & Pass \\
 Fitted neural policy & 0.649 & 0.0111 & 0.001 & Pass \\
 Cond.\ motion primitive & 0.830 & 0.0111 & 0.006 & Pass \\
 \bottomrule
-\end{tabular}
+\end{tabular}}
 \end{table}
 
 \subsection{Sampled interface audit across realization maps}
@@ -626,6 +635,9 @@ The pass/fail label in Tables~\ref{tab:scenarios} and~\ref{tab:controllers} come
 Fig.~\ref{fig:ablation} isolates the four design choices central to the paper. Full-horizon enforcement keeps the horizon-ramp QP feasible and removes the 3.587~Nm planned violation left by first-step-only enforcement. Removing uncertainty tightening creates 0.0958~Nm of pre-clip excess; removing the final projection creates 10.456~Nm of applied excess under sudden disturbance. In the dedicated velocity-bound case, enforcing $\mathcal K_v$ limits peak speed to 0.5678~m/s, versus 0.5968~m/s without it. Appendix~\ref{app:params} gives the complete 17-run ablation ledger, secondary results, and wall-clock computation figures.
 
 \section{Discussion}
+\label{sec:discussion}
+
+\emph{Scope of the contribution.} The double integrator, the QP, the ray-to-polytope authority calculation, and one-step certificate refinement are all established; none is claimed as new. What is offered is their arrangement into an interface with an explicit, online-checkable boundary between behavior preservation and physical realization, together with the conditions (T1)--(T3) that decide when that boundary holds. Theorem~\ref{thm:transfer} is a specialization of robust one-step refinement to this interface rather than a general certificate-transfer theorem, and the benchmark is a reduced-order synthetic study rather than a hardware evaluation.
 
 The experiments support an interface claim, not the claim that a new safety controller works for every robot. The behavior-coordinate optimization and empirical audit threshold remain unchanged across the implemented controller interfaces and realization maps, while each map reconstructs its own feasible set and error bounds. This separation is the demonstrated contribution. It does not establish that an action governor or predictive safety filter could not use the same coordinates; Table I identifies that unresolved relationship explicitly.
 
@@ -663,7 +675,7 @@ This appendix lists the constants needed to reproduce the numbers in Section~\re
 \end{align*}
 where $s_{\mathrm{mm}}$ is the scenario's mismatch-scale multiplier (1.0 for the cross-realization cases reported here, up to 2.4 for model mismatch elsewhere in Section~\ref{sec:experiments}), ranging from 0.0300 to 0.0926~Nm over the audit; this is $\bar\delta_\tau(a,F_h)$, the action-dependent bound of Section~\ref{sec:realizable}, not the QP's own more conservative $\bar\delta_\tau^{\mathrm{QP}}$. The held-out true plants are then generated with seeds 31, 37, and 41 for planar 2R, FR3-inspired, and six-axis-arm maps. Their independent coefficients satisfy $|c_H|\le0.0065<0.008$ and base-error amplitudes in $[0.012,0.027]$~Nm${}<0.03$~Nm, with independently sampled phases and frequencies; these realized values are never passed to the manager. Table~\ref{tab:audit} reports the resulting (T1) and (T2) slacks directly. This is a deterministic held-out test within a prescribed synthetic coefficient box, not identification of that box from physical data.
 
-\textbf{Baseline architectures.} Reactive 1~kHz projection: exact Euclidean projection onto the intersection of the current-step tightened torque halfspaces and a relative-degree-two box control-barrier-function halfspace set with decay rate $\lambda=8$ (\texttt{reactive\_state\_halfspaces}), i.e.\ position rows $\mp a\le\pm2\lambda v+\lambda^2(\mathrm{pos}_{\max}\mp p)$ and speed rows $\mp a\le\lambda(v_{\max}\mp v)$. Matched horizon trajectory-reference governor: at each manager tick, \texttt{governor\_scale} uses bisection to find the largest $\alpha\in[0,1]$. For each candidate it rolls the state through all $N=12$ steps, evaluates the nominal controller against $p+\alpha(p_r-p)$, and checks the same scheduled actuator limits, uncertainty-tightened torque halfspaces, workspace, speed bounds, measured-force hold, model, 20~ms update, and 0.24~s horizon as the proposed manager. The first governed reference is held until the next manager tick and its requested acceleration is passed through the same reactive projection. This is an ERG-style same-model comparator motivated by \cite{r17}, but it directly searches finite-horizon constraint feasibility rather than reproducing \cite{r17}'s Lyapunov/dynamic-safety-margin law.
+\textbf{Baseline architectures.} Reactive 1~kHz projection: exact Euclidean projection onto the intersection of the current-step tightened torque halfspaces and a relative-degree-two box control-barrier-function halfspace set with decay rate $\lambda=8$ (\texttt{reactive\_state\_halfspaces}), i.e.\ position rows $\mp a\le\pm2\lambda v+\lambda^2(\mathrm{pos}_{\max}\mp p)$ and speed rows $\mp a\le\lambda(v_{\max}\mp v)$. Matched horizon trajectory-reference governor: at each manager tick, \texttt{governor\_scale} uses bisection to find the largest $\alpha\in[0,1]$. For each candidate it rolls the state through all $N=12$ steps, evaluates the nominal controller against $p+\alpha(p_r-p)$, and checks the same scheduled actuator limits, uncertainty-tightened torque halfspaces, workspace bound, measured-force hold, model, 20~ms update, and 0.24~s horizon as the proposed manager. One bound is deliberately \emph{not} matched: the governor is checked against the untightened speed limit $v_{\max}=0.60$~m/s, whereas the proposed manager additionally enforces the velocity certificate and is therefore held to $v_{\max}-\epsilon_v=0.57$~m/s, a 5\% tighter bound. The comparison is thus conservative toward the proposed method: its lower correction RMSE in Table~\ref{tab:scenarios} is obtained under a strictly smaller admissible set than the comparator enjoys. The first governed reference is held until the next manager tick and its requested acceleration is passed through the same reactive projection. This is an ERG-style same-model comparator motivated by \cite{r17}, but it directly searches finite-horizon constraint feasibility rather than reproducing \cite{r17}'s Lyapunov/dynamic-safety-margin law.
 
 \textbf{Directional-authority metric.} $\alpha^+$ (Section~\ref{sec:reports}) is a function of a chosen direction $y$. Fig.~\ref{fig:directional} reports it along the fixed, exogenous disturbance direction rather than the manager's own correction direction, which is endogenous --- it can change discontinuously as the manager's own output changes --- and so is not directly comparable across methods or time; both use the same halfspace-ray construction.
 
@@ -721,9 +733,142 @@ MPLCONFIGDIR=/tmp/mpl-saturation \textbackslash\\
 \ \ PYTHONPATH=simulation \textbackslash\\
 \ \ python3 simulation/run\_all\_experiments.py
 \end{quote}
-The command writes \texttt{results/all\_experiment\_metrics.json} and the figures used in Section~\ref{sec:experiments}.
+The command writes \texttt{results/\allowbreak all\_experiment\_\allowbreak metrics.json}
+and the figures used in Section~\ref{sec:experiments}.
 
 \balance
+
+\section{An A Priori Bound for Condition (T3)}
+\label{app:t3bound}
+
+Section~\ref{sec:certificate} verifies (T3) by measurement. This appendix
+discharges the decomposition sketched there into an \emph{a priori} sufficient
+condition: if the five constants below are known for a given robot and
+operating region, (T3) holds without being checked online. The benchmark of
+Section~\ref{sec:experiments} does not evaluate these constants --- it measures
+the aggregate defect instead --- so what follows is a route to replacing that
+measurement, not a description of it.
+
+\subsection{Assumptions}
+
+Throughout, $\mathcal O$ denotes the verified operating region, all norms are
+$\ell_\infty$ on task quantities and induced norms on matrices, and $\Delta t$
+is the manager period with $T_f$ the fast period ($\Delta t=n_fT_f$).
+
+\begin{enumerate}
+\item[(A1)] \textbf{Regularity.} $J(q)$ has full row rank on $\mathcal O$ with
+$\lambda_{\min}(JM^{-1}J^\top)\ge\underline\lambda>0$ and
+$\lambda_{\max}(JM^{-1}J^\top)\le\bar\lambda$; also
+$\sigma_{\max}(J)\le\bar\sigma_J$ and $\lambda_{\min}(M)\ge\underline\mu>0$.
+This is the standing assumption of Section~\ref{sec:realizable}, quantified.
+\item[(A2)] \textbf{Bounded motion.} $\|\dot x\|\le V_x$ on $\mathcal O$.
+\item[(A3)] \textbf{Lipschitz realization.} The map from state to realized task
+acceleration under a held torque is Lipschitz on $\mathcal O$ with constant
+$L_a$; that is, holding $\tau$ fixed, $\|\ddot p(x)-\ddot p(x')\|\le L_a\|x-x'\|$.
+\item[(A4)] \textbf{Secondary-torque consistency defect.}
+$\|JM^{-1}N_\tau\|\le\kappa_{\mathrm{sec}}$ and
+$\|\tau_{\mathrm{sec}}\|\le T_{\mathrm{sec}}$ on $\mathcal O$. Exact dynamic
+consistency is $\kappa_{\mathrm{sec}}=0$.
+\item[(A5)] \textbf{Bounded model errors.} The force-model error satisfies
+$\|\delta_F\|\le\bar\delta_F$ and the torque-realization error
+$\|\delta_\tau\|\le\bar\delta_\tau$, the latter being the same bound already
+used for tightening in (T1)--(T2).
+\end{enumerate}
+
+\subsection{The bound}
+
+\begin{proposition}[A priori (T3) satisfaction]
+\label{prop:t3}
+Let the manager hold its correction over $[t_k,t_{k+1}]$ and let $\bar a_k$ be
+the interval-averaged request of Corollary~\ref{cor:tworate}. Under
+\textnormal{(A1)--(A5)}, if
+\begin{equation}
+\Delta t\left(\eta_{\mathrm{disc}}+\eta_{\mathrm{hold}}
++\eta_{\mathrm{sec}}+L_F\bar\delta_F+L_\tau\bar\delta_\tau\right)
+\ \le\ \epsilon_v ,
+\label{eq:t3bound}
+\end{equation}
+with the five terms given by
+\begin{align}
+\eta_{\mathrm{disc}}&=L_aV_xT_f, &
+\eta_{\mathrm{hold}}&=\sup_{t}\|a_f(t)-\bar a_k\|, \nonumber\\
+\eta_{\mathrm{sec}}&=\kappa_{\mathrm{sec}}T_{\mathrm{sec}}, &
+L_F&=\bar\lambda, \nonumber\\
+L_\tau&=\bar\sigma_J/\underline\mu, & &
+\label{eq:t3terms}
+\end{align}
+then \textnormal{(T3)} holds for that interval, and the conclusion of
+Theorem~\ref{thm:transfer} follows without measuring the successor defect.
+\end{proposition}
+
+\begin{IEEEproof}
+Write the realized task acceleration as $\ddot p(t)=\bar a_k+e(t)$. Since the
+abstract successor is $F_v(\Pi(x_k),\bar a_k)=v_k+\Delta t\,\bar a_k$ and the
+physical successor is $v_k+\int_{t_k}^{t_{k+1}}\ddot p(t)\,dt$, the (T3) defect
+is exactly $\bigl\|\int_{t_k}^{t_{k+1}}e(t)\,dt\bigr\|\le\Delta t\sup_t\|e(t)\|$.
+It remains to bound $\|e(t)\|$ by the bracketed sum.
+
+By (A1) the realization law \eqref{eq:iv0a} gives $\ddot p=a$ exactly when the
+model is exact, the torque is unclipped --- guaranteed here by (T1)--(T2) --- and
+the map is evaluated at the current state. Each bracketed term is one departure
+from that identity, and the departures are additive in acceleration:
+
+\emph{Discretization.} Within a fast period the realization map is held at its
+value at the sample instant while the state moves by at most $V_xT_f$ by (A2);
+(A3) converts this to an acceleration error $L_aV_xT_f$.
+
+\emph{Hold.} The manager predicts with the single value $\bar a_k$ while the
+fast loop applies $a_f(t)$; the instantaneous discrepancy is
+$\|a_f(t)-\bar a_k\|$ by definition. (Its integral vanishes by the definition of
+$\bar a_k$, so this term may be replaced by zero when the QP is posed on the
+interval average; it is retained for implementations that predict with
+$a_f(t_k)$.)
+
+\emph{Secondary torque.} The secondary term contributes $JM^{-1}N_\tau\tau_{\mathrm{sec}}$
+to task acceleration, which is zero under exact dynamic consistency and at most
+$\kappa_{\mathrm{sec}}T_{\mathrm{sec}}$ under (A4).
+
+\emph{Force model.} An uncompensated force error $\delta_F$ enters task
+acceleration through $\Lambda^{-1}=JM^{-1}J^\top$, whose norm is at most
+$\bar\lambda$ by (A1), giving $\bar\lambda\bar\delta_F$.
+
+\emph{Torque.} A torque error $\delta_\tau$ enters through $JM^{-1}$, and
+$\|JM^{-1}\|\le\sigma_{\max}(J)/\lambda_{\min}(M)\le\bar\sigma_J/\underline\mu$
+by (A1), giving $(\bar\sigma_J/\underline\mu)\bar\delta_\tau$.
+
+Summing and multiplying by $\Delta t$ yields \eqref{eq:t3bound}.
+\end{IEEEproof}
+
+\subsection{Reading the bound}
+
+Three properties are worth noting.
+
+First, \eqref{eq:t3bound} is \emph{sufficient, not necessary}: it bounds each
+source by its worst case over $\mathcal O$ and adds them, so it is conservative
+by construction. A measured defect well inside the budget --- as in
+Section~\ref{sec:sampled} --- is consistent with \eqref{eq:t3bound} being tight
+or violated, and the two are not interchangeable evidence.
+
+Second, the bound is \emph{actionable in design}. Every term is a quantity a
+designer controls: $\eta_{\mathrm{disc}}$ falls linearly with the fast period,
+$\eta_{\mathrm{hold}}$ vanishes if the QP is posed on the interval average,
+$\eta_{\mathrm{sec}}$ vanishes under exact dynamic consistency, and the last two
+scale linearly with the declared force- and torque-error boxes. The manager
+period enters as an overall factor, which is the formal counterpart of the
+empirical observation that the slower rate is adequate only over a restricted
+operating region.
+
+Third, it \emph{closes the loop with (T1)}. The same $\bar\delta_\tau$ that
+tightens the actuator box in (T2) appears in the last term, so a single declared
+torque-error budget governs both the actuator margin and the certificate margin;
+they cannot be tuned independently.
+
+Establishing the constants $L_a$, $V_x$, $\kappa_{\mathrm{sec}}$, $\bar\lambda$,
+$\bar\sigma_J$ and $\underline\mu$ for a full rigid-body robot over a stated
+operating region is an identification task this paper does not perform, and it is
+the substantive obstacle between the audited interface reported here and a
+deployment-time guarantee.
+
 
 \begin{thebibliography}{21}
 
