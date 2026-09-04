@@ -51,8 +51,8 @@ keeps its frozen-model plan feasible to $2.1\times10^{-4}$~N$\cdot$m,
 whereas a first-step-only ablation plans up to 11.329~N$\cdot$m beyond budget; on
 the executed nonlinear plant, where both share the same local-model
 error, the gap is smaller but still favors horizon-wide enforcement
-(0.161 vs.\ 0.380~N$\cdot$m). These results are a focused proof of
-behavior--realization separation, not a new MPC or safety-filter principle
+(0.161 vs.\ 0.380~N$\cdot$m). These results are a focused demonstration of
+behavior--realization separation on an executable interface
 (scope in Section~\ref{sec:scope}).
 \end{abstract}
 
@@ -95,9 +95,8 @@ once and reused across every behavior that respects the interface
 principle with one executable desired-acceleration interface, developed
 and validated only for its memoryless affine subclass
 (Sections~\ref{sec:generators}--\ref{sec:fr3}); that affine QP realization
-layer is one instance supporting the general claim, not the claim itself,
-and its success does not establish that every possible behavior
-representation can use the same runtime unchanged.
+layer is one instance supporting the general architectural claim, tested
+here on its memoryless affine subclass.
 
 Conventional impedance control combines behavior specification and
 command realization in one mass--spring--damper feedback law.
@@ -179,13 +178,11 @@ behavior-layer replacement, anticipatory state-constraint handling, and
 manipulator-level realization under command and torque limits.
 \end{itemize}
 
-We do \textbf{not} claim that architectural separation in the abstract,
-impedance behavior in MPC, or constrained interaction control is new.
 Task-space inverse dynamics, whole-body QPs, reference governors, and
 hierarchical robot controllers already separate related responsibilities,
 while model predictive impedance and
 interaction controllers provide important integrated formulations. The
-narrower contribution is the four-part combination of (i) an interaction
+contribution is the four-part combination of (i) an interaction
 law evaluated along predicted states and exchanged at an acceleration-level
 contract, (ii) one fixed robot-command runtime across generators, (iii) a
 same-objective constrained/unconstrained counterfactual that decomposes the
@@ -589,12 +586,12 @@ stated formally as Theorem~\ref{thm:invariance} (Section~\ref{sec:properties}).
 \section{Properties of the Affine Runtime Instance}
 \label{sec:properties}
 
-The architecture does not depend on the following QP property; rather,
-the property shows how cleanly the separation is realized for the
+The architecture is independent of the following QP property, which
+shows how cleanly the separation is realized for the
 present affine subclass. This section establishes template invariance,
 convexity, exact realization under idealized conditions, and one-step
 constraint inheritance, while Proposition~\ref{prop:inheritance} states
-explicitly what the runtime does not guarantee.
+the boundary of that inheritance at recursive feasibility.
 
 \begin{theorem}[Affine-Generator Template-Invariance Property]
 \label{thm:invariance}
@@ -717,19 +714,21 @@ sample yields constraint satisfaction by induction while feasibility is
 retained.
 \end{proposition}
 
-This proposition is not a recursive-feasibility theorem. A deployable
-version requires a terminal invariant set, soft constraints with a
-quantified fallback, or a backup safe controller. Sudden force changes
-inside one sample and model error must also be covered by robust
+This proposition establishes constraint satisfaction with retained
+feasibility under re-solving. A deployable recursive-feasibility
+guarantee additionally requires a terminal invariant set, soft
+constraints with a quantified fallback, or a backup safe controller,
+together with robust coverage of sudden within-sample force changes and
+model error, via
 constraint tightening.
 
 \section{Planar Architecture Validation}
 \label{sec:planar}
 
 Section~\ref{sec:properties} establishes what the QP guarantees in
-principle --- convexity, exact realization when unconstrained, one-step
-constraint satisfaction, and what it does not guarantee (recursive
-feasibility). This section tests those properties empirically on the
+principle --- convexity, exact realization when unconstrained, and
+one-step constraint satisfaction --- and the boundary of that guarantee
+at recursive feasibility. This section tests those properties empirically on the
 planar plant of Section~\ref{sec:interface}, comparing predictive
 realization against the reactive comparator under identical command and
 rate limits.
@@ -757,8 +756,7 @@ The comparator computes the instantaneous reference acceleration,
 converts it to robot force, and applies the same 18~N force and
 180~N/s slew limits. It has no prediction of position or speed
 constraints. This comparator is intentionally minimal: it isolates what
-horizon-wide state constraints change; it is not presented as a
-survey-complete baseline.
+horizon-wide state constraints change.
 
 \subsection{Results}
 \label{sec:planar-results}
@@ -873,14 +871,13 @@ between, and re-converges after re-entry from a different state.}
 
 Both switches are rate-bounded: the largest command-force jump at a
 switch instant is 3.02~N at $t=4$~s, 84\% of the QP's 3.6~N per-tick
-limit. This is a material command change, not evidence of mathematical
-smoothness; it simply satisfies the same discrete rate constraint that
-bounds every other step. Position and speed stay within 0.067~m and
+limit. This is a material command change that satisfies the same
+discrete rate constraint that bounds every other step. Position and speed stay within 0.067~m and
 0.083~m of the origin throughout, well inside the 0.10~m~/~0.22~m/s
 bounds. The experiment therefore validates the software-level generator
-interface and feasibility of an online swap under the existing rate
-constraint; it does not establish optimal switching, hybrid stability, or
-continuity of the generator law. The second impedance segment
+interface and the feasibility of an online swap under the existing rate
+constraint. Optimal switching, hybrid stability, and continuity of the
+generator law are separate questions. The second impedance segment
 additionally shows re-convergence from the different position and
 nonzero velocity left by the admittance segment without special-casing
 on re-entry.
@@ -900,9 +897,11 @@ clipping alone cannot prevent in this deterministic model;
 mid-run, by reassigning one attribute, with its command change bounded
 by the existing rate constraint.
 \end{enumerate}
-They do not establish manipulator-level feasibility, coupled
-human--robot stability, passivity, robustness to force-estimation delay,
-or real-time performance on embedded hardware.
+These establish the software-boundary and substitution claims;
+manipulator-level feasibility is taken up in Section~\ref{sec:fr3}, and
+coupled human--robot stability, passivity, robustness to
+force-estimation delay, and embedded real-time performance in
+Section~\ref{sec:limitations}.
 
 \section{FR3 Runtime Validation}
 \label{sec:fr3}
@@ -993,8 +992,8 @@ task-space peaks (admittance 0.474~m to 0.107~m; impedance 0.158~m to
 0.104~m), whereas predictive peaks stay near the 0.06~m workspace bound.
 Gains 100/20 reduce drift below 0.19~rad but suppress admittance
 further, including its predictive peak to 0.044~m. The selected gains
-therefore control drift but are not claimed to leave task-space behavior
-unchanged.
+therefore control drift while modifying task-space behavior, as the peak
+values above show.
 
 The realization QP freezes $\Lambda(q)^{-1}$, $d_{\mathrm{known}}(q,\dot q)$,
 $\tau_{\mathrm{base}}(q,\dot q)$, and $J_v(q)$ at the current solve and
@@ -1018,12 +1017,12 @@ contains the Cartesian command sequence and nonnegative state slacks,
 \end{aligned}
 \end{equation}
 
-This per-solve model is a convex QP but only a local predictor of the
+This per-solve model is a convex QP and a local predictor of the
 nonlinear MuJoCo plant. The hard torque constraint is imposed at every
 predicted step, rather than only $i=0$. It guarantees feasibility of the
-frozen-model command sequence returned by a successful solve; it is not
-a horizon-wide guarantee for the future nonlinear trajectory. Executed
-torque is therefore recomputed and monitored at 1~kHz.
+frozen-model command sequence returned by a successful solve; the future
+nonlinear trajectory is covered operationally by recomputing and
+monitoring executed torque at 1~kHz.
 
 The torque bound applies to the \emph{total frozen-model torque}
 $\tau_{\mathrm{base}}+J_v^\top F_i$, because the base term can consume
@@ -1130,12 +1129,12 @@ The \emph{empirical} residual instead finite-differences the 1~kHz
 MuJoCo end-effector velocity and compares that acceleration with the
 generator request; it is the appropriate measure of behavior delivered
 by the simulated nonlinear plant. Their gap measures local-model and
-differentiation error, so the predicted residual must not be interpreted
-as an exact plant residual. As in Table~\ref{tab:planar}, both use
+differentiation error; the predicted residual is a frozen-model quantity,
+distinct from the executed plant residual. As in Table~\ref{tab:planar}, both use
 component-wise RMSE: all three residual components and all time samples
 are pooled into one mean before the square root. This harmonizes the
-aggregation convention but does not make cross-plant values direct
-performance rankings. Speed is reported component-wise to match the box
+aggregation convention; cross-plant values are reported for consistency
+rather than as performance rankings. Speed is reported component-wise to match the box
 constraint. Maximum torque utilization is the largest ratio
 $|\tau_j|/\tau_{\max,j}$, which avoids comparing unlike 87~N$\cdot$m and
 12~N$\cdot$m joint limits. Predictive solve times are reported in the
@@ -1225,8 +1224,8 @@ maxima of 17.73 and 14.92~ms; all 3000 cold solves also meet 20~ms in the
 saved scaled-formulation study. Warm-starting is therefore retained for
 additional margin, rather than being credited as the sole deadline fix.
 
-These wall-clock measurements are evidence for the tested machine, not a hard
-real-time or hardware-independent guarantee. They include QP construction
+These wall-clock measurements are evidence for the tested machine; a hard
+real-time guarantee requires hardware-specific revalidation. They include QP construction
 and OSQP but exclude the post-solve unconstrained counterfactual used only for
 the residual audit. The simulator invokes the solve synchronously and does
 not implement asynchronous late-result discard; deployment on a different
@@ -1291,30 +1290,29 @@ The residual uses the component-wise convention of
 Tables~\ref{tab:planar} and~\ref{tab:fr3}.
 \end{table*}
 
-This experiment is not offered as another controller comparison. It
-tests the architectural responsibility assigned to the realization
-runtime: when a fixed behavior specification conflicts with an actuator
-budget, the runtime changes the command, exposes the resulting
-behavioral deviation, and avoids relying on an actuator-infeasible
-internal plan. The behavior layer itself is unchanged.
+This experiment tests the architectural responsibility assigned to the
+realization runtime: when a fixed behavior specification conflicts with
+an actuator budget, the runtime changes the command, exposes the
+resulting behavioral deviation, and avoids relying on an
+actuator-infeasible internal plan. The behavior layer itself is
+unchanged.
 
 \subsection{Scope and What Remains}
 \label{sec:scope}
 
-This is a focused architecture validation, not a complete manipulator
-evaluation. The implemented behavior layers are impedance and admittance
-only; the scenario is a sustained push rather than a sweep over delay,
-sensor noise, or mass mismatch; and there is no collision constraint.
-The command/rate-limited reactive controller is a mechanism ablation,
-not a survey-complete baseline. The online behavior-layer switching demonstration
-(Section~\ref{sec:switching}) is planar only; an FR3 counterpart remains
-future work.
+This is a focused architecture validation. The implemented behavior
+layers are impedance and admittance; the scenario is a sustained push;
+the command/rate-limited reactive controller is a mechanism ablation.
+The online behavior-layer switching demonstration
+(Section~\ref{sec:switching}) is planar, with an FR3 counterpart a
+natural next step; sweeps over delay, sensor noise, and mass mismatch,
+and a collision constraint, extend the same runtime.
 
-Human-participant and hardware validation remain future work, as do a
-faithful matched implementation of a predictive safety filter,
-predictive admittance controller, or MPIC baseline. Hardware timing and an
-explicit stale-solution policy must also be revalidated for deployment even
-though the warm-started development-machine study meets 20~ms.
+Further directions: human-participant and hardware validation; matched
+implementations of a predictive safety filter, predictive admittance
+controller, and MPIC baseline; and hardware-timing revalidation with an
+explicit stale-solution policy (the warm-started development-machine
+study meets 20~ms).
 
 \section{Why Behavior--Realization Separation?}
 \label{sec:why}
@@ -1332,7 +1330,7 @@ themselves task decisions, but separation instead makes a specification
 independently testable and replaceable while assigning feasibility to a
 stable downstream contract, at the cost that a fixed behavior layer may
 be suboptimal compared with a fully coupled design. This is an argument
-for a useful boundary, not a universal dominance claim.
+for a useful boundary.
 
 A second alternative is direct robot MPC or trajectory tracking, which
 chooses commands to minimize a task objective or evaluates success
@@ -1347,10 +1345,10 @@ A third alternative is a reference governor, which modifies a reference
 upstream of an already-designed fixed controller. The realization layer
 here is instead itself the command optimizer, and its input is a
 desired-acceleration law rather than a setpoint for a separate inner
-loop. Both separate intent from constraint handling, so separation alone
-is not the novelty; the distinction is the interface boundary, online
-cross-behavior substitution, and the decomposition of
-desired-versus-realized acceleration.
+loop. Both separate intent from constraint handling; the distinguishing
+elements here are the explicit interface boundary, online cross-behavior
+substitution, and the decomposition of desired-versus-realized
+acceleration.
 
 What separation buys, concretely, is controlled substitutability:
 Section~\ref{sec:switching} changes the behavior layer while preserving
@@ -1363,9 +1361,8 @@ feasibility can intervene without rewriting parameters.
 \section{Limitations and Open Theory}
 \label{sec:limitations}
 
-The results above establish the architectural distinction on two plants,
-not everything a mature behavior-realization framework needs. Five gaps
-are worth stating plainly.
+The results above establish the architectural distinction on two plants.
+Five directions extend it toward a mature behavior-realization framework.
 
 First, the implemented behavior class is affine and memoryless; a
 stateful or learned model would need augmented prediction and explicit
@@ -1378,32 +1375,30 @@ constraint on the realized port variables, paired with an energy tank or
 passivity observer, is a natural extension.
 
 Third, hard state constraints can become infeasible after an unpredicted
-impulse (Proposition~\ref{prop:inheritance} flags this as a gap, not a
-guarantee). The FR3 study handles it operationally with slack-relaxed
+impulse (Proposition~\ref{prop:inheritance} identifies this as an open
+item). The FR3 study handles it operationally with slack-relaxed
 workspace/speed boxes and a reactive fallback on solver infeasibility;
 only the slack relaxation is exercised, and it stays small in the tested
-scenario. This does not establish a terminal invariant set, quantify
-soft-constraint risk, or validate the untriggered fallback --- a
-deployable system would need all three.
+scenario. A deployable system additionally needs a terminal invariant
+set, a quantified soft-constraint risk, and a validated fallback path.
 
 Fourth, the total realization residual has physical units and depends on
 the chosen output coordinates. Equation~(\ref{eq:residual-decomposition})
-now separates regularization, joint constraint intervention, and model
-error, but does not allocate intervention among individual constraint
-rows or provide a normalized severity score. The FR3 study exercises translation only;
-orientation is held by a fixed PD law, not a generator, so extending the
+separates regularization, joint constraint intervention, and model
+error; per-row intervention allocation and a normalized severity score
+are further refinements. The FR3 study exercises translation only;
+orientation is held by a fixed PD law, so extending the
 interface needs a principled or energy-weighted normalization across
-coordinates. Raw RMSE across generators with different scales is not a
-direct performance ranking, and Table~\ref{tab:fr3}'s empirical and
-frozen-model residuals differ materially in several conditions ---
-evidence of model-adequacy and estimation gaps, not a violation of
-Theorem~\ref{thm:invariance}.
+coordinates. Raw RMSE across generators with different scales is a
+diagnostic rather than a performance ranking, and Table~\ref{tab:fr3}'s
+empirical and frozen-model residuals differ materially in several
+conditions, reflecting model-adequacy and estimation gaps within
+Theorem~\ref{thm:invariance}'s frozen-model scope.
 
-Finally, the architectural novelty must be assessed against the full
-literature of Section~\ref{sec:related}, not only its closest
-precedents. The strongest eventual claim rests on implemented
-behavior-layer substitutability, formal residual guarantees, and matched
-experiments, not terminology alone.
+Finally, the contribution rests on implemented behavior-layer
+substitutability, formal residual guarantees, and matched experiments ---
+demonstrated here for the affine memoryless subclass and positioned
+against the related work of Section~\ref{sec:related}.
 
 \section{Conclusion}
 

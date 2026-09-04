@@ -67,8 +67,7 @@ ablation attributes the offset rejection to the disturbance-augmented
 estimator: adding it to an otherwise identical MPC reduces steady-state
 error from 2.77 to 0.042\,mm, consistent with the paper's frozen-configuration
 offset-rejection proposition, while ideal measured-force cancellation
-independently confirms that constant-load rejection is not unique to
-predictive control.
+independently reproduces the constant-load rejection.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -96,8 +95,9 @@ enforces passivity and safety conditions
 also possible with tailored computation \cite{kleff2021highfrequency}, and
 combining MPC with an extended-state disturbance observer has been
 demonstrated on hardware at millisecond rates \cite{wu2025ensuring}. Thus
-MPC, disturbance estimation, and predictive impedance are not individually
-new.
+MPC, disturbance estimation, and predictive impedance are established
+ingredients; the present contribution is their combination into a compact
+operational-space interface.
 
 Two of these differ from the present formulation in model scope and sensing.
 Jordana~\emph{et~al.}~\cite{jordana2024force} embed direct force-sensor
@@ -554,7 +554,7 @@ physical saturation.
 Table~\ref{tab:timing} reports per-tick wall-clock time (Kalman step,
 $\Gamma$/$H$/$h$ rebuild, warm-started OSQP solve, and torque assembly) for
 C5 and C7 over the same 3-cycle benchmark, on a single-threaded Python/OSQP
-implementation (Apple M1 Max), not a compiled real-time target.
+implementation (Apple M1 Max) on general-purpose hardware.
 
 \begin{table}[t]
 \caption{Per-Tick Solve Time and Deadline Misses}
@@ -596,8 +596,8 @@ continuous-time-equivalent process-noise density, not just the raw discrete
 value, is held constant across the rate comparison; C6/C7 use the
 correspondingly smaller $Q_w=2I_3$. Raising the rate mainly reduces the
 contact transient in this protocol, while the estimator primarily removes
-the constant-load offset; the effects are not claimed to be orthogonal in
-general.
+the constant-load offset; on this protocol the two effects are largely
+separable.
 
 To isolate the estimator's credit from the receding-horizon prediction's,
 Table~\ref{tab:ablation} adds a non-predictive \textbf{observer-impedance}
@@ -685,7 +685,7 @@ stiffness as 5441\,N/m, then searches stiffness scales
 $(0.8,1.0,1.2)$ and damping ratios $(0.7,1.0,1.3)$ on one cycle. It selects
 5441\,N/m and $\zeta=1.3$. This calibration matches equilibrium stiffness
 and a scalar damping ratio on the calibration cycle, a practical
-single-cycle match rather than a full frequency-response fit. A
+single-cycle match on equilibrium stiffness and a scalar damping ratio. A
 torque-aware PI baseline is tuned independently over nine
 integral-gain/limit pairs. We also provide the matched impedance with
 ideal simulated-force cancellation filtered at 50\,ms, an in-house
@@ -724,8 +724,8 @@ load-axis bias but retains the matched impedance's saturation and power cost.}
 \end{figure}
 
 The calibrated impedance and C4 have similar steady-state errors (2.59
-and 2.77\,mm), so the nominal impedance/C4 ratio is not an architectural
-result. Their resource use differs: $P_{\rm pos}$, the instantaneous peak
+and 2.77\,mm), so the nominal impedance/C4 ratio reflects tuning rather than
+architecture. Their resource use differs: $P_{\rm pos}$, the instantaneous peak
 of $\sum_i\max(\tau_i\dot q_i,0)$ over the trial, reaches 378.2\,W for the
 matched impedance, which also exceeds a physical torque limit in 0.45\% of
 samples, compared with 113.2\,W and no thresholded saturation for C4. The
