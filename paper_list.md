@@ -449,21 +449,21 @@ paper — that would become entry #22 in a future update to this list.
 
 ## Summary
 
-| # | Paper | Status |
-|---|---|---|
-| 1–2 | pHRI base + imp_reference | Fully verified, no open issues |
-| 3 | Two-rate residual MPC | `.md` draft, not yet formalized |
-| 4 | Impedance-backbone MPC | Folded into #1, no separate status |
-| 5 | Predictive saturation certificate | Retargeted to T-CST post-rejection |
-| 6 | H₂/H∞ companion | `.md` draft, not yet formalized |
-| 7–9 | Whole-body control v2_strong/v4/v5 | Fully verified 2026-09-13; v4 blocked only on one missing video asset |
-| 10 | Autonomous driving (DI-QP) | Fully verified; ICRA page limit restored |
-| 11 | Obstacle avoidance (hybrid escape) | Not independently re-verified this session |
-| 12 | Dexterous hand | **ICRA 2027 deadline imminent (2026-09-15)** |
-| 13 | Steerable catheters | Fully verified; live regression found+fixed |
-| 14 | Laparoscopy | Fully verified; significant bug found+fixed, missing baseline flagged |
-| 15–16 | Knee rehab, Neuralink | Fully verified, no open issues |
-| 17 | Excavator | Drafted, not yet independently verified |
-| 18 | Wilberforce pendulum | Complete submission package; submission status unconfirmed |
-| 19 | Spacecraft soft landing | **Proposal stage only — no simulation results yet** |
-| 20–21 | Predictive realizability (world-model + planning) | Fully verified, no open issues |
+| # | Paper | Status | Videos |
+|---|---|---|---|
+| 1–2 | pHRI base + imp_reference | Fully verified, no open issues | 8: 6 circle-tracking impedance-vs-MPC comparisons (`pHRI/cloud_verify/results/`) + 2 FR3 demos (`pHRI/simulation_results/`) — not reviewed this session |
+| 3 | Two-rate residual MPC | `.md` draft, not yet formalized | None |
+| 4 | Impedance-backbone MPC | Folded into #1, no separate status | Shares #1's videos |
+| 5 | Predictive saturation certificate | Retargeted to T-CST post-rejection | None |
+| 6 | H₂/H∞ companion | `.md` draft, not yet formalized | None |
+| 7–9 | Whole-body control v2_strong/v4/v5 | Fully verified 2026-09-13; v4 blocked only on one missing video asset | None on the live versions (v3, archived/superseded, has 5) |
+| 10 | Autonomous driving (DI-QP) | Fully verified; ICRA page limit restored | 3: `fr3_motion.mp4`, `av_video_panel.mp4`, `fr3_falling_ball_cyclic.mp4` — not reviewed this session |
+| 11 | Obstacle avoidance (hybrid escape) | Not independently re-verified this session | 1: `hae_video_panel_S3.mp4` — not reviewed |
+| 12 | Dexterous hand | **ICRA 2027 deadline imminent (2026-09-15)** | 7, dated June — reviewed 2026-09-13: the eq.13 total-command embedding is opt-in and unwired in every video script (`hand_mpc_video.py`, `cable_hand_video.py`, `manip_video.py`, `finger_video.py`, `shadow_hand_video.py` never pass `traj_fn`), so none are actually stale |
+| 13 | Steerable catheters | Fully verified; live regression found+fixed | None |
+| 14 | Laparoscopy | Fully verified; significant bug found+fixed, missing baseline flagged | 1 (`lap_video_mpc_kalman.mp4`) — was stale (predated the trust-region retune), **regenerated 2026-09-13** from the current controller; spot-checked frame confirms the ~0.55–0.6mm RCM-deviation peak matches the paper's 0.59mm nominal figure |
+| 15–16 | Knee rehab, Neuralink | Fully verified, no open issues | 2 + 4 respectively — not reviewed this session |
+| 17 | Excavator | Drafted, not yet independently verified | 1 (`excavator_digging_video.mp4`) — not reviewed |
+| 18 | Wilberforce pendulum | Complete submission package; submission status unconfirmed | 4 of ~10 named scenarios (A, C, D, E1) — not reviewed |
+| 19 | Spacecraft soft landing | **Proposal stage only — no simulation results yet** | None — no simulation code exists |
+| 20–21 | Predictive realizability (world-model + planning) | Fully verified, no open issues | 4, all built and reviewed 2026-09-13 (this session) |
