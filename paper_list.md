@@ -460,7 +460,7 @@ paper — that would become entry #22 in a future update to this list.
 | 10 | Autonomous driving (DI-QP) | Fully verified; ICRA page limit restored | 3: `fr3_motion.mp4`, `av_video_panel.mp4`, `fr3_falling_ball_cyclic.mp4` — not reviewed this session |
 | 11 | Obstacle avoidance (hybrid escape) | Not independently re-verified this session | 1: `hae_video_panel_S3.mp4` — not reviewed |
 | 12 | Dexterous hand | **ICRA 2027 deadline imminent (2026-09-15)** | 7, dated June — reviewed 2026-09-13: the eq.13 total-command embedding is opt-in and unwired in every video script (`hand_mpc_video.py`, `cable_hand_video.py`, `manip_video.py`, `finger_video.py`, `shadow_hand_video.py` never pass `traj_fn`), so none are actually stale |
-| 13 | Steerable catheters | Fully verified; live regression found+fixed | None |
+| 13 | Steerable catheters | Fully verified; live regression found+fixed | 1 (`safety_comparison.mp4`), **rendered 2026-09-13** — unconstrained vs force-constrained MPC on the identical task, through the real audited `run_mpc()` path; reproduces the paper's headline safety result exactly (0.595N violates vs 0.467N safe, Table II: 0.595 vs 0.470N) |
 | 14 | Laparoscopy | Fully verified; significant bug found+fixed, missing baseline flagged | 1 (`lap_video_mpc_kalman.mp4`) — was stale (predated the trust-region retune), **regenerated 2026-09-13** from the current controller; spot-checked frame confirms the ~0.55–0.6mm RCM-deviation peak matches the paper's 0.59mm nominal figure |
 | 15–16 | Knee rehab, Neuralink | Fully verified, no open issues | 2 + 4 respectively — not reviewed this session |
 | 17 | Excavator | Drafted, not yet independently verified | 1 (`excavator_digging_video.mp4`) — not reviewed |
@@ -472,8 +472,8 @@ paper — that would become entry #22 in a future update to this list.
 comparison video (dark-themed intro card, two-panel conventional-vs-proposed
 layout, matching today's `replan` style) is a per-paper undertaking on the
 scale of a full session, not a quick add-on. Priority order: (1) whole-body
-control — **done 2026-09-13**, all three of v2_strong/v4/v5 now have a
-rendered, cited comparison video (see row above); (2) steerable catheters,
-to visibly demonstrate the regression fixed this session — next up; (3)
-dexterous hand, lower priority given the imminent 2026-09-15 ICRA deadline
-competes directly for the same time — not scheduled.
+control — **done**, all three of v2_strong/v4/v5 now have a rendered, cited
+comparison video (see row above); (2) steerable catheters — **done**, see
+row above; (3) dexterous hand, lower priority given the imminent
+2026-09-15 ICRA deadline competes directly for the same time — not
+scheduled. All three items agreed for this pass are now complete.
