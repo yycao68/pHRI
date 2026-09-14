@@ -456,7 +456,7 @@ paper — that would become entry #22 in a future update to this list.
 | 4 | Impedance-backbone MPC | Folded into #1, no separate status | Shares #1's videos |
 | 5 | Predictive saturation certificate | Retargeted to T-CST post-rejection | None |
 | 6 | H₂/H∞ companion | `.md` draft, not yet formalized | None |
-| 7–9 | Whole-body control v2_strong/v4/v5 | Fully verified 2026-09-13; v4 blocked only on one missing video asset | None on the live versions (v3, archived/superseded, has 5) |
+| 7–9 | Whole-body control v2_strong/v4/v5 | Fully verified 2026-09-13; v4's gate now fully green | All three now have a rendered, cited comparison video (2026-09-13): v2_strong's `scenario_a_video.mp4` (D1 vs D7, reproduces the paper's 73× figure exactly, through the real audited controller path); v4's `continuous_flat_idmpc.mp4` (the release asset that was blocking the fail-closed gate — verifier now reports `"status": "PASS"` end to end); v5's `gate_comparison.mp4` (gate forced open vs the shipped confidence gate, reproduces the capture-amplification ablation's story on one seed). All three are new opt-in code paths (existing test suites re-verified unaffected: v2_strong 20/20, v5 6/6) and are cited as footnotes at the exact claims they illustrate |
 | 10 | Autonomous driving (DI-QP) | Fully verified; ICRA page limit restored | 3: `fr3_motion.mp4`, `av_video_panel.mp4`, `fr3_falling_ball_cyclic.mp4` — not reviewed this session |
 | 11 | Obstacle avoidance (hybrid escape) | Not independently re-verified this session | 1: `hae_video_panel_S3.mp4` — not reviewed |
 | 12 | Dexterous hand | **ICRA 2027 deadline imminent (2026-09-15)** | 7, dated June — reviewed 2026-09-13: the eq.13 total-command embedding is opt-in and unwired in every video script (`hand_mpc_video.py`, `cable_hand_video.py`, `manip_video.py`, `finger_video.py`, `shadow_hand_video.py` never pass `traj_fn`), so none are actually stale |
@@ -471,10 +471,9 @@ paper — that would become entry #22 in a future update to this list.
 **Video rendering roadmap (2026-09-13):** rendering a from-scratch
 comparison video (dark-themed intro card, two-panel conventional-vs-proposed
 layout, matching today's `replan` style) is a per-paper undertaking on the
-scale of a full session, not a quick add-on. When picked back up, the agreed
-priority order is: (1) whole-body control — v5's gated-vs-ungated arbitration
-or v4's terrain/push comparison are the most natural fits, with working,
-fully-reverified sim/policy code already in hand; (2) steerable catheters,
-to visibly demonstrate the regression fixed this session; (3) dexterous
-hand, lower priority given the imminent 2026-09-15 ICRA deadline competes
-directly for the same time. Not scheduled for this pass.
+scale of a full session, not a quick add-on. Priority order: (1) whole-body
+control — **done 2026-09-13**, all three of v2_strong/v4/v5 now have a
+rendered, cited comparison video (see row above); (2) steerable catheters,
+to visibly demonstrate the regression fixed this session — next up; (3)
+dexterous hand, lower priority given the imminent 2026-09-15 ICRA deadline
+competes directly for the same time — not scheduled.
