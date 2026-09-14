@@ -467,3 +467,14 @@ paper — that would become entry #22 in a future update to this list.
 | 18 | Wilberforce pendulum | Complete submission package; submission status unconfirmed | 4 of ~10 named scenarios (A, C, D, E1) — not reviewed |
 | 19 | Spacecraft soft landing | **Proposal stage only — no simulation results yet** | None — no simulation code exists |
 | 20–21 | Predictive realizability (world-model + planning) | Fully verified, no open issues | 4, all built and reviewed 2026-09-13 (this session) |
+
+**Video rendering roadmap (2026-09-13):** rendering a from-scratch
+comparison video (dark-themed intro card, two-panel conventional-vs-proposed
+layout, matching today's `replan` style) is a per-paper undertaking on the
+scale of a full session, not a quick add-on. When picked back up, the agreed
+priority order is: (1) whole-body control — v5's gated-vs-ungated arbitration
+or v4's terrain/push comparison are the most natural fits, with working,
+fully-reverified sim/policy code already in hand; (2) steerable catheters,
+to visibly demonstrate the regression fixed this session; (3) dexterous
+hand, lower priority given the imminent 2026-09-15 ICRA deadline competes
+directly for the same time. Not scheduled for this pass.
