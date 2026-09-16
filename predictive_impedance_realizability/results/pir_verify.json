@@ -1,0 +1,143 @@
+{
+  "check_a_equilibrium_rootfind_vs_simulation": {
+    "rows": [
+      {
+        "k": 423.8,
+        "d": 21.3,
+        "e_axis_rootfind_m": 0.04731408127291137,
+        "e_axis_simulated_m": 0.049761676423728037,
+        "abs_gap_m": 0.0024475951508166685,
+        "rel_gap": 0.05173079736450436,
+        "simulation_settled": true,
+        "rootfind_converged": true,
+        "rootfind_residual_norm": 1.9131107616242606e-12,
+        "anchor_joint4_rootfind_Nm": 28.355313752340393,
+        "anchor_joint4_simulated_Nm": 31.50093073430829
+      },
+      {
+        "k": 344.2,
+        "d": 21.3,
+        "e_axis_rootfind_m": 0.058333049519804225,
+        "e_axis_simulated_m": 0.06234832898728764,
+        "abs_gap_m": 0.004015279467483417,
+        "rel_gap": 0.06883369720145041,
+        "simulation_settled": true,
+        "rootfind_converged": true,
+        "rootfind_residual_norm": 4.477751350714642e-11,
+        "anchor_joint4_rootfind_Nm": 28.302232203573435,
+        "anchor_joint4_simulated_Nm": 31.321569811984986
+      },
+      {
+        "k": 344.2,
+        "d": 5.9,
+        "e_axis_rootfind_m": 0.058333049519804225,
+        "e_axis_simulated_m": 0.05598313893334215,
+        "abs_gap_m": 0.002349910586462077,
+        "rel_gap": 0.04028437748080145,
+        "simulation_settled": true,
+        "rootfind_converged": true,
+        "rootfind_residual_norm": 4.477751350714642e-11,
+        "anchor_joint4_rootfind_Nm": 28.302232203573435,
+        "anchor_joint4_simulated_Nm": 33.60867047604044
+      },
+      {
+        "k": 974.5,
+        "d": 40.7,
+        "e_axis_rootfind_m": 0.020487209357472724,
+        "e_axis_simulated_m": 0.02073492902778582,
+        "abs_gap_m": 0.0002477196703130971,
+        "rel_gap": 0.012091430608763764,
+        "simulation_settled": true,
+        "rootfind_converged": true,
+        "rootfind_residual_norm": 1.5431544295883933e-12,
+        "anchor_joint4_rootfind_Nm": 28.3938922823829,
+        "anchor_joint4_simulated_Nm": 30.386218266866315
+      }
+    ],
+    "max_rel_gap": 0.06883369720145041
+  },
+  "check_b_anchor_independent_of_gains": {
+    "rows": [
+      {
+        "k": 100.0,
+        "e_axis_m": 0.19828257639278069,
+        "k_times_e_axis_N": 19.828257639278068,
+        "anchor_joint4_Nm": 25.293805916825605,
+        "force_balance_residual_inf_Nm": 0.24821095067688947
+      },
+      {
+        "k": 200.0,
+        "e_axis_m": 0.10059764135692195,
+        "k_times_e_axis_N": 20.11952827138439,
+        "anchor_joint4_Nm": 27.871554100059512,
+        "force_balance_residual_inf_Nm": 0.2165182644991152
+      },
+      {
+        "k": 400.0,
+        "e_axis_m": 0.05014771681274377,
+        "k_times_e_axis_N": 20.059086725097508,
+        "anchor_joint4_Nm": 28.343836647731408,
+        "force_balance_residual_inf_Nm": 0.22041457530114394
+      },
+      {
+        "k": 800.0,
+        "e_axis_m": 0.02497662943984169,
+        "k_times_e_axis_N": 19.981303551873353,
+        "anchor_joint4_Nm": 28.39589128514284,
+        "force_balance_residual_inf_Nm": 0.21880299980255144
+      },
+      {
+        "k": 1200.0,
+        "e_axis_m": 0.01662501041869624,
+        "k_times_e_axis_N": 19.950012502435488,
+        "anchor_joint4_Nm": 28.38960030998716,
+        "force_balance_residual_inf_Nm": 0.21776176452836923
+      }
+    ],
+    "anchor_joint4_spread_Nm": 3.102085368317237,
+    "anchor_joint4_mean_Nm": 27.658937651949305,
+    "max_force_balance_residual_Nm": 0.24821095067688947,
+    "joint4_cap_derated_Nm": 31.5,
+    "joint4_cap_rho_Nm": 24.360000000000003
+  },
+  "check_c_grid_refinement": {
+    "k_grid": [
+      300.0,
+      320.0,
+      340.0,
+      360.0,
+      380.0,
+      400.0,
+      420.0,
+      440.0,
+      460.0,
+      480.0,
+      500.0
+    ],
+    "d_grid": [
+      8.0,
+      12.0,
+      16.0,
+      20.0,
+      24.0,
+      28.0,
+      32.0,
+      36.0,
+      40.0
+    ],
+    "envelopes": {
+      "rho_0.28": {
+        "common_region_nonempty": false,
+        "common_region_size": 0,
+        "n_cells": 99,
+        "best_worst_normalized_violation": 1.2435892621826403
+      },
+      "derated_joint4": {
+        "common_region_nonempty": true,
+        "common_region_size": 14,
+        "n_cells": 99,
+        "best_worst_normalized_violation": 0.9771765859278925
+      }
+    }
+  }
+}
