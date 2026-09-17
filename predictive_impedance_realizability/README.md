@@ -1,25 +1,35 @@
 # Predictive Interaction Realizability (PIR) — passive-nominal design gate
 
-This directory holds **Task 1** of the PIR synthesis programme: the
-`(K₀, D₀)` go/no-go scan that decides whether `phri2`'s behaviour–realization
-architecture and `impedance_residual`'s energy tank can be merged through a
-*passive nominal split*, plus the draft that reports the answer.
+This directory holds the PIR synthesis programme: the `(K₀, D₀)` go/no-go scan
+(Task 1), the merged controller (Task 2), the authorization-vs-tracking sweep
+(Task 3), and the draft that reports all three.
 
-Read `predictive_impedance_realizability.md` for the result. In one line:
-**the split is viable under `phri2`'s derated-joint-4 envelope and structurally
-dead under `impedance_residual`'s ρ = 0.28 envelope** — so the two papers'
-stress cases are not interchangeable, and the merge inherits whichever one it
-is written against.
+Read `predictive_impedance_realizability.md` for the result. In three lines:
+
+- The split is **viable** under `phri2`'s derated-joint-4 envelope and
+  **structurally dead** under `impedance_residual`'s ρ = 0.28 envelope — the
+  two papers' stress cases are not interchangeable.
+- The merged controller works: Merged Lemma 1 holds in closed loop, the
+  four-term residual closes to machine precision, and `impedance_residual`'s
+  fast-vs-manager-rate authorization result transfers to the merged port.
+- But at the only certified operating point the nominal is 84 % of the command
+  and leaves the residual **2.4 %** of joint 4's torque cap — and Lemma 1's
+  precondition, which the fast layer has no authority over, fails at 4× the
+  source disturbance. §7.7 of the draft is the thing to read.
 
 ## Layout
 
 ```
 predictive_impedance_realizability.md   the draft
 simulation/pir_common.py                scenario constants, replay, the α→0 fallback law
-simulation/pir_knot_scan.py             the (K₀, D₀) scan — Task 1 proper
+simulation/pir_knot_scan.py             the (K₀, D₀) scan — Task 1
 simulation/pir_verify.py                three independent checks on the scan's verdict
-simulation/test_pir_knot_scan.py        regression tests
-results/                                figures, pir_knot_scan.json, pir_verify.json
+simulation/pir_controller.py            the merged controller — Task 2
+simulation/run_pir_closed_loop.py       closed-loop runs and variant comparison
+simulation/pir_e0_sweep.py              authorization vs tracking — Task 3
+simulation/test_pir_knot_scan.py        regression tests for the gate
+simulation/test_pir_controller.py       regression tests for the controller
+results/                                figures and machine-readable results
 ```
 
 ## Nothing here re-derives FR3 dynamics
@@ -40,9 +50,11 @@ pip install -r ../impedance/simulation/requirements.txt
 # MuJoCo meshes are gitignored repo-wide; fetch them from MuJoCo Menagerie into
 #   ../simulation/models/franka_fr3/assets/
 cd simulation
-python3 pir_knot_scan.py          # ~16 min on 4 cores; writes results/pir_knot_scan.json
-python3 pir_verify.py             # ~3 min; writes results/pir_verify.json
-python3 -m pytest test_pir_knot_scan.py -q
+python3 pir_knot_scan.py                         # ~19 min on 4 cores
+python3 pir_verify.py                            # ~3 min
+python3 run_pir_closed_loop.py --scenario merged # ~35 s
+python3 pir_e0_sweep.py                          # ~6 min
+python3 -m pytest test_pir_knot_scan.py test_pir_controller.py -q
 ```
 
 `pir_knot_scan.py --quick` runs a coarse grid for smoke-testing. Note that the
@@ -52,8 +64,15 @@ right, and §5 of the draft says so.
 
 ## Scope
 
-This is the go/no-go gate only. The merged controller, the four-term residual
-with `r_auth`, the merged Lemma 1 / Proposition 1 write-up, and the `E₀`
-authorization-vs-tracking re-sweep are **not** implemented here, and the
-force-misclassification pillar is untouched — no green cell in this directory
-implies anything about it.
+Implemented: the gate, the merged controller, the four-term residual with
+`r_auth`, and the `E₀` re-sweep.
+
+**Not** implemented, and owed: the merged Lemma 1 / Proposition 1 write-up at
+submittable granularity, a decision about what the controller should do when
+Lemma 1's precondition fails at run time (today it simply overruns), and the
+recursive-feasibility / escalation leg.
+
+The force-misclassification pillar is untouched. `pir_controller.control()`
+takes the behaviour input and the disturbance model as separate channels, which
+makes the assumption visible in a signature — it does not discharge it. No
+green result in this directory implies anything about that pillar.

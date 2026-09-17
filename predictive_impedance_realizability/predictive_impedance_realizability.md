@@ -2,7 +2,8 @@
 
 ### A design gate for Predictive Interaction Realizability on the FR3
 
-*Working draft — Task 1 of the PIR synthesis programme. Simulation only.*
+*Working draft. Task 1 (the design gate), Task 2 (the merged controller) and
+Task 3 (the authorization-vs-tracking sweep). Simulation only.*
 
 ---
 
@@ -62,8 +63,20 @@ Three findings change what the merge can claim, and all three are load-bearing:
    settled displacement and the region drops from 33 cells to 6 — and the
    recommended cell is not among them.
 
-§8 states the decision this hands to a human. Task 2 (the merged proof) and
-Task 3 (the $E_0$ re-sweep) are **not** started here.
+The merged controller has since been implemented and run in closed loop (§7).
+That settles the gate's main caveat and adds a fourth finding that outranks the
+other three:
+
+4. **The split converts a hard actuator guarantee into a conditional one.**
+   In `phri2` the QP's torque constraint covers the *whole* command. Under the
+   split the nominal sits outside the authorization loop — the 1 kHz servo can
+   scale $F_r$ but never $F_{\mathrm{nom}}$ — so once
+   $|\tau_{\mathrm{base}} + J_v^\top F_{\mathrm{nom}}| > \bar\tau$ nothing
+   in the fast loop can prevent the overrun. With only 2.4 % of joint 4's cap
+   left as headroom, that happens at disturbance amplitudes well inside what
+   `impedance_residual`'s own benchmark uses.
+
+§9 states the decision this hands to a human.
 
 ---
 
@@ -121,7 +134,8 @@ $F_{r,k}$ every 20 ms; the following runs every 1 kHz tick $\ell$ ($h = 1$ ms):
    else $\min\!\big(1, (E_\ell - E_{\min} + h\,v_\ell^\top D_0 v_\ell)/(h\,\bar F_{r,\ell}^\top v_\ell)\big)$.
 5. **Apply** and **ledger** as in `impedance_residual`.
 
-Step 2 is the whole of this document. Steps 3–5 are not implemented here.
+Steps 1–2 are what §4–§6 gate. Steps 3–6 are implemented in
+`pir_controller.py` and measured in §7.
 
 ---
 
@@ -277,6 +291,8 @@ transient.
 | `pir_knot_scan_diag{1,1b,3,4}_{envelope}.png` | the four diagnostic maps, per envelope |
 | `pir_knot_scan_overlay.png` | composite, full range and zoomed, with the recommended cell marked |
 | `pir_knot_scan.json` | grid, all diagnostic arrays, `common_region_nonempty`, both recommendations |
+| `pir_closed_loop_{scenario}_{envelope}.png/json` | §7: the merged controller in closed loop |
+| `pir_e0_sweep.png/json` | §7.4–7.5: authorization vs tracking, both tightenings active |
 
 ---
 
@@ -349,16 +365,184 @@ the published grid stays dense enough through the feasible band.
 
 ---
 
-## 7. What this does not show
+## 7. The merged controller, implemented
 
-- **The merged controller is not implemented.** Rows 1 and 4 are evaluated by
-  replaying the trajectory `phri2`'s MPC produced. That is exact only if the
-  merged controller's *total* command tracks `phri2`'s; its QP has a different
-  cost (it optimizes $F_r$, not $F_{\mathrm{cmd}}$) and a different feasible
-  set, so its closed loop visits a somewhat different $(q, \dot q)$. Row 1's
-  2 % margin at the recommended cell is not large enough to absorb an
-  arbitrary amount of that drift. **Re-measuring rows 1 and 4 in the merged
-  closed loop is the first thing Task 2 owes.**
+Task 1's gate was a *feasibility* argument; §7 of its first draft owed a
+closed-loop measurement. `pir_controller.py` implements the merged rule of §3
+and `run_pir_closed_loop.py` runs it on the FR3.
+
+### 7.1 What the merge actually required
+
+Three things changed relative to grafting the tank onto `phri2`, and all three
+live in the QP:
+
+1. **The nominal is closed-loop inside the horizon.** $F_{\mathrm{nom}}$ is
+   state feedback, so the prediction runs on $A - BG_0$ with
+   $G_0 = [K_0\ D_0]$. Freezing $F_{\mathrm{nom}}$ across the horizon would let
+   the QP plan against a nominal its own plan invalidates.
+2. **The torque rows became state-dependent.** In `phri2`,
+   $\tau_k = \tau_{\mathrm{base}} + J_v^\top F_{\mathrm{cmd},k}$ is affine in
+   the decision variable alone. Here
+   $\tau_k = \tau_{\mathrm{base}} + J_v^\top(-G_0 x_k + F_{r,k})$, and $x_k$ is
+   itself affine in every earlier residual, so each torque row carries the
+   accumulated nominal reaction.
+3. **The behaviour input and the disturbance model had to be split.** `phri2`
+   has one force signal driving both $a_{id} = Cx + GF_h$ and the plant
+   prediction, which is sound only when every external force is interaction
+   force. Running under a disturbance, they are different signals. `control()`
+   now takes `force_forecast` and `behaviour_forecast` separately, defaulting
+   to equal — which recovers `phri2` exactly, and is asserted to. **This does
+   not solve force misclassification**; deciding which measured force goes in
+   which channel *is* that unsolved problem. It moves the assumption into a
+   signature instead of hiding it in an equality.
+
+One incidental gain: `phri2`'s QP has no principled infeasibility fallback and
+drops to its clipped reactive law. Here $F_r = 0$ is exactly the $\alpha\to 0$
+passive nominal the Task 1 gate certified, so an infeasible solve degrades to a
+*certified* behaviour rather than an improvised one. (No solve was infeasible
+in any run reported here: 0 / 300 per run.)
+
+### 7.2 Rows (1) and (4), re-measured in closed loop
+
+This is the debt the first draft recorded. At $K_0 = 380$ N/m,
+$D_0 = 29.1$ N·s/m on `phri2`'s 20 N push:
+
+| | replay estimate (Task 1) | merged closed loop | gap |
+|---|---|---|---|
+| row (1) anchor ratio | 0.9771 | **0.9762** | 0.09 % |
+| row (4) budget ratio | 0.3478 | **0.3474** | 0.11 % |
+
+The replay approximation holds. The gate's 2 % margin on row (1) survives, and
+the GO verdict does not need revisiting on this scenario. A regression test
+pins the two together at 1 % so the gate cannot silently drift from the
+controller it gates.
+
+### 7.3 Merged Lemma 1 and the four-term residual
+
+Across every run in §7.4–7.5 (36 sweep points plus 8 closed-loop runs), with
+the precondition holding, the conclusion held: $|\tau_\ell| \le \bar\tau$ at
+every one of 6000 ticks, with $\alpha_\tau$ saturating the envelope exactly
+($\max |\tau|/\bar\tau = 1.0000$) rather than overshooting it.
+
+The four-term residual
+$r = r_{\mathrm{reg}} + r_{\mathrm{con}} + r_{\mathrm{mod}} + r_{\mathrm{auth}}$
+closes **to machine precision** ($4.4\times10^{-16}$) on every QP tick, with
+$r_{\mathrm{con}}$ split into its plan-level and execution-level halves:
+
+$$r_{\mathrm{con}} = \underbrace{a_{\mathrm{con}} - a_{\mathrm{unc}}}_{\text{QP, 50 Hz}} + \underbrace{\Lambda^{-1}(\alpha_\tau - 1)F_{r,k}}_{\text{servo, 1 kHz}}, \qquad r_{\mathrm{auth}} = \Lambda^{-1}(\alpha_E - 1)\,\bar F_{r,\ell}.$$
+
+The closure is an identity, not a fit: the two servo terms telescope to
+$\Lambda^{-1}(F_{r,\ell} - F_{r,k})$, which is exactly the gap between what the
+QP proposed and what was applied. $r_{\mathrm{auth}}$ is identically zero
+whenever authorization never fires — it measures intervention, it is not an
+always-on correction.
+
+### 7.4 The passivity axis: `impedance_residual`'s result transfers
+
+Neither source benchmark exercises both axes. `phri2`'s push is monotone and
+largely dissipative: the nominal harvests $v^\top D_0 v$ faster than the
+residual drains the tank, and $\alpha_E \equiv 1$ throughout. So the sweep runs
+on a **merged scenario** — that push plus `impedance_residual`'s own rejectable
+disturbance (0.9/1.4/1.9 Hz sinusoids and a 12 N pulse placed deliberately
+between two 50 Hz manager ticks) — and sweeps $E_0$ toward its floor and the
+disturbance amplitude upward. 36 points, three variants:
+
+| variant | tank floor held | breach points | breached ticks | worst tank |
+|---|---|---|---|---|
+| `pir` (1 kHz re-authorization) | **12 / 12** | 0 | 0 | 0.0200 J = $E_{\min}$ |
+| `pir_manager_guard` (20 ms, held) | 4 / 12 | 8 | 2105 | −0.188 J |
+| `pir_no_tank` | 4 / 12 | 8 | 5537 | −1.473 J |
+
+**`impedance_residual`'s central result transfers to the merged port.** Fast
+re-authorization holds the floor in every stressed configuration — and holds it
+*with equality*, $\min E = E_{\min}$ exactly, which is what the $\alpha_E$
+construction guarantees. The manager-rate guard tracks it closely and breaches
+anyway, in 8 of the 12 configurations where the tank is loaded at all. The
+20 ms staleness is the whole difference.
+
+Authorization goes from silent to active as either axis is loaded: 0 % → 1.9 %
+of ticks as $E_0 \to E_{\min}$, and 0 % → 18.1 % of ticks as the disturbance
+scales 1 → 12.
+
+### 7.5 The authorization-vs-tracking trade is *flatter*, not steeper
+
+The synthesis note predicts the $E_0$ curve gets steeper after the merge,
+because the two tightenings compound in series. It gets flatter. Over the whole
+$E_0$ sweep, RMS realization residual varies by **0.03 %** (2.5095 →
+2.5103 m/s²) — against `impedance_residual`'s own 21.49 → 15.98 mm swing on its
+unmerged nominal.
+
+The reason is the §7.6 boundary, and it is not good news: the passive nominal
+has already absorbed the authority the tank would otherwise have taken away.
+De-authorizing a residual that is 16 % of the command costs almost nothing,
+because the other 84 % is a PD law the tank has no say over. A flat
+authorization-vs-tracking curve here means the passivity axis is *cheap*
+precisely because it is *weak*.
+
+On the disturbance axis, where the residual does matter, the trade reappears:
+RMS spans 2.510 → 4.026 m/s² (60 %). Notably `pir` tracks *better* than
+`pir_no_tank` at disturbance scale 4 (2.624 vs 3.233 m/s²) — an unauthorized,
+energy-injecting residual makes realization worse, not better. That is one
+scenario at one seed and should not be leaned on.
+
+### 7.6 The nominal dominates the command, and eats the headroom
+
+At the only $(K_0, D_0)$ the gate certifies:
+
+| | `pir` | `zero_nominal` ($K_0 = D_0 = 0$) |
+|---|---|---|
+| $\|F_{\mathrm{nom}}\|$ RMS | 14.05 N | 0 N |
+| $\|F_r\|$ RMS | 2.11 N | 13.48 N |
+| residual's share of the command | **15.6 %** | 100 % |
+| anchor headroom left for $F_r$ | **2.4 %** of the cap | 36.4 % |
+
+The note's §7 predicted this qualitatively — "$K_0/D_0$ large ⇒ floor eats
+budget, a *new* double-tightening." The measurement is worse than the phrasing
+suggests. $K_0 = 380$ N/m is not a small passivity floor sitting under the
+behaviour: it is **stiffer than the desired impedance** ($K_d = 200$ N/m), so
+the residual's job is partly to make the arm *softer* than the floor. The
+merged controller at its certified operating point is a stiff PD with a 16 %
+predictive correction, and the residual's torque headroom has collapsed
+**15-fold**, from 36.4 % of joint 4's cap to 2.4 %.
+
+### 7.7 Where the guarantee breaks
+
+That 2.4 % headroom is what §1's fourth finding cashes out. Sweeping the
+disturbance amplitude:
+
+| disturbance scale | max anchor ratio | ticks with infeasible anchor | max $\|\tau\|/\bar\tau$ |
+|---|---|---|---|
+| 4 | 0.9888 | 0 / 6000 | 1.0000 |
+| 8 | **1.0074** | 39 / 6000 | **1.0074** |
+| 12 | **1.0629** | 558 / 6000 | **1.0629** |
+
+Two things to read here. First, the applied-torque overrun **equals the anchor
+overrun exactly** at both failing scales. That is not a coincidence: when the
+precondition fails, $\alpha_\tau$ has already gone to zero and the fast layer
+has *no remaining authority* — the overrun is entirely the nominal's, and
+scaling the residual cannot touch it. Second, `pir_no_tank` fails identically
+(1.0074 at scale 8), confirming this is a property of the nominal and has
+nothing to do with the tank.
+
+So Merged Lemma 1 is sound and its precondition is doing real work: it is not a
+formality to be discharged once at design time. `phri2` guarantees the torque
+envelope unconditionally, because its QP owns the whole command. PIR guarantees
+it *conditional on the anchor being feasible*, and the Task 1 gate certified
+that condition against exactly one scenario. It does not survive a 4× larger
+disturbance. **This is the most important thing the implementation found, and
+it is a cost of the split that the synthesis note did not anticipate.**
+
+---
+
+## 8. What this does not show
+
+- **~~The merged controller is not implemented.~~** Discharged in §7.2: the
+  replay estimate and the merged closed loop agree to 0.1 % on both rows, and a
+  regression test now pins them together. What replaced this caveat is worse —
+  see §7.7.
+- **The anchor's feasibility was certified against one scenario and does not
+  survive a larger one** (§7.7). Everything the gate says is conditional on a
+  precondition that fails at 4× the source benchmark's disturbance.
 - **The fallback leaves the workspace box in transient.** 62.2 mm peak against
   a 60 mm bound. `phri2`'s box is slack-relaxed rather than hard, so this is
   not a constraint violation in its formulation — but it means the
@@ -388,15 +572,19 @@ the published grid stays dense enough through the feasible band.
 
 ---
 
-## 8. Decision gate
+## 9. Decision gate
 
 Per §13.3 of the synthesis note, this is where autonomous work stops.
 
-`common_region_nonempty == true` under `phri2`'s derated-joint-4 envelope, so
-the passive-nominal split is **viable** and Task 2 (merged Lemma 1 /
-Proposition 1 at a fixed operating point) and Task 3 (the $E_0$ re-sweep with
-both tightenings active) are unblocked — *conditional on a human confirming
-$(K_0, D_0)$ and, more importantly, on a decision the note did not anticipate*:
+`common_region_nonempty == true` under `phri2`'s derated-joint-4 envelope, the
+merged controller is implemented, Merged Lemma 1 holds in closed loop and the
+four-term residual closes exactly. What is left is not a coding decision.
+
+§7.6 and §7.7 have changed what the merge can claim. The certified operating
+point leaves the residual 2.4 % of joint 4's cap, which makes the merged
+controller mostly a stiff PD, makes the passivity axis cheap-because-weak, and
+leaves Lemma 1's precondition failing at 4× the source disturbance. Two of the
+three questions below are now sharper than they were before the implementation:
 
 **Which envelope does the merged paper claim?** The two are not
 interchangeable and they give opposite answers. Three options, in the order I
@@ -418,34 +606,58 @@ would rank them:
    binding quantity, which is an 18.96 N·m bias torque at one configuration
    rather than anything about impedance.
 
-I have not chosen among these; the scan says what each costs.
+Option 3 has gained weight since the implementation. The binding quantity is
+still an 18.96 N·m bias torque at one configuration, and §7.7 shows that the
+2.4 % of headroom it leaves is not enough to keep Lemma 1's precondition alive
+under a moderately larger disturbance. A pose or push direction that does not
+load joint 4 would widen the region, restore headroom to the residual, and make
+the passivity axis worth something — all three of the implementation's bad
+findings at once. I have not chosen among these; the measurements say what each
+costs.
 
 ### Owed before any claim
 
-- [ ] **Human:** pick the envelope (the decision above), then confirm $(K_0, D_0)$.
-- [ ] **Task 2, first step:** implement the merged controller and re-measure
-      rows 1 and 4 in its own closed loop, not on the replay.
-- [ ] **Task 2:** merged Lemma 1 (per-joint $\alpha_\tau$ closed form,
-      $\alpha_\tau\!\cdot\!\alpha_E$ on-segment lemma) and merged Proposition 1
-      at the confirmed operating point.
-- [ ] **Task 3:** re-sweep the authorization-vs-tracking curve ($E_0$) with
-      both tightenings active; quantify the steeper trade.
+- [ ] **Human:** pick the envelope, then confirm $(K_0, D_0)$.
+- [x] ~~Implement the merged controller and re-measure rows 1 and 4 in its own
+      closed loop~~ — §7.1–7.2. Replay and closed loop agree to 0.1 %.
+- [x] ~~Task 3: re-sweep the authorization-vs-tracking curve ($E_0$) with both
+      tightenings active~~ — §7.4–7.5. The trade is **flatter**, not steeper,
+      and §7.5 says why that is a bad sign rather than a good one.
+- [ ] **Task 2, the proof:** write merged Lemma 1 (per-joint $\alpha_\tau$
+      closed form, $\alpha_\tau\!\cdot\!\alpha_E$ on-segment lemma) and merged
+      Proposition 1 at submittable granularity. The implementation supplies the
+      operating point and confirms both halves empirically; the write-up must
+      state the precondition as a **standing hypothesis that can fail at run
+      time** (§7.7), not as a design-time check.
+- [ ] **New, and ahead of the proof:** decide what the controller does when the
+      precondition fails. Today it simply overruns the envelope by the anchor's
+      own excess. Options: fold the nominal into the authorization loop
+      (scale $F_{\mathrm{nom}}$ too, at the cost of the passivity floor), make
+      $K_0$ state-dependent, or escalate — which is the seam back into
+      `certified-realizability`, exactly where the note said the missing
+      transferability leg was.
+- [ ] Re-run the Task 1 gate at a pose/push direction that does not load
+      joint 4, and check whether the headroom problem is FR3-pose-specific.
+- [ ] Try anisotropic $(K_0, D_0)$ before accepting the region as final.
 - [ ] Resolve whether the 0.06 m bound is hard (region = 6 cells) or
       slack-relaxed (region = 33 cells).
-- [ ] Try anisotropic $(K_0, D_0)$ before accepting the region as final.
 - [ ] Explicitly disclaim the force-misclassification pillar in whatever is
-      written.
+      written. §7.1's channel split makes the assumption visible; it does not
+      discharge it.
 
 ---
 
-## 9. Reproducing
+## 10. Reproducing
 
 ```bash
 cd simulation
-python3 pir_knot_scan.py      # ~19 min on 4 cores -> results/pir_knot_scan.json + figures
-python3 pir_knot_scan.py --rescore   # re-derive verdicts/figures from the stored maps
-python3 pir_verify.py         # ~3 min  -> results/pir_verify.json
-python3 -m pytest test_pir_knot_scan.py -q
+python3 pir_knot_scan.py                     # ~19 min on 4 cores  (Task 1 gate)
+python3 pir_knot_scan.py --rescore           # re-derive verdicts/figures from stored maps
+python3 pir_verify.py                        # ~3 min              (gate verification)
+python3 run_pir_closed_loop.py --scenario push     # ~35 s          (Section 7.2, 7.6)
+python3 run_pir_closed_loop.py --scenario merged   # ~35 s          (Section 7.3, 7.4)
+python3 pir_e0_sweep.py                      # ~6 min              (Section 7.4, 7.5)
+python3 -m pytest test_pir_knot_scan.py test_pir_controller.py -q
 ```
 
 MuJoCo mesh assets are gitignored repo-wide and must be fetched from MuJoCo

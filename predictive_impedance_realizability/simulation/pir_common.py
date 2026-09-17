@@ -13,6 +13,10 @@ uses is imported from the two existing studies in this repository:
                                        ``FR3RealizationMPC``
 * ``imp_reference/simulation/run_fr3_experiments.py``
                                     -- ``human_force_at`` (the 20 N push)
+* ``impedance/simulation/verify_fr3_two_rate_benchmark.py``
+                                    -- ``torque_scale`` (the per-joint
+                                       box-margin ratio) and the tank
+                                       constants, used by ``pir_controller``
 
 A second, independent FR3 model would make the scan inconsistent with the
 papers it is meant to gate, so there is exactly one source for each quantity.
@@ -48,8 +52,9 @@ PIR_DIR = HERE.parent
 REPO = PIR_DIR.parent
 SHARED_SIM = REPO / "simulation"
 PHRI2_SIM = REPO / "imp_reference" / "simulation"
+IMPEDANCE_SIM = REPO / "impedance" / "simulation"
 
-for _p in (str(SHARED_SIM), str(PHRI2_SIM)):
+for _p in (str(SHARED_SIM), str(PHRI2_SIM), str(IMPEDANCE_SIM)):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
