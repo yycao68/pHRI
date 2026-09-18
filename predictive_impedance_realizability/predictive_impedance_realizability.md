@@ -286,6 +286,19 @@ transient.
 
 ### 5.3 Figures
 
+![](results/pir_knot_scan_overlay.png)
+
+**Figure 1 — the design region.** Grey is infeasible. Left: the ρ = 0.28
+envelope, empty everywhere. Right: `phri2`'s derated-joint-4 envelope, 33 of
+900 cells, with the recommended operating point starred. The zoom row is not
+decoration — the region is ~40 N/m tall inside a 1190 N/m sweep, which is why
+a coarse grid reports it empty (§6.3). The three-way squeeze is visible in the
+lower-right panel: row (3) bounds it from below (too soft and the fallback
+leaves the box), row (1) from above (too stiff and the anchor overruns joint 4),
+row (1b) from the left (too little damping and the fallback's overshoot
+overruns joint 4). The note anticipated the first two tensions; the third is
+the one it did not list.
+
 | file | content |
 |---|---|
 | `pir_knot_scan_diag{1,1b,3,4}_{envelope}.png` | the four diagnostic maps, per envelope |
@@ -437,6 +450,18 @@ QP proposed and what was applied. $r_{\mathrm{auth}}$ is identically zero
 whenever authorization never fires — it measures intervention, it is not an
 always-on correction.
 
+![](results/pir_closed_loop_merged_derated_joint4.png)
+
+**Figure 2 — the merged controller in closed loop**, on the merged scenario at
+the recommended operating point. Top: Lemma 1's precondition, the anchor ratio,
+sitting at 0.976 for the three PIR variants (they coincide here because
+authorization never fires at disturbance scale 1) against 0.635 for
+`zero_nominal`. That gap *is* §7.6's headroom collapse. Second panel: the
+conclusion — applied torque pinned at the envelope, never through it. Third:
+the tank, comfortably above its floor in this scenario, which is exactly why
+§7.4 has to stress it deliberately. Bottom: the workspace excursion, slightly
+past the slack-relaxed 0.06 m box for every variant.
+
 ### 7.4 The passivity axis: `impedance_residual`'s result transfers
 
 Neither source benchmark exercises both axes. `phri2`'s push is monotone and
@@ -463,6 +488,17 @@ anyway, in 8 of the 12 configurations where the tank is loaded at all. The
 Authorization goes from silent to active as either axis is loaded: 0 % → 1.9 %
 of ticks as $E_0 \to E_{\min}$, and 0 % → 18.1 % of ticks as the disturbance
 scales 1 → 12.
+
+![](results/pir_e0_sweep.png)
+
+**Figure 3 — authorization vs tracking, both tightenings active.** Top row
+sweeps the tank's initial charge toward its floor; bottom row sweeps the
+disturbance amplitude. The middle column is the result: `pir` (blue) sits
+*exactly* on $E_{\min}$, which is what the $\alpha_E$ construction guarantees;
+`pir_manager_guard` (orange) dips below it; `pir_no_tank` (green) reaches
+−1.47 J. The right column carries its own spread annotation because matplotlib
+autoscales it — on the $E_0$ axis the total variation is 0.03 %, i.e. flat
+(§7.5), and only on the disturbance axis does a real trade appear.
 
 ### 7.5 The authorization-vs-tracking trade is *flatter*, not steeper
 

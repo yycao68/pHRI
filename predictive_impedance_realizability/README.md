@@ -30,6 +30,8 @@ simulation/pir_e0_sweep.py              authorization vs tracking — Task 3
 simulation/test_pir_knot_scan.py        regression tests for the gate
 simulation/test_pir_controller.py       regression tests for the controller
 results/                                figures and machine-readable results
+paper.css                               the repo's shared paper stylesheet
+predictive_impedance_realizability.pdf  the built draft
 ```
 
 ## Nothing here re-derives FR3 dynamics
@@ -56,6 +58,18 @@ python3 run_pir_closed_loop.py --scenario merged # ~35 s
 python3 pir_e0_sweep.py                          # ~6 min
 python3 -m pytest test_pir_knot_scan.py test_pir_controller.py -q
 ```
+
+Rebuild the PDF with the repo's own Pandoc + KaTeX + headless-Chrome builder:
+
+```bash
+CHROME_PATH=/path/to/chrome KATEX_DIST=/path/to/katex/dist \
+  python3 ../build_paper_pdf.py predictive_impedance_realizability.md
+```
+
+On a container running as root, add `CHROME_FLAGS="--no-sandbox
+--disable-dev-shm-usage"`. That override was added to `build_paper_pdf.py` in
+the same spirit as its existing `CHROME_PATH` / `KATEX_DIST` overrides; it is
+empty by default and changes nothing on macOS.
 
 `pir_knot_scan.py --quick` runs a coarse grid for smoke-testing. Note that the
 coarse grid is *not* a cheap version of the answer: the feasible region is a

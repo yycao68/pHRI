@@ -112,10 +112,18 @@ def main() -> None:
                 check=True,
             )
 
+            # Same override pattern as CHROME_PATH/KATEX_DIST: extra Chrome
+            # flags for environments the macOS defaults do not cover. A
+            # container running as root needs --no-sandbox, which must not be
+            # on by default anywhere else.
+            extra_chrome_flags = [
+                flag for flag in os.environ.get("CHROME_FLAGS", "").split() if flag
+            ]
             process = subprocess.Popen(
                 [
                     str(chrome),
                     "--headless",
+                    *extra_chrome_flags,
                     "--disable-gpu",
                     "--disable-background-networking",
                     "--disable-component-update",
