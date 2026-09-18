@@ -1,0 +1,707 @@
+{
+  "cause": "diagnostic 3 requires K0 >= |F_h| / 0.06 = 333 N/m, above the desired impedance's own K_d = 200 N/m; symptoms (i), (ii) and (iii) are monotone consequences (see pir_rootcause.json)",
+  "workspace_bound_m": 0.06,
+  "K_d": 200.0,
+  "candidates": [
+    {
+      "name": "certified",
+      "variant": "pir",
+      "K0": [
+        380.0,
+        380.0,
+        380.0
+      ],
+      "D0": [
+        29.07,
+        29.07,
+        29.07
+      ],
+      "nominal_authorization": false,
+      "nominal_reauth_rate": Infinity,
+      "diag3_fallback_e_ss_m": 0.055775037601889454,
+      "diag3_passes": true,
+      "anchor_ratio": 0.9762012028027353,
+      "anchor_headroom": 0.023798797197264743,
+      "residual_share_of_command": 0.1713576734479317,
+      "rms_realization_residual": 2.5102977644446747,
+      "max_abs_e_axis_m": 0.06022107626544593,
+      "largest_scale_torque_ok": 4.0,
+      "largest_scale_both_ok": 4.0,
+      "e0_trade_rms_spread": 0.0019577522150688864,
+      "worst_tank_deficit_J": 0.0,
+      "alpha_nom_min_over_probe": 1.0,
+      "probe": [
+        {
+          "scale": 1.0,
+          "max_tau_ratio": 0.999999469201629,
+          "torque_envelope_holds": true,
+          "tank_min": 0.055836573328579844,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.5102977644446747,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.06022107626544593
+        },
+        {
+          "scale": 2.0,
+          "max_tau_ratio": 1.0000000000000002,
+          "torque_envelope_holds": true,
+          "tank_min": 0.06314994471327653,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.5152703626687383,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.06016225038689438
+        },
+        {
+          "scale": 4.0,
+          "max_tau_ratio": 1.0000000000000002,
+          "torque_envelope_holds": true,
+          "tank_min": 0.020000000000000004,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.6239274474724583,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.06949754465956515
+        },
+        {
+          "scale": 6.0,
+          "max_tau_ratio": 1.0023438113497918,
+          "torque_envelope_holds": false,
+          "tank_min": 0.020000000000000063,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.6105416225784626,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.0651918070355475
+        },
+        {
+          "scale": 8.0,
+          "max_tau_ratio": 1.0073957056523966,
+          "torque_envelope_holds": false,
+          "tank_min": 0.02000000000000007,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.7959363840318314,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.06564423387094986
+        },
+        {
+          "scale": 12.0,
+          "max_tau_ratio": 1.0628780063512933,
+          "torque_envelope_holds": false,
+          "tank_min": 0.020000000000000163,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 4.0263786565125175,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.07939575114579422
+        },
+        {
+          "scale": 16.0,
+          "max_tau_ratio": 1.1501243936813519,
+          "torque_envelope_holds": false,
+          "tank_min": 0.020000000000000545,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 4.709727182630869,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.086290539062015
+        }
+      ]
+    },
+    {
+      "name": "soft_nominal",
+      "variant": "pir",
+      "K0": [
+        200.0,
+        200.0,
+        200.0
+      ],
+      "D0": [
+        28.0,
+        28.0,
+        28.0
+      ],
+      "nominal_authorization": false,
+      "nominal_reauth_rate": Infinity,
+      "diag3_fallback_e_ss_m": 0.11047620066847166,
+      "diag3_passes": false,
+      "anchor_ratio": 0.837355010702376,
+      "anchor_headroom": 0.16264498929762405,
+      "residual_share_of_command": 0.46008227900009485,
+      "rms_realization_residual": 2.513364992741672,
+      "max_abs_e_axis_m": 0.06024869247136755,
+      "largest_scale_torque_ok": 8.0,
+      "largest_scale_both_ok": 8.0,
+      "e0_trade_rms_spread": 0.00698029981696191,
+      "worst_tank_deficit_J": 0.0,
+      "alpha_nom_min_over_probe": 1.0,
+      "probe": [
+        {
+          "scale": 1.0,
+          "max_tau_ratio": 0.9999981187762087,
+          "torque_envelope_holds": true,
+          "tank_min": 0.06225680857325162,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.513364992741672,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.06024869247136755
+        },
+        {
+          "scale": 2.0,
+          "max_tau_ratio": 1.0,
+          "torque_envelope_holds": true,
+          "tank_min": 0.06802606126629634,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.5208608378922066,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.0601678183554375
+        },
+        {
+          "scale": 4.0,
+          "max_tau_ratio": 1.0000000000000002,
+          "torque_envelope_holds": true,
+          "tank_min": 0.020000000000000004,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.1107889038202083,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.11192455365920517
+        },
+        {
+          "scale": 6.0,
+          "max_tau_ratio": 1.0000000000000002,
+          "torque_envelope_holds": true,
+          "tank_min": 0.020000000000000004,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.3797663870078054,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.11028999825019536
+        },
+        {
+          "scale": 8.0,
+          "max_tau_ratio": 1.0000000000000002,
+          "torque_envelope_holds": true,
+          "tank_min": 0.020000000000000007,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.810749258514385,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.111761075518229
+        },
+        {
+          "scale": 12.0,
+          "max_tau_ratio": 1.0368090806972623,
+          "torque_envelope_holds": false,
+          "tank_min": 0.02000000000000001,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 3.80162349715841,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.11540761525960863
+        },
+        {
+          "scale": 16.0,
+          "max_tau_ratio": 1.1128511642552064,
+          "torque_envelope_holds": false,
+          "tank_min": 0.02000000000000011,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 5.059659653116274,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.12710289495665483
+        }
+      ]
+    },
+    {
+      "name": "anisotropic",
+      "variant": "pir",
+      "K0": [
+        60.0,
+        60.0,
+        380.0
+      ],
+      "D0": [
+        8.0,
+        8.0,
+        29.07
+      ],
+      "nominal_authorization": false,
+      "nominal_reauth_rate": Infinity,
+      "diag3_fallback_e_ss_m": 0.055775037601889454,
+      "diag3_passes": true,
+      "anchor_ratio": 0.9781016773229421,
+      "anchor_headroom": 0.021898322677057935,
+      "residual_share_of_command": 0.19991275729811647,
+      "rms_realization_residual": 2.511961588701382,
+      "max_abs_e_axis_m": 0.06019404119246152,
+      "largest_scale_torque_ok": 2.0,
+      "largest_scale_both_ok": 2.0,
+      "e0_trade_rms_spread": 0.00031872992203085815,
+      "worst_tank_deficit_J": 0.0,
+      "alpha_nom_min_over_probe": 1.0,
+      "probe": [
+        {
+          "scale": 1.0,
+          "max_tau_ratio": 0.9999965143402079,
+          "torque_envelope_holds": true,
+          "tank_min": 0.05596717827672539,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.511961588701382,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.06019404119246152
+        },
+        {
+          "scale": 2.0,
+          "max_tau_ratio": 1.0000000000000002,
+          "torque_envelope_holds": true,
+          "tank_min": 0.06324377550264271,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.5211010199154438,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.060168957761555064
+        },
+        {
+          "scale": 4.0,
+          "max_tau_ratio": 1.004363428647269,
+          "torque_envelope_holds": false,
+          "tank_min": 0.020000000000000004,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.848848396735823,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.0681374817197632
+        },
+        {
+          "scale": 6.0,
+          "max_tau_ratio": 1.0195238271537415,
+          "torque_envelope_holds": false,
+          "tank_min": 0.06674667475775917,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.6791772803255305,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.07068178482838905
+        },
+        {
+          "scale": 8.0,
+          "max_tau_ratio": 1.0115301522605298,
+          "torque_envelope_holds": false,
+          "tank_min": 0.020000000000000018,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.874474186143954,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.07019528223610205
+        },
+        {
+          "scale": 12.0,
+          "max_tau_ratio": 1.041279250419308,
+          "torque_envelope_holds": false,
+          "tank_min": 0.0200000000000001,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 4.3188767044035865,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.0757458499586734
+        },
+        {
+          "scale": 16.0,
+          "max_tau_ratio": 1.1171424255268372,
+          "torque_envelope_holds": false,
+          "tank_min": 0.020000000000000098,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 5.147318156159354,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.08625473518142379
+        }
+      ]
+    },
+    {
+      "name": "nominal_auth",
+      "variant": "pir_nominal_auth",
+      "K0": [
+        380.0,
+        380.0,
+        380.0
+      ],
+      "D0": [
+        29.07,
+        29.07,
+        29.07
+      ],
+      "nominal_authorization": true,
+      "nominal_reauth_rate": Infinity,
+      "diag3_fallback_e_ss_m": 0.055775037601889454,
+      "diag3_passes": true,
+      "anchor_ratio": 0.9762012028027353,
+      "anchor_headroom": 0.023798797197264743,
+      "residual_share_of_command": 0.1713576734479317,
+      "rms_realization_residual": 2.5102977644446747,
+      "max_abs_e_axis_m": 0.06022107626544593,
+      "largest_scale_torque_ok": 16.0,
+      "largest_scale_both_ok": 6.0,
+      "e0_trade_rms_spread": 0.0019577522150688864,
+      "worst_tank_deficit_J": -1.0594559753655233,
+      "alpha_nom_min_over_probe": 0.43362374832579365,
+      "probe": [
+        {
+          "scale": 1.0,
+          "max_tau_ratio": 0.999999469201629,
+          "torque_envelope_holds": true,
+          "tank_min": 0.055836573328579844,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.5102977644446747,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.06022107626544593
+        },
+        {
+          "scale": 2.0,
+          "max_tau_ratio": 1.0000000000000002,
+          "torque_envelope_holds": true,
+          "tank_min": 0.06314994471327653,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.5152703626687383,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.06016225038689438
+        },
+        {
+          "scale": 4.0,
+          "max_tau_ratio": 1.0000000000000002,
+          "torque_envelope_holds": true,
+          "tank_min": 0.020000000000000004,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.6239274474724583,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.06949754465956515
+        },
+        {
+          "scale": 6.0,
+          "max_tau_ratio": 1.0000000000000002,
+          "torque_envelope_holds": true,
+          "tank_min": 0.02000000000000006,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.604958598978496,
+          "alpha_nom_min": 0.9932076466523445,
+          "max_abs_e_axis_m": 0.06519370728285545
+        },
+        {
+          "scale": 8.0,
+          "max_tau_ratio": 1.0000000000000002,
+          "torque_envelope_holds": true,
+          "tank_min": -0.06290830399237345,
+          "tank_floor_holds": false,
+          "rms_realization_residual": 2.7954397713690153,
+          "alpha_nom_min": 0.8872319861560112,
+          "max_abs_e_axis_m": 0.06566442951396934
+        },
+        {
+          "scale": 12.0,
+          "max_tau_ratio": 1.0000000000000002,
+          "torque_envelope_holds": true,
+          "tank_min": -0.6794376773297488,
+          "tank_floor_holds": false,
+          "rms_realization_residual": 3.585429434422915,
+          "alpha_nom_min": 0.7183949257391034,
+          "max_abs_e_axis_m": 0.08302403036525408
+        },
+        {
+          "scale": 16.0,
+          "max_tau_ratio": 1.0000000000000002,
+          "torque_envelope_holds": true,
+          "tank_min": -1.0394559753655233,
+          "tank_floor_holds": false,
+          "rms_realization_residual": 4.426415345217705,
+          "alpha_nom_min": 0.43362374832579365,
+          "max_abs_e_axis_m": 0.12041831689007859
+        }
+      ]
+    },
+    {
+      "name": "nominal_auth_mono",
+      "variant": "pir_nominal_auth",
+      "K0": [
+        380.0,
+        380.0,
+        380.0
+      ],
+      "D0": [
+        29.07,
+        29.07,
+        29.07
+      ],
+      "nominal_authorization": true,
+      "nominal_reauth_rate": 0.0,
+      "diag3_fallback_e_ss_m": 0.055775037601889454,
+      "diag3_passes": true,
+      "anchor_ratio": 0.9762012028027353,
+      "anchor_headroom": 0.023798797197264743,
+      "residual_share_of_command": 0.1713576734479317,
+      "rms_realization_residual": 2.5102977644446747,
+      "max_abs_e_axis_m": 0.06022107626544593,
+      "largest_scale_torque_ok": 16.0,
+      "largest_scale_both_ok": 16.0,
+      "e0_trade_rms_spread": 0.0019577522150688864,
+      "worst_tank_deficit_J": 0.0,
+      "alpha_nom_min_over_probe": 0.39898267599291104,
+      "probe": [
+        {
+          "scale": 1.0,
+          "max_tau_ratio": 0.999999469201629,
+          "torque_envelope_holds": true,
+          "tank_min": 0.055836573328579844,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.5102977644446747,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.06022107626544593
+        },
+        {
+          "scale": 2.0,
+          "max_tau_ratio": 1.0000000000000002,
+          "torque_envelope_holds": true,
+          "tank_min": 0.06314994471327653,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.5152703626687383,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.06016225038689438
+        },
+        {
+          "scale": 4.0,
+          "max_tau_ratio": 1.0000000000000002,
+          "torque_envelope_holds": true,
+          "tank_min": 0.020000000000000004,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.6239274474724583,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.06949754465956515
+        },
+        {
+          "scale": 6.0,
+          "max_tau_ratio": 1.0000000000000002,
+          "torque_envelope_holds": true,
+          "tank_min": 0.020000000000000052,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.627415876654898,
+          "alpha_nom_min": 0.9835965031912596,
+          "max_abs_e_axis_m": 0.06519294948998422
+        },
+        {
+          "scale": 8.0,
+          "max_tau_ratio": 1.0000000000000002,
+          "torque_envelope_holds": true,
+          "tank_min": 0.02,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 3.3805636480696712,
+          "alpha_nom_min": 0.6297304626433936,
+          "max_abs_e_axis_m": 0.10795886126526494
+        },
+        {
+          "scale": 12.0,
+          "max_tau_ratio": 1.0000000000000002,
+          "torque_envelope_holds": true,
+          "tank_min": 0.02000000000000001,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 4.4343499232380665,
+          "alpha_nom_min": 0.7105793144671712,
+          "max_abs_e_axis_m": 0.10309790843977729
+        },
+        {
+          "scale": 16.0,
+          "max_tau_ratio": 1.0000000000000002,
+          "torque_envelope_holds": true,
+          "tank_min": 0.02,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 6.369604681091395,
+          "alpha_nom_min": 0.39898267599291104,
+          "max_abs_e_axis_m": 0.1642784694757352
+        }
+      ]
+    },
+    {
+      "name": "soft_plus_auth",
+      "variant": "pir_nominal_auth",
+      "K0": [
+        200.0,
+        200.0,
+        200.0
+      ],
+      "D0": [
+        28.0,
+        28.0,
+        28.0
+      ],
+      "nominal_authorization": true,
+      "nominal_reauth_rate": Infinity,
+      "diag3_fallback_e_ss_m": 0.11047620066847166,
+      "diag3_passes": false,
+      "anchor_ratio": 0.837355010702376,
+      "anchor_headroom": 0.16264498929762405,
+      "residual_share_of_command": 0.46008227900009485,
+      "rms_realization_residual": 2.513364992741672,
+      "max_abs_e_axis_m": 0.06024869247136755,
+      "largest_scale_torque_ok": 16.0,
+      "largest_scale_both_ok": 8.0,
+      "e0_trade_rms_spread": 0.00698029981696191,
+      "worst_tank_deficit_J": -0.8600016763170805,
+      "alpha_nom_min_over_probe": 0.513989048624382,
+      "probe": [
+        {
+          "scale": 1.0,
+          "max_tau_ratio": 0.9999981187762087,
+          "torque_envelope_holds": true,
+          "tank_min": 0.06225680857325162,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.513364992741672,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.06024869247136755
+        },
+        {
+          "scale": 2.0,
+          "max_tau_ratio": 1.0,
+          "torque_envelope_holds": true,
+          "tank_min": 0.06802606126629634,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.5208608378922066,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.0601678183554375
+        },
+        {
+          "scale": 4.0,
+          "max_tau_ratio": 1.0000000000000002,
+          "torque_envelope_holds": true,
+          "tank_min": 0.020000000000000004,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.1107889038202083,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.11192455365920517
+        },
+        {
+          "scale": 6.0,
+          "max_tau_ratio": 1.0000000000000002,
+          "torque_envelope_holds": true,
+          "tank_min": 0.020000000000000004,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.3797663870078054,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.11028999825019536
+        },
+        {
+          "scale": 8.0,
+          "max_tau_ratio": 1.0000000000000002,
+          "torque_envelope_holds": true,
+          "tank_min": 0.020000000000000007,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.810749258514385,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.111761075518229
+        },
+        {
+          "scale": 12.0,
+          "max_tau_ratio": 1.0000000000000002,
+          "torque_envelope_holds": true,
+          "tank_min": -0.24466461818008806,
+          "tank_floor_holds": false,
+          "rms_realization_residual": 4.305260743897369,
+          "alpha_nom_min": 0.6231212890363808,
+          "max_abs_e_axis_m": 0.12523570623796443
+        },
+        {
+          "scale": 16.0,
+          "max_tau_ratio": 1.0000000000000002,
+          "torque_envelope_holds": true,
+          "tank_min": -0.8400016763170804,
+          "tank_floor_holds": false,
+          "rms_realization_residual": 5.417642676970897,
+          "alpha_nom_min": 0.513989048624382,
+          "max_abs_e_axis_m": 0.15877402254400397
+        }
+      ]
+    },
+    {
+      "name": "soft_plus_mono",
+      "variant": "pir_nominal_auth",
+      "K0": [
+        200.0,
+        200.0,
+        200.0
+      ],
+      "D0": [
+        28.0,
+        28.0,
+        28.0
+      ],
+      "nominal_authorization": true,
+      "nominal_reauth_rate": 0.0,
+      "diag3_fallback_e_ss_m": 0.11047620066847166,
+      "diag3_passes": false,
+      "anchor_ratio": 0.837355010702376,
+      "anchor_headroom": 0.16264498929762405,
+      "residual_share_of_command": 0.46008227900009485,
+      "rms_realization_residual": 2.513364992741672,
+      "max_abs_e_axis_m": 0.06024869247136755,
+      "largest_scale_torque_ok": 16.0,
+      "largest_scale_both_ok": 16.0,
+      "e0_trade_rms_spread": 0.00698029981696191,
+      "worst_tank_deficit_J": 0.0,
+      "alpha_nom_min_over_probe": 0.513989048624382,
+      "probe": [
+        {
+          "scale": 1.0,
+          "max_tau_ratio": 0.9999981187762087,
+          "torque_envelope_holds": true,
+          "tank_min": 0.06225680857325162,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.513364992741672,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.06024869247136755
+        },
+        {
+          "scale": 2.0,
+          "max_tau_ratio": 1.0,
+          "torque_envelope_holds": true,
+          "tank_min": 0.06802606126629634,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.5208608378922066,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.0601678183554375
+        },
+        {
+          "scale": 4.0,
+          "max_tau_ratio": 1.0000000000000002,
+          "torque_envelope_holds": true,
+          "tank_min": 0.020000000000000004,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.1107889038202083,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.11192455365920517
+        },
+        {
+          "scale": 6.0,
+          "max_tau_ratio": 1.0000000000000002,
+          "torque_envelope_holds": true,
+          "tank_min": 0.020000000000000004,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.3797663870078054,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.11028999825019536
+        },
+        {
+          "scale": 8.0,
+          "max_tau_ratio": 1.0000000000000002,
+          "torque_envelope_holds": true,
+          "tank_min": 0.020000000000000007,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.810749258514385,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.111761075518229
+        },
+        {
+          "scale": 12.0,
+          "max_tau_ratio": 1.0000000000000002,
+          "torque_envelope_holds": true,
+          "tank_min": 0.020000000000000004,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 5.598252779041592,
+          "alpha_nom_min": 0.6355306422278394,
+          "max_abs_e_axis_m": 0.16015205225905815
+        },
+        {
+          "scale": 16.0,
+          "max_tau_ratio": 1.0000000000000002,
+          "torque_envelope_holds": true,
+          "tank_min": 0.020000000000000004,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 8.486256552709118,
+          "alpha_nom_min": 0.513989048624382,
+          "max_abs_e_axis_m": 0.20204814030522011
+        }
+      ]
+    }
+  ]
+}

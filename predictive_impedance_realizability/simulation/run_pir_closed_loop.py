@@ -64,6 +64,9 @@ from pir_controller import PIRConfig, PIRRealizationMPC, pir_servo_step
 from verify_fr3_two_rate_benchmark import rejectable_force  # noqa: E402
 
 VARIANTS = ("pir", "pir_manager_guard", "pir_no_tank", "zero_nominal")
+#: Section 7.7's structural fix: the servo may scale the nominal too.
+FIX_VARIANTS = ("pir_nominal_auth",)
+ALL_VARIANTS = VARIANTS + FIX_VARIANTS
 SCENARIOS = ("push", "merged")
 
 #: impedance_residual seeds the disturbance phases from the trial seed; fixed
@@ -97,8 +100,9 @@ def run_variant(
     duration: float = pc.DURATION_S,
     tank_initial: float | None = None,
     disturbance_scale: float = 1.0,
+    overrides: dict | None = None,
 ) -> dict:
-    if variant not in VARIANTS:
+    if variant not in ALL_VARIANTS:
         raise ValueError(variant)
     phases = np.random.default_rng(DISTURBANCE_SEED).uniform(-np.pi, np.pi, 3)
     cap = pc.torque_envelope(envelope)
@@ -116,7 +120,11 @@ def run_variant(
         envelope=envelope,
         auth_period_ticks=20 if variant == "pir_manager_guard" else 1,
         energy_authorization=variant != "pir_no_tank",
+        nominal_authorization=variant == "pir_nominal_auth",
         **({} if tank_initial is None else {"tank_initial": tank_initial}),
+        # Late-bound knobs (anisotropic gains, the re-authorization rate) so a
+        # study can vary them without another positional argument here.
+        **(overrides or {}),
     )
     cfg = pir_cfg.resolved_mpc()
     mpc = PIRRealizationMPC(generator, pir_cfg)
@@ -129,13 +137,14 @@ def run_variant(
     f_r_held = np.zeros(3)
     tank = pir_cfg.tank_initial
     held_alpha_E = 1.0
+    previous_alpha_nom = 1.0
     n_infeasible = 0
     qp_ticks = 0
 
     keys3 = ("e", "v", "f_nom", "f_r_applied", "f_h", "a_id", "a_modelled",
              "r_reg", "r_con_qp", "r_con_fast", "r_auth", "closure")
     keys1 = ("time", "anchor_ratio", "tau_ratio", "budget_ratio", "alpha_tau",
-             "alpha_E", "tank", "anchor_feasible", "tank_floor_ok")
+             "alpha_E", "alpha_nom", "tank", "anchor_feasible", "tank_floor_ok")
     log: dict = {k: np.zeros((n_steps, 3)) for k in keys3}
     log.update({k: np.zeros(n_steps) for k in keys1})
     log["tau"] = np.zeros((n_steps, 7))
@@ -180,7 +189,9 @@ def run_variant(
             pir_cfg, tau_base, J_v, Lam_inv, e, v, f_r_held, tank, h, cap,
             held_alpha_E=(held_alpha_E if variant == "pir_manager_guard"
                           and i % pir_cfg.auth_period_ticks != 0 else None),
+            previous_alpha_nom=previous_alpha_nom,
         )
+        previous_alpha_nom = servo.alpha_nom
         if variant == "pir_manager_guard" and i % pir_cfg.auth_period_ticks == 0:
             held_alpha_E = servo.alpha_E
         tank = servo.tank
@@ -204,6 +215,7 @@ def run_variant(
         log["tau_ratio"][i] = servo.tau_ratio
         log["budget_ratio"][i] = float(np.max(np.abs(J_v.T @ servo.f_nom) / cap))
         log["alpha_tau"][i], log["alpha_E"][i] = servo.alpha_tau, servo.alpha_E
+        log["alpha_nom"][i] = servo.alpha_nom
         log["tank"][i] = servo.tank
         log["anchor_feasible"][i] = float(servo.anchor_feasible)
         log["tank_floor_ok"][i] = float(servo.tank_floor_ok)
@@ -225,6 +237,10 @@ def run_variant(
         "variant": variant,
         "envelope": envelope,
         "scenario": scenario,
+        "K0_vector": pir_cfg.k0_vector().tolist(),
+        "D0_vector": pir_cfg.d0_vector().tolist(),
+        "nominal_authorization": pir_cfg.nominal_authorization,
+        "nominal_reauth_rate": pir_cfg.nominal_reauth_rate,
         "tank_initial": pir_cfg.tank_initial,
         "disturbance_scale": disturbance_scale,
         "K0": k0 if variant != "phri2" else None,
@@ -233,7 +249,13 @@ def run_variant(
         "diag1_anchor_ratio_closed_loop": float(log["anchor_ratio"].max()),
         "diag4_budget_ratio_closed_loop": float(log["budget_ratio"].max()),
         # --- Merged Lemma 1: precondition in, conclusion out
+        # With nominal_authorization on, the precondition is no longer a
+        # hypothesis the runtime must be handed: alpha_nom enforces it.  Report
+        # both the raw anchor (what the precondition WOULD have been) and
+        # whether the servo actually kept the applied torque legal.
         "lemma1_precondition_holds": bool(log["anchor_feasible"].all()),
+        "alpha_nom_min": float(log["alpha_nom"].min()),
+        "alpha_nom_active_fraction": float(np.mean(log["alpha_nom"] < 1 - 1e-10)),
         "lemma1_conclusion_max_tau_ratio": float(log["tau_ratio"].max()),
         "lemma1_conclusion_holds": bool(log["tau_ratio"].max() <= 1.0 + 1e-9),
         "tank_min": float(log["tank"].min()),
@@ -246,7 +268,8 @@ def run_variant(
         "rms_realization_residual": float(
             np.sqrt(np.mean(np.sum((log["a_modelled"] - log["a_id"]) ** 2, axis=1)))),
         "authorization_active_fraction": float(
-            np.mean((log["alpha_tau"] < 1 - 1e-10) | (log["alpha_E"] < 1 - 1e-10))),
+            np.mean((log["alpha_tau"] < 1 - 1e-10) | (log["alpha_E"] < 1 - 1e-10)
+                    | (log["alpha_nom"] < 1 - 1e-10))),
         "alpha_E_min": float(log["alpha_E"].min()),
         "alpha_tau_min": float(log["alpha_tau"].min()),
         # --- how much of the command is the nominal rather than the residual.

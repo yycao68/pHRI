@@ -195,3 +195,92 @@ def test_closed_loop_row1_matches_the_replay_estimate():
     traj = pc.load_or_generate_trajectory()
     replay = pc.replay_diagnostics(traj, K0, D0, pc.torque_envelope("derated_joint4"))
     assert abs(closed_loop - replay["anchor_ratio"]) < 0.01
+
+
+# --- the Section 7.7 fix: authority over the nominal --------------------
+
+
+def test_nominal_authorization_keeps_the_anchor_legal(plant):
+    """With the fix on, an anchor that would overrun is scaled until it fits.
+    Without it, alpha_nom stays 1 and the overrun stands."""
+    _, _, J_v, Lam_inv, tau_base = plant
+    cap = pc.torque_envelope("derated_joint4")
+    # A displacement large enough that K0 e alone breaks the envelope.
+    e = np.array([0.0, 0.0, 0.30])
+    v = np.zeros(3)
+
+    off = pir_servo_step(PIRConfig(k0=K0, d0=D0, nominal_authorization=False),
+                         tau_base, J_v, Lam_inv, e, v, np.zeros(3),
+                         tank=0.08, h=1e-3, cap=cap)
+    assert not off.anchor_feasible, "test needs an infeasible anchor to be meaningful"
+    assert off.alpha_nom == 1.0
+    assert off.tau_ratio > 1.0
+
+    on = pir_servo_step(PIRConfig(k0=K0, d0=D0, nominal_authorization=True),
+                        tau_base, J_v, Lam_inv, e, v, np.zeros(3),
+                        tank=0.08, h=1e-3, cap=cap)
+    assert on.alpha_nom < 1.0
+    assert on.tau_ratio <= 1.0 + 1e-9, "the fix must make the applied torque legal"
+
+
+def test_nominal_authorization_is_inert_when_the_anchor_fits(plant):
+    """It must not perturb the certified operating point in normal operation."""
+    _, _, J_v, Lam_inv, tau_base = plant
+    cap = pc.torque_envelope("derated_joint4")
+    e, v = np.array([0.0, 0.0, 0.05]), np.array([0.0, 0.0, 0.1])
+    a = pir_servo_step(PIRConfig(k0=K0, d0=D0, nominal_authorization=False),
+                       tau_base, J_v, Lam_inv, e, v, np.array([0.0, 0.0, 5.0]),
+                       tank=0.08, h=1e-3, cap=cap)
+    b = pir_servo_step(PIRConfig(k0=K0, d0=D0, nominal_authorization=True),
+                       tau_base, J_v, Lam_inv, e, v, np.array([0.0, 0.0, 5.0]),
+                       tank=0.08, h=1e-3, cap=cap)
+    assert a.anchor_feasible and b.alpha_nom == 1.0
+    np.testing.assert_allclose(a.tau, b.tau, atol=1e-12)
+
+
+def test_restiffening_charges_the_tank_and_softening_does_not(plant):
+    """Only one direction of a time-varying spring gain is an injection."""
+    _, _, J_v, Lam_inv, tau_base = plant
+    cfg = PIRConfig(k0=K0, d0=D0, nominal_authorization=True)
+    cap = pc.torque_envelope("derated_joint4")
+    e, v = np.array([0.0, 0.0, 0.30]), np.zeros(3)
+    common = dict(tau_base=tau_base, J_v=J_v, Lam_inv=Lam_inv, e=e, v=v,
+                  f_r_held=np.zeros(3), tank=0.08, h=1e-3, cap=cap)
+    # alpha_nom lands below 1 here, so coming from 1.0 is a softening step and
+    # coming from below it is a re-stiffening step.
+    softening = pir_servo_step(cfg, previous_alpha_nom=1.0, **common)
+    restiffening = pir_servo_step(cfg, previous_alpha_nom=0.0, **common)
+    assert restiffening.tank < softening.tank, "re-stiffening must cost more"
+
+
+def test_monotone_alpha_nom_never_rises():
+    """rate = 0 is what makes both guarantees hold together (Section 7.8)."""
+    out = run_variant("pir_nominal_auth", K0, D0, "derated_joint4",
+                      scenario="merged", disturbance_scale=12.0,
+                      overrides={"nominal_reauth_rate": 0.0})
+    log, s = out["log"], out["summary"]
+    assert np.all(np.diff(log["alpha_nom"]) <= 1e-12), "alpha_nom rose"
+    assert s["lemma1_conclusion_holds"], "torque envelope lost"
+    assert s["tank_floor_holds"], "tank floor lost"
+    assert s["alpha_nom_min"] < 1.0, "test scenario never exercised the fix"
+
+
+def test_unrestricted_reauthorization_loses_the_tank_floor():
+    """The contrast the monotone rule is there to fix. If this stops failing,
+    the comparison in pir_fixes.py is vacuous."""
+    s = run_variant("pir_nominal_auth", K0, D0, "derated_joint4",
+                    scenario="merged", disturbance_scale=12.0)["summary"]
+    assert s["lemma1_conclusion_holds"]
+    assert not s["tank_floor_holds"]
+
+
+def test_anisotropic_gains_are_wired_through(plant):
+    """A per-axis K0 must actually reach the nominal force, not be broadcast
+    from the first element."""
+    _, _, J_v, Lam_inv, tau_base = plant
+    cap = pc.torque_envelope("derated_joint4")
+    cfg = PIRConfig(k0=(60.0, 60.0, 380.0), d0=(8.0, 8.0, 29.07))
+    np.testing.assert_allclose(cfg.k0_vector(), [60.0, 60.0, 380.0])
+    step = pir_servo_step(cfg, tau_base, J_v, Lam_inv, np.full(3, 0.01),
+                          np.zeros(3), np.zeros(3), tank=0.08, h=1e-3, cap=cap)
+    np.testing.assert_allclose(step.f_nom, [-0.6, -0.6, -3.8], rtol=1e-9)

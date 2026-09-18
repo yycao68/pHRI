@@ -82,9 +82,11 @@ class InteractionGenerator(Protocol):
 class PIRConfig:
     """Merged configuration: phri2's QP settings plus the nominal and the tank."""
 
-    #: The passive nominal, from the Task 1 scan's most-robust cell.
-    k0: float = 380.0
-    d0: float = 29.07
+    #: The passive nominal, from the Task 1 scan's most-robust cell.  Scalars
+    #: give the isotropic gains the scan swept; a 3-vector gives per-axis
+    #: gains, which Section 13.2 of the plan defers as "a later refinement".
+    k0: float | tuple[float, float, float] = 380.0
+    d0: float | tuple[float, float, float] = 29.07
 
     #: Torque envelope by name; see pir_common.torque_envelope.
     envelope: str = "derated_joint4"
@@ -106,15 +108,48 @@ class PIRConfig:
     #: what the passivity axis costs and buys.
     energy_authorization: bool = True
 
+    #: Give the fast layer authority over the NOMINAL as well as the residual.
+    #:
+    #: Section 7.7 found the split's worst cost: alpha_tau scales only F_r, so
+    #: once |tau_base + J^T F_nom| > cap nothing in the servo can prevent the
+    #: overrun, and phri2's unconditional torque guarantee becomes conditional
+    #: on a precondition the runtime cannot defend.  With this enabled the
+    #: servo also computes alpha_nom, the largest scale keeping the anchor
+    #: itself inside the box.  Since alpha_nom = 0 recovers tau_base, the
+    #: guarantee becomes unconditional whenever tau_base alone fits -- a much
+    #: weaker and checkable condition.
+    #:
+    #: It is not free.  Scaling the nominal down softens the passivity floor
+    #: exactly when it is most needed, and a time-varying spring gain can
+    #: release stored energy.  Both are metered: the tank harvests only the
+    #: APPLIED damping alpha_nom * D0 |v|^2, and any drop in alpha_nom debits
+    #: the spring energy it releases.  Whether the floor still holds under that
+    #: accounting is measured, not assumed (see pir_fixes.py).
+    nominal_authorization: bool = False
+
+    #: Ceiling on how fast alpha_nom may RISE, in units of alpha per second.
+    #: Re-stiffening is the direction that charges the tank (see the servo), so
+    #: an unlimited rise lets a transient repeatedly re-buy stiffness the port
+    #: has not earned.  ``inf`` leaves the rise unrestricted; ``0.0`` makes
+    #: alpha_nom monotone non-increasing, which removes the charge entirely at
+    #: the cost of never recovering the floor's stiffness after a transient.
+    nominal_reauth_rate: float = float("inf")
+
     mpc: FR3MPCConfig = field(default_factory=FR3MPCConfig)
 
     def resolved_mpc(self) -> FR3MPCConfig:
         """phri2's QP config with this envelope's cap substituted in."""
         return replace(self.mpc, tau_max=pc.torque_envelope(self.envelope))
 
+    def k0_vector(self) -> np.ndarray:
+        return np.broadcast_to(np.asarray(self.k0, dtype=float), (3,)).copy()
+
+    def d0_vector(self) -> np.ndarray:
+        return np.broadcast_to(np.asarray(self.d0, dtype=float), (3,)).copy()
+
     def gain_matrix(self) -> np.ndarray:
         """G0 = [K0  D0] in F_nom = -G0 x, x = [e; v]."""
-        return np.hstack([self.k0 * np.eye(3), self.d0 * np.eye(3)])
+        return np.hstack([np.diag(self.k0_vector()), np.diag(self.d0_vector())])
 
 
 @dataclass(frozen=True)
@@ -122,13 +157,14 @@ class PIRServoStep:
     """One 1 kHz tick of the merged re-authorization rule."""
 
     tau: np.ndarray  # (7,) applied joint torque
-    f_nom: np.ndarray  # (3,) passive nominal force
+    f_nom: np.ndarray  # (3,) passive nominal force, AFTER alpha_nom
     f_r_applied: np.ndarray  # (3,) residual after both scalings
     anchor: np.ndarray  # (7,) tau_base + J_v^T F_nom
     anchor_ratio: float  # ||anchor||_inf / cap   -- Lemma 1's precondition
     tau_ratio: float  # ||tau||_inf / cap        -- Lemma 1's conclusion
     alpha_tau: float
     alpha_E: float
+    alpha_nom: float  # 1.0 unless nominal_authorization is on and the anchor bit
     anchor_feasible: bool
     tank: float
     tank_floor_ok: bool
@@ -439,6 +475,7 @@ def pir_servo_step(
     h: float,
     cap: np.ndarray,
     held_alpha_E: float | None = None,
+    previous_alpha_nom: float = 1.0,
 ) -> PIRServoStep:
     """Steps 1-6 of the merged rule, for one 1 kHz tick.
 
@@ -448,16 +485,42 @@ def pir_servo_step(
     (the merged rule, B5).
     """
     # 1-2. Anchor from the CURRENT state, and Lemma 1's precondition.
-    f_nom = -cfg.k0 * e - cfg.d0 * v
-    anchor = tau_base + J_v.T @ f_nom
-    anchor_ratio = float(np.max(np.abs(anchor) / cap))
+    k0v, d0v = cfg.k0_vector(), cfg.d0_vector()
+    f_nom_full = -k0v * e - d0v * v
+    anchor_full = tau_base + J_v.T @ f_nom_full
+    anchor_ratio = float(np.max(np.abs(anchor_full) / cap))
     anchor_feasible = anchor_ratio <= 1.0 + 1e-12
+
+    # 2b. Optionally give the servo authority over the nominal too, so that an
+    # infeasible anchor is something it can act on rather than merely report.
+    if cfg.nominal_authorization:
+        alpha_nom = 1.0
+        if not anchor_feasible:
+            alpha_nom, _ = torque_scale(tau_base, J_v.T @ f_nom_full, cap)
+        if np.isfinite(cfg.nominal_reauth_rate):
+            alpha_nom = min(alpha_nom,
+                            previous_alpha_nom + cfg.nominal_reauth_rate * h)
+    else:
+        alpha_nom = 1.0
+    f_nom = alpha_nom * f_nom_full
+    anchor = tau_base + J_v.T @ f_nom
 
     # 3. Torque scale: largest alpha keeping anchor + alpha J^T F_r in the box.
     alpha_tau, _ = torque_scale(anchor, J_v.T @ f_r_held, cap)
     f_r_bar = alpha_tau * f_r_held
 
     # 4. Energy scale against the tank, harvesting the nominal's dissipation.
+    # A time-varying spring gain is an energy term, and only one direction is
+    # dangerous.  SOFTENING (alpha_nom falling) releases stored energy: the
+    # storage function's ((1/2) d(alpha)/dt e^T K0 e) term goes negative, which
+    # helps passivity, so it is neither charged nor credited -- crediting it
+    # would let a softening transient bank authority it has not earned.
+    # RE-STIFFENING (alpha_nom rising) is the injection: at fixed e the robot
+    # suddenly pushes back harder without the human having done the work to
+    # store it.  That energy is charged to the tank.
+    spring_release = max(0.0, 0.5 * float((alpha_nom - previous_alpha_nom)
+                                          * (e @ (k0v * e))))
+
     if not cfg.energy_authorization:
         alpha_E = 1.0
     elif held_alpha_E is not None:
@@ -467,17 +530,23 @@ def pir_servo_step(
         if power <= 0.0:
             alpha_E = 1.0
         else:
-            dissipation = cfg.d0 * float(v @ v)
-            available = max(0.0, tank - cfg.tank_minimum + h * dissipation)
+            # Harvest only the damping actually APPLIED: with the nominal
+            # de-authorized, alpha_nom * D0 is the damper the port really has.
+            dissipation = alpha_nom * float(v @ (d0v * v))
+            available = max(0.0, tank - cfg.tank_minimum + h * dissipation
+                            - spring_release)
             alpha_E = min(1.0, available / (h * power + 1e-15))
 
     # 5. Apply.
     f_r_applied = alpha_E * f_r_bar
     tau = tau_base + J_v.T @ (f_nom + f_r_applied)
 
-    # 6. Ledger: harvest v^T D0 v, debit only the residual's own port power.
+    # 6. Ledger: harvest the applied damping, debit the residual's own port
+    # power, and debit any spring energy released by softening the nominal.
     next_tank = min(cfg.tank_maximum,
-                    tank + h * (cfg.d0 * float(v @ v) - float(f_r_applied @ v)))
+                    tank + h * (alpha_nom * float(v @ (d0v * v))
+                                - float(f_r_applied @ v))
+                    - spring_release)
 
     return PIRServoStep(
         tau=tau,
@@ -488,6 +557,7 @@ def pir_servo_step(
         tau_ratio=float(np.max(np.abs(tau) / cap)),
         alpha_tau=float(alpha_tau),
         alpha_E=float(alpha_E),
+        alpha_nom=float(alpha_nom),
         anchor_feasible=anchor_feasible,
         tank=next_tank,
         tank_floor_ok=bool(next_tank >= cfg.tank_minimum - 1e-12),

@@ -13,9 +13,13 @@ Read `predictive_impedance_realizability.md` for the result. In three lines:
   four-term residual closes to machine precision, and `impedance_residual`'s
   fast-vs-manager-rate authorization result transfers to the merged port.
 - But at the only certified operating point the nominal is 84 % of the command
-  and leaves the residual **2.4 %** of joint 4's torque cap — and Lemma 1's
-  precondition, which the fast layer has no authority over, fails at 4× the
-  source disturbance. §7.7 of the draft is the thing to read.
+  and leaves the residual **2.4 %** of joint 4's torque cap, and Lemma 1's
+  precondition fails at 4× the source disturbance.
+- §8 root-causes those: they are **one** problem, monotone in K₀, forced by a
+  single diagnostic. The precondition failure is fixed outright by giving the
+  servo authority over the nominal with a monotone gain (both guarantees now
+  hold to 16×); the rest is a priced trade the human has to make. The plan's
+  own deferred "anisotropic gains" refinement does **not** help here.
 
 ## Layout
 
@@ -27,6 +31,8 @@ simulation/pir_verify.py                three independent checks on the scan's v
 simulation/pir_controller.py            the merged controller — Task 2
 simulation/run_pir_closed_loop.py       closed-loop runs and variant comparison
 simulation/pir_e0_sweep.py              authorization vs tracking — Task 3
+simulation/pir_rootcause.py             why the three findings happen (K₀ sweep)
+simulation/pir_fixes.py                 candidate fixes, scored side by side
 simulation/test_pir_knot_scan.py        regression tests for the gate
 simulation/test_pir_controller.py       regression tests for the controller
 results/                                figures and machine-readable results
@@ -56,6 +62,8 @@ python3 pir_knot_scan.py                         # ~19 min on 4 cores
 python3 pir_verify.py                            # ~3 min
 python3 run_pir_closed_loop.py --scenario merged # ~35 s
 python3 pir_e0_sweep.py                          # ~6 min
+python3 pir_rootcause.py                         # ~4 min
+python3 pir_fixes.py                             # ~5 min
 python3 -m pytest test_pir_knot_scan.py test_pir_controller.py -q
 ```
 

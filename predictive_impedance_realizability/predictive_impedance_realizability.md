@@ -2,8 +2,9 @@
 
 ### A design gate for Predictive Interaction Realizability on the FR3
 
-*Working draft. Task 1 (the design gate), Task 2 (the merged controller) and
-Task 3 (the authorization-vs-tracking sweep). Simulation only.*
+*Working draft. Task 1 (the design gate), Task 2 (the merged controller),
+Task 3 (the authorization-vs-tracking sweep), and the root-cause analysis and
+fixes for what those found. Simulation only.*
 
 ---
 
@@ -76,7 +77,11 @@ other three:
    left as headroom, that happens at disturbance amplitudes well inside what
    `impedance_residual`'s own benchmark uses.
 
-§9 states the decision this hands to a human.
+§8 root-causes all four and reports what can be done about them. In short:
+findings 1–3 are one problem, not three — diagnostic 3 forces $K_0$ above the
+desired impedance's own stiffness, and every symptom is monotone in $K_0$.
+Finding 4 is separate, and is fixed outright. §10 states the decision this
+hands to a human.
 
 ---
 
@@ -306,6 +311,8 @@ the one it did not list.
 | `pir_knot_scan.json` | grid, all diagnostic arrays, `common_region_nonempty`, both recommendations |
 | `pir_closed_loop_{scenario}_{envelope}.png/json` | §7: the merged controller in closed loop |
 | `pir_e0_sweep.png/json` | §7.4–7.5: authorization vs tracking, both tightenings active |
+| `pir_rootcause.png/json` | §8.1: every symptom swept against $K_0$ |
+| `pir_fixes.png/json` | §8.3: candidate fixes scored on all four findings |
 
 ---
 
@@ -570,15 +577,155 @@ it is a cost of the split that the synthesis note did not anticipate.**
 
 ---
 
-## 8. What this does not show
+## 8. Root cause, and what fixes it
+
+Four findings is three too many if they share a cause. They do.
+
+### 8.1 One constraint drives findings 1–3
+
+Diagnostic 3 requires the $\alpha\to 0$ fallback to hold the whole 20 N push
+inside 0.06 m, i.e. $K_0 \ge |F_h| / 0.06 = 333$ N/m. The behaviour the
+controller is supposed to render has $K_d = 200$ N/m. **The gate therefore
+forces the passivity floor to be stiffer than the behaviour it sits under**,
+and everything else follows. Sweeping $K_0$ at fixed damping ratio
+$\zeta = 0.35$ (`pir_rootcause.py`):
+
+| $K_0$ [N/m] | fallback $\|e_z\|$ | (3) passes | anchor headroom | residual share | largest safe disturbance | $E_0$ trade |
+|---|---|---|---|---|---|---|
+| 100 | 236 mm | no | 26.4 % | 72.6 % | 12× | 0.0068 |
+| 150 | 154 mm | no | 22.1 % | 59.4 % | 8× | 0.0071 |
+| **200** = $K_d$ | 112 mm | no | 17.9 % | 46.4 % | 8× | 0.0125 |
+| 250 | 88 mm | no | 13.7 % | 34.1 % | 8× | 0.0358 |
+| 300 | 72 mm | no | 9.5 % | 23.1 % | 8× | 0.0057 |
+| **380** = certified | 56 mm | **yes** | **2.4 %** | **17.1 %** | **4×** | **0.0020** |
+| 460 | 46 mm | yes | **−1.2 %** | 39.1 % | **0×** | 0.0016 |
+| 600 | 34 mm | yes | −5.3 % | 48.4 % | 0× | 0.0010 |
+
+Every symptom is monotone in $K_0$, every one of them gets worse as $K_0$
+rises, and diagnostic 3 is the only diagnostic that wants $K_0$ large. At
+$K_0 = 460$ the headroom is already negative — the precondition fails at the
+*nominal* disturbance. The certified band is thin from both sides.
+
+**Is diagnostic 3's premise right?** It asks the passivity *floor* alone to
+satisfy a workspace bound that the desired *behaviour* does not satisfy either:
+`phri2`'s own $K_d = 200$ gives 0.10 m of static displacement against the
+0.06 m bound (reproduced here at 112 mm, §6.2), and `phri2` meets the bound
+through its **predictive layer**, not through its impedance. Requiring more of
+the floor than of the behaviour is a defensible safety choice, but it is a
+*choice*, not a physical constraint — and §8.3 prices it.
+
+![](results/pir_rootcause.png)
+
+**Figure 4 — the root cause.** Red dotted line: the desired impedance's own
+$K_d = 200$ N/m. Blue dotted line: the 333 N/m diagnostic 3 demands. The
+certified operating point sits to the right of both, which is why the headroom
+and the precondition robustness are near their worst there. Only the leftmost
+panel improves as $K_0$ rises.
+
+### 8.2 Finding 4 is separate, and is fixed outright
+
+Finding 4 — the fast layer has no authority over the nominal — is not a
+consequence of $K_0$. It is structural: $\alpha_\tau$ scales $F_r$ only. The
+fix is to give the servo an $\alpha_{\mathrm{nom}}$ as well, the largest scale
+keeping the anchor itself inside the box. Since $\alpha_{\mathrm{nom}} = 0$
+recovers $\tau_{\mathrm{base}}$, **the torque guarantee becomes unconditional
+whenever $\tau_{\mathrm{base}}$ alone fits** — a far weaker and checkable
+condition (0.636 of the cap here) than "the anchor fits at every future tick".
+
+It is not free, and the first attempt traded one guarantee for the other. A
+time-varying spring gain is an energy term, and only one direction is
+dangerous: *softening* releases stored energy (the storage function's
+$\tfrac12\dot\alpha\,e^\top K_0 e$ term goes negative, which helps), while
+*re-stiffening* is an injection — at fixed $e$ the robot suddenly pushes back
+harder without the human having done the work to store it. Charging
+re-stiffening to the tank and crediting softening nothing, unrestricted
+$\alpha_{\mathrm{nom}}$ buys the torque envelope and **loses the tank floor**
+(−1.06 J at 16×): a transient repeatedly re-buys stiffness the port has not
+earned.
+
+Forbidding the rise fixes it. With $\alpha_{\mathrm{nom}}$ **monotone
+non-increasing**, both guarantees hold together out to 16× the source
+disturbance — against 4× for the certified baseline. The cost is a floor that
+does not recover its stiffness within an episode; a deployed system would reset
+it per contact, which this benchmark does not exercise.
+
+### 8.3 Candidates, scored on all four findings
+
+`pir_fixes.py`, all on the merged scenario, all against the same probes:
+
+| candidate | fallback | (3) | headroom | residual share | torque OK to | + tank floor to | $E_0$ trade | max $\|e_z\|$ at 12× |
+|---|---|---|---|---|---|---|---|---|
+| `certified` $K_0$=380 | 56 mm | ✓ | 2.4 % | 17.1 % | 4× | 4× | 0.0020 | 79 mm |
+| `soft_nominal` $K_0$=$K_d$ | 110 mm | ✗ | 16.3 % | 46.0 % | 8× | 8× | 0.0070 | — |
+| `anisotropic` | 56 mm | ✓ | 2.2 % | 20.0 % | **2×** | 2× | 0.0003 | — |
+| `nominal_auth` | 56 mm | ✓ | 2.4 % | 17.1 % | **16×** | 6× | 0.0020 | — |
+| **`nominal_auth_mono`** | 56 mm | ✓ | 2.4 % | 17.1 % | **16×** | **16×** | 0.0020 | — |
+| `soft_plus_auth` | 110 mm | ✗ | 16.3 % | 46.0 % | 16× | 8× | 0.0070 | — |
+| **`soft_plus_mono`** | 110 mm | ✗ | **16.3 %** | **46.0 %** | **16×** | **16×** | **0.0070** | **160 mm** |
+
+![](results/pir_fixes.png)
+
+**Figure 5 — candidate fixes.** The rightmost panel is the one that changes the
+recommendation: at nominal load every candidate holds the workspace box
+identically, and only under a 12× disturbance does the soft nominal's real cost
+appear. Without that panel `soft_nominal` looks free.
+
+Three things to take from this.
+
+**`nominal_auth_mono` is a pure win and should be adopted.** It quadruples the
+range over which *both* guarantees survive, costs nothing on any other metric,
+changes nothing at all while the anchor fits (asserted by test), and keeps
+diagnostic 3. There is no argument against it in these measurements.
+
+**The `anisotropic` refinement — the plan's own deferred "later refinement" —
+does not work here, and slightly hurts.** Headroom falls to 2.2 % and the safe
+disturbance range halves to 2×. The reason is visible in the trajectory: the
+displacement is 8:1 dominated by the push axis (max $|e|$ =
+[7.5, 0.3, 60.3] mm), so softening the off-axis gains barely reduces
+$\|J_v^\top F_{\mathrm{nom}}\|_\infty$ while removing the off-axis restoring
+force that was helping keep the arm near the pose. A negative result, but a
+clean one: the obvious lever is the wrong lever.
+
+**Lowering $K_0$ is not free, and the fallback bound is not the only thing it
+buys.** At nominal load every candidate holds the box identically (60.2 mm),
+which makes `soft_nominal` look costless. Under load it is not: at 12×
+disturbance the certified nominal holds 79 mm while `soft_plus_mono` reaches
+**160 mm**, and its RMS realization residual is worse too (5.60 vs
+4.03 m/s²). So the real trade for findings 1–3 is not "56 mm vs 110 mm in a
+fallback that may never happen" — it is **workspace containment under
+disturbance**, which is a live property. That is a genuine engineering
+decision, and it is the human's to make, not the scan's.
+
+### 8.4 What this does and does not settle
+
+Findings 1–3 are one problem with a known knob and a priced trade. Finding 4 is
+solved. What remains open is the same thing §7.7 pointed at: even with
+$\alpha_{\mathrm{nom}}$, the guarantee is "torque legal provided
+$\tau_{\mathrm{base}}$ fits", and nothing here defends *that*. On this FR3 pose
+$\tau_{\mathrm{base}}$ uses 0.636 of joint 4's cap with no control authority
+applied at all, so the margin is real but finite, and it is a pose property —
+which is why re-running the gate at a pose that does not load joint 4 remains
+the highest-value untried experiment (§10).
+
+---
+
+## 9. What this does not show
 
 - **~~The merged controller is not implemented.~~** Discharged in §7.2: the
   replay estimate and the merged closed loop agree to 0.1 % on both rows, and a
-  regression test now pins them together. What replaced this caveat is worse —
-  see §7.7.
-- **The anchor's feasibility was certified against one scenario and does not
-  survive a larger one** (§7.7). Everything the gate says is conditional on a
-  precondition that fails at 4× the source benchmark's disturbance.
+  regression test now pins them together.
+- **~~The anchor's feasibility does not survive a larger scenario.~~** Fixed in
+  §8.2 by `nominal_auth_mono`, which holds both guarantees to 16×. What is
+  *not* fixed is the condition underneath it: everything still assumes
+  $\tau_{\mathrm{base}}$ alone fits the envelope, which is a property of the
+  pose and is not defended anywhere.
+- **The fix's cost is not fully characterised.** `nominal_auth_mono` ratchets
+  the floor's stiffness down and never recovers it within a run. A 6 s
+  benchmark does not show what that does over minutes of interaction, and the
+  per-contact reset a deployed system would need is not implemented or tested.
+- **The $K_0$ trade is priced on one disturbance profile.** §8.3's workspace
+  numbers at 12× come from `impedance_residual`'s own rejectable force scaled
+  up, at one seed. That is a stress test, not a distribution.
 - **The fallback leaves the workspace box in transient.** 62.2 mm peak against
   a 60 mm bound. `phri2`'s box is slack-relaxed rather than hard, so this is
   not a constraint violation in its formulation — but it means the
@@ -608,7 +755,7 @@ it is a cost of the split that the synthesis note did not anticipate.**
 
 ---
 
-## 9. Decision gate
+## 10. Decision gate
 
 Per §13.3 of the synthesis note, this is where autonomous work stops.
 
@@ -616,11 +763,25 @@ Per §13.3 of the synthesis note, this is where autonomous work stops.
 merged controller is implemented, Merged Lemma 1 holds in closed loop and the
 four-term residual closes exactly. What is left is not a coding decision.
 
-§7.6 and §7.7 have changed what the merge can claim. The certified operating
-point leaves the residual 2.4 % of joint 4's cap, which makes the merged
-controller mostly a stiff PD, makes the passivity axis cheap-because-weak, and
-leaves Lemma 1's precondition failing at 4× the source disturbance. Two of the
-three questions below are now sharper than they were before the implementation:
+§8 has changed what is being decided. One of the four findings is now fixed
+outright and should simply be adopted; the other three collapse into a single
+priced trade. What is left for a human:
+
+**Decision 0 — adopt `nominal_auth_mono`?** I recommend yes. It quadruples the
+range over which both guarantees survive, is provably inert while the anchor
+fits, and costs nothing measurable. The only reservation is §9's: its
+stiffness ratchet is untested beyond a 6 s run, so it needs a per-contact reset
+before hardware.
+
+**Decision 1 — how much workspace containment under disturbance is the
+predictive layer's authority worth?** That is the real form of findings 1–3.
+$K_0 = K_d = 200$ buys 6.8× the anchor headroom, 2.7× the residual share and a
+3.5× steeper $E_0$ trade, and pays with 160 mm of excursion at 12×
+disturbance against 79 mm. Neither end is obviously right.
+
+**Decision 2 — which envelope does the merged paper claim?** Unchanged from
+before the implementation, and still the question that decides whether any of
+this is publishable as one paper:
 
 **Which envelope does the merged paper claim?** The two are not
 interchangeable and they give opposite answers. Three options, in the order I
@@ -642,18 +803,26 @@ would rank them:
    binding quantity, which is an 18.96 N·m bias torque at one configuration
    rather than anything about impedance.
 
-Option 3 has gained weight since the implementation. The binding quantity is
-still an 18.96 N·m bias torque at one configuration, and §7.7 shows that the
-2.4 % of headroom it leaves is not enough to keep Lemma 1's precondition alive
-under a moderately larger disturbance. A pose or push direction that does not
-load joint 4 would widen the region, restore headroom to the residual, and make
-the passivity axis worth something — all three of the implementation's bad
-findings at once. I have not chosen among these; the measurements say what each
-costs.
+Option 3 has gained the most weight. The binding quantity is still an
+18.96 N·m bias torque at one configuration, §8.4 shows that even the fixed
+controller rests on $\tau_{\mathrm{base}}$ fitting, and §8.3 shows the only
+lever that widens the headroom without the fix costs workspace containment. A
+pose or push direction that does not load joint 4 would relieve all of it at
+once, and nothing measured so far tells us whether it would. **It is the
+highest-value untried experiment and it is cheap** — the gate is ~19 min and
+the fix comparison ~5 min. I have not chosen among these; the measurements say
+what each costs.
 
 ### Owed before any claim
 
-- [ ] **Human:** pick the envelope, then confirm $(K_0, D_0)$.
+- [ ] **Human:** decisions 0, 1 and 2 above.
+- [x] ~~Root-cause the three Section 7 findings~~ — §8.1. One constraint,
+      monotone in $K_0$.
+- [x] ~~Fix the precondition failure~~ — §8.2, `nominal_auth_mono`. Both
+      guarantees to 16×.
+- [x] ~~Try anisotropic $(K_0, D_0)$~~ — §8.3. It does not help here and
+      slightly hurts; the displacement is 8:1 push-axis dominated.
+- [ ] **Re-run the gate at a pose that does not load joint 4** (see above).
 - [x] ~~Implement the merged controller and re-measure rows 1 and 4 in its own
       closed loop~~ — §7.1–7.2. Replay and closed loop agree to 0.1 %.
 - [x] ~~Task 3: re-sweep the authorization-vs-tracking curve ($E_0$) with both
@@ -665,25 +834,26 @@ costs.
       operating point and confirms both halves empirically; the write-up must
       state the precondition as a **standing hypothesis that can fail at run
       time** (§7.7), not as a design-time check.
-- [ ] **New, and ahead of the proof:** decide what the controller does when the
-      precondition fails. Today it simply overruns the envelope by the anchor's
-      own excess. Options: fold the nominal into the authorization loop
-      (scale $F_{\mathrm{nom}}$ too, at the cost of the passivity floor), make
-      $K_0$ state-dependent, or escalate — which is the seam back into
-      `certified-realizability`, exactly where the note said the missing
-      transferability leg was.
+- [x] ~~Decide what the controller does when the precondition fails~~ — §8.2.
+      Folding the nominal into the authorization loop works, and the passivity
+      cost it first appeared to carry is removed by making
+      $\alpha_{\mathrm{nom}}$ monotone. The escalation route back into
+      `certified-realizability` is still the answer for the residual condition
+      §8.4 names ($\tau_{\mathrm{base}}$ itself), which no local fix defends.
 - [ ] Re-run the Task 1 gate at a pose/push direction that does not load
       joint 4, and check whether the headroom problem is FR3-pose-specific.
-- [ ] Try anisotropic $(K_0, D_0)$ before accepting the region as final.
+- [ ] Implement and test the per-contact reset `nominal_auth_mono` needs, and
+      characterise the ratchet over runs longer than 6 s.
 - [ ] Resolve whether the 0.06 m bound is hard (region = 6 cells) or
-      slack-relaxed (region = 33 cells).
+      slack-relaxed (region = 33 cells) — and note that §8.1 makes this the
+      same question as decision 1.
 - [ ] Explicitly disclaim the force-misclassification pillar in whatever is
       written. §7.1's channel split makes the assumption visible; it does not
       discharge it.
 
 ---
 
-## 10. Reproducing
+## 11. Reproducing
 
 ```bash
 cd simulation
@@ -693,6 +863,8 @@ python3 pir_verify.py                        # ~3 min              (gate verific
 python3 run_pir_closed_loop.py --scenario push     # ~35 s          (Section 7.2, 7.6)
 python3 run_pir_closed_loop.py --scenario merged   # ~35 s          (Section 7.3, 7.4)
 python3 pir_e0_sweep.py                      # ~6 min              (Section 7.4, 7.5)
+python3 pir_rootcause.py                     # ~4 min              (Section 8.1)
+python3 pir_fixes.py                         # ~5 min              (Section 8.3)
 python3 -m pytest test_pir_knot_scan.py test_pir_controller.py -q
 ```
 
