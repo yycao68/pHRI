@@ -131,3 +131,61 @@ def test_published_grid_resolves_the_feasible_band():
     assert len(band) >= 10, "k grid is too coarse through the feasible band"
     assert (np.diff(band) <= 25.0).all()
     assert D_GRID.min() <= 8.0 and D_GRID.max() >= 40.0
+
+
+# --- pose / push-direction plumbing (decision 2) ------------------------
+
+
+def test_default_pose_and_axis_reproduce_the_published_scenario():
+    """Adding pose support must not perturb the neutral-pose results the gate
+    and the draft already report."""
+    assert pc.scenario_tag(None, None) == "neutral"
+    np.testing.assert_allclose(pc.nominal_pose(), pc.Q_NEUTRAL)
+    result = pc.run_fallback_equilibrium(380.0, 29.07)
+    assert result["e_ss_axis"] == pytest.approx(0.055775, abs=5e-5)
+
+
+def test_trajectory_cache_key_separates_scenarios():
+    """A trajectory generated at one pose must never be replayed for another:
+    every downstream diagnostic would be wrong with nothing to flag it."""
+    other = pc.Q_NEUTRAL.copy()
+    other[1] = -1.30
+    assert pc.scenario_tag(other, None) != pc.scenario_tag(None, None)
+    assert pc.scenario_tag(None, np.array([1.0, 0.0, 0.0])) != pc.scenario_tag(None, None)
+
+
+def test_tau_base_at_rest_is_exactly_the_bias_torque():
+    """The pose screen's Stage 1 rests on this identity: with q_null = q and
+    R_d the pose's own orientation, compute_tau_base's null-space and
+    orientation terms vanish, so the screen's cheap gravity probe is exact."""
+    import mujoco
+
+    from pir_pose_study import PoseProbe, pose_from
+
+    probe = PoseProbe()
+    q = pose_from(-1.30, -1.30, 1.571)
+    probe.env.data.qpos[:7] = q
+    probe.env.data.qvel[:7] = 0.0
+    probe.env.clear_applied_forces()
+    mujoco.mj_forward(probe.env.model, probe.env.data)
+    dyn, state = probe.env.get_dynamics_and_state()
+    cfg = pc.FR3MPCConfig()
+    tau_base, _, _ = pc.compute_tau_base(
+        dyn, state, state.ee_rot.copy(), pc.params_at(cfg, q),
+        cfg.K_rot, cfg.D_rot, cfg.lambda_reg)
+    np.testing.assert_allclose(tau_base, dyn.Cq_dot, atol=1e-9)
+
+
+def test_pose_screen_rejects_braced_poses():
+    """The controllability guard must reject the near-singular pose the
+    unguarded screen originally picked; without it the screen selects poses
+    that resist the push kinematically, where impedance cannot be rendered."""
+    from pir_pose_study import PUSH_AXES, MAX_LAMBDA_RATIO, PoseProbe, pose_from
+
+    probe = PoseProbe()
+    ref = probe.at(pc.Q_NEUTRAL)
+    braced = probe.at(pose_from(-0.20, -0.90, 2.60))
+    axis = PUSH_AXES["-z"]
+    ratio = (axis @ braced["Lambda"] @ axis) / (axis @ ref["Lambda"] @ axis)
+    assert ratio > MAX_LAMBDA_RATIO, "this pose is the guard's motivating case"
+    assert braced["sigma_min"] < ref["sigma_min"]

@@ -3,8 +3,9 @@
 ### A design gate for Predictive Interaction Realizability on the FR3
 
 *Working draft. Task 1 (the design gate), Task 2 (the merged controller),
-Task 3 (the authorization-vs-tracking sweep), and the root-cause analysis and
-fixes for what those found. Simulation only.*
+Task 3 (the authorization-vs-tracking sweep), the root-cause analysis and fixes
+for what those found, and the pose study that resolves most of it. Simulation
+only.*
 
 ---
 
@@ -35,7 +36,7 @@ only in a sliver.**
 
 | Torque envelope | Source | Feasible region | Verdict |
 |---|---|---|---|
-| $\rho\,\tau_{\max}$, $\rho = 0.28$ | `impedance_residual` | **0 / 900 cells** | **NO-GO, structural** |
+| $\rho\,\tau_{\max}$, $\rho = 0.28$ | `impedance_residual` | **0 / 900 cells** | **NO-GO** (at this pose; see §9.2) |
 | $87/87/87/\mathbf{31.5}/12/12/12$ N·m | `phri2` | **33 / 900 cells**, $k \in [360, 400]$ N/m, $d \in [21.3, 48.4]$ N·s/m | **GO, thin** |
 
 Under the $\rho = 0.28$ envelope no $(K_0, D_0)$ works — not a tuning failure,
@@ -77,11 +78,20 @@ other three:
    left as headroom, that happens at disturbance amplitudes well inside what
    `impedance_residual`'s own benchmark uses.
 
-§8 root-causes all four and reports what can be done about them. In short:
-findings 1–3 are one problem, not three — diagnostic 3 forces $K_0$ above the
-desired impedance's own stiffness, and every symptom is monotone in $K_0$.
-Finding 4 is separate, and is fixed outright. §10 states the decision this
-hands to a human.
+§8 root-causes all four and reports what can be done about them: findings 1–3
+are one problem, not three — diagnostic 3 forces $K_0$ above the desired
+impedance's own stiffness — and finding 4 is separate and is fixed outright by
+giving the servo authority over the nominal (**adopted**, §8.2).
+
+**§9 then removes most of the problem rather than trading it.** All four
+findings were measured at one FR3 pose, and that pose is a bad one: its bias
+torque uses 63.6 % of joint 4's cap before any control is applied. At a pose
+that does not load joint 4 the feasible region grows from 33 cells to **481**,
+the residual's torque headroom from 2.4 % to **45.7 %**, and the workspace
+excursion under a 16× disturbance *improves* from 164 mm to 59 mm. Findings 1–3
+were substantially an artifact of the scenario, not of the architecture.
+
+§11 states what is left for a human.
 
 ---
 
@@ -222,7 +232,14 @@ reports it **empty** (§6.3).
 
 ## 5. Results
 
-### 5.1 `rho_0.28`: structurally infeasible
+### 5.1 `rho_0.28`: infeasible at this pose
+
+> **Corrected by §9.2.** This section originally called the result
+> *structural*. It is not: it is a property of `phri2`'s nominal pose and push
+> direction. At other poses `phri2`'s own controller runs inside the
+> $\rho = 0.28$ envelope. Everything measured below is correct as measured; the
+> word "structural" was an over-claim, and §9.2 gives the counter-example.
+
 
 | | value |
 |---|---|
@@ -235,7 +252,7 @@ reports it **empty** (§6.3).
 | best worst-normalized use over the whole grid | 1.238 |
 
 Row 1b fails in **every cell**, with a grid-wide minimum of 1.144. This is not
-a tuning result. Holding a 20 N push at the fallback equilibrium requires
+a tuning result *at this pose*. Holding a 20 N push at the fallback equilibrium requires
 $K_0 e = F_h$, so $J_v^\top F_{\mathrm{nom}} = -J_v^\top F_h$ *regardless of
 $K_0$* — the gains set where the arm sits, not how hard it must push back.
 On this pose that costs ~28.4 N·m on joint 4 asymptotically (§6.2), against a
@@ -313,6 +330,8 @@ the one it did not list.
 | `pir_e0_sweep.png/json` | §7.4–7.5: authorization vs tracking, both tightenings active |
 | `pir_rootcause.png/json` | §8.1: every symptom swept against $K_0$ |
 | `pir_fixes.png/json` | §8.3: candidate fixes scored on all four findings |
+| `pir_pose_study.png/json` | §9.1–9.2: the pose screen and its two traps |
+| `pir_knot_scan_pose_*` | §9.3: the full gate re-run at the better pose |
 
 ---
 
@@ -709,7 +728,122 @@ the highest-value untried experiment (§10).
 
 ---
 
-## 9. What this does not show
+## 9. The pose study: most of this was the scenario
+
+Every number above comes from `phri2`'s nominal pose under its −z push. §8.4
+flagged that the residual condition — $\tau_{\mathrm{base}}$ alone fitting the
+envelope — is a *pose property*, and that re-running the gate elsewhere was the
+highest-value untried experiment. It was.
+
+### 9.1 Screening poses, and two traps
+
+`pir_pose_study.py` screens 1863 in-limit poses (varying $q_2, q_4, q_6$; 1169
+of them usable, i.e. end effector above the base plane and out in front) across
+three push directions, on two cheap quantities: the gravity floor
+$\max|g(q)|/\bar\tau$, and the fallback-anchor proxy $g(q) - J_v^\top F_h$,
+which is what the anchor tends to as $K_0$ grows (§6.2).
+
+**Trap 1: the proxy rewards poses that cannot render impedance.** Its first
+pick, $(q_2,q_4,q_6) = (-0.20,-0.90,2.60)$, clears $\rho = 0.28$ with an anchor
+ratio of 0.685 — and is near-singular. Its task-space inertia along the push
+axis is **47.2 kg** against the neutral pose's 4.56 kg, and $\sigma_{\min}(J_v)$
+falls from 0.256 to 0.080. The arm is *braced*, not better: at 47 kg of apparent
+inertia the realization layer cannot render a 2 kg desired impedance in the
+push direction at all. A pose is therefore only a candidate if it also keeps the
+push direction controllable — $\Lambda_{\mathrm{axis}}$ within 2× of neutral and
+$\sigma_{\min}$ at least 0.7× — and both thresholds are stored per pose so a
+different line can be drawn without re-running.
+
+**Trap 2: the static proxy is optimistic, sometimes by a factor of three.** The
+gate uses $\max_t \|\tau_{\mathrm{base},t}\|_\infty/\bar\tau$ *along the
+trajectory*, where $\tau_{\mathrm{base}}$ also carries Coriolis terms and the
+null-space and orientation torques that become nonzero the moment $q$ leaves
+$q_{\mathrm{null}}$. One shortlisted pose scored **0.470 statically and 1.287
+along the trajectory**, with the binding joint moving from 4 to 5. That is the
+other half of the lesson: relieving joint 4 can simply move the bottleneck to
+joints 5–7, whose $\rho = 0.28$ caps are only 3.36 N·m. So the screen shortlists
+and a replay decides.
+
+![](results/pir_pose_study.png)
+
+**Figure 6 — the pose screen.** Anchor proxy over $(q_2, q_4)$ at
+$q_6 = 1.571$, per envelope and push direction. The star is `phri2`'s own pose.
+Blank cells are rejected by the controllability guard — poses that resist the
+push through kinematic structure rather than control, which the unguarded
+screen preferred. Green is not yet a verdict: §9.1's second trap means these
+still have to survive an along-trajectory replay.
+
+### 9.2 $\rho = 0.28$ is reachable — but not by enough
+
+**§5.1's "structurally infeasible" was too strong, and is corrected here.** It
+is infeasible *at `phri2`'s pose and push direction*. Elsewhere it is not: at
+$(q_2,q_4,q_6) = (-0.10,-2.70,1.571)$ under an $+x$ push, `phri2`'s own realized
+torque peaks at **0.952** of the $\rho = 0.28$ cap — its published controller
+runs inside `impedance_residual`'s envelope there. The gain-independence
+argument of §6.2 stands; what was wrong was calling a scenario property a
+structural one.
+
+It still does not help the merge. The best along-trajectory floor found anywhere
+in the shortlist is **0.870**, leaving ≤ 13 % of the cap for
+$J_v^\top F_{\mathrm{nom}}$ — against the 36.4 % the neutral-pose derated
+envelope offers, which supported only a 33-cell sliver. A passive nominal does
+not fit in 13 %.
+
+### 9.3 The derated envelope at a better pose: the actual result
+
+Re-running the full gate at $(q_2,q_4,q_6) = (-1.30,-1.30,1.571)$, **keeping
+`phri2`'s own −z push** so only one thing changes:
+
+| | `phri2`'s pose | this pose |
+|---|---|---|
+| $\tau_{\mathrm{base}}$ floor | 0.636 | **0.433** |
+| `phri2`'s own realized torque | 1.005 | **0.508** |
+| cells passing row (1) | 577 / 900 | **900 / 900** |
+| cells passing row (1b) | 702 / 900 | **900 / 900** |
+| **common feasible region** | 33 cells | **481 cells** |
+| most robust cell | $K_0$=380, $D_0$=29.1 | $K_0$=520, $D_0$=56.1 |
+| worst normalized use there | 0.977 | **0.541** |
+
+And in closed loop, at each pose's own recommended operating point, sweeping the
+disturbance:
+
+| disturbance | headroom (`phri2` pose) | headroom (this pose) | residual share | max $\|\tau\|/\bar\tau$ | max $\|e_z\|$ |
+|---|---|---|---|---|---|
+| 1× | 2.4 % | **45.7 %** | 17.1 % → **54.0 %** | 1.0000 → **0.532** | 60.2 → **51.5** mm |
+| 8× | −16.8 % | **43.2 %** | 72.4 % → 86.7 % | 1.0000 → **0.533** | 108.0 → **58.9** mm |
+| 16× | −55.5 % | **35.4 %** | 85.0 % → 90.7 % | 1.0000 → **0.619** | 164.3 → **59.2** mm |
+
+Three things follow.
+
+**Findings 1 and 3 are largely gone.** The residual is 54 % of the command
+instead of 17 %, with 45.7 % of joint 4's cap behind it instead of 2.4 %.
+
+**Finding 4 stops being stressed at all.** At 16× disturbance the anchor still
+has 35 % headroom and the applied torque peaks at 0.62 of the cap — the
+controller is not saturating, so Lemma 1's precondition is never in question.
+Decision 0's $\alpha_{\mathrm{nom}}$ remains the right insurance (the negative
+headroom entries in the `phri2`-pose column are exactly it absorbing an overrun
+that would otherwise have been a violation), but at this pose it is not called on.
+
+**It is better on the workspace too, not traded against it.** 59 mm at 16×
+disturbance against 164 mm — inside the 0.06 m box where the certified point is
+2.7× outside it. This is the opposite of the $K_0$ trade §8.3 priced, which
+bought headroom *with* containment. **Decision 1 may therefore be moot**: the
+pose change delivers what softening $K_0$ was being considered for, and improves
+the thing softening $K_0$ would have cost.
+
+### 9.4 What this does not settle
+
+The pose was chosen by a screen tuned on one scenario, and only $q_2, q_4, q_6$
+were varied. Nothing here says it is optimal, or that it is a pose a real task
+would want the robot in — it is a better *test* pose, and whether the
+application permits it is a question this study cannot answer. The two guard
+thresholds are judgement calls. And the whole comparison is still one seed of
+one disturbance profile on one arm in simulation.
+
+---
+
+## 10. What this does not show
 
 - **~~The merged controller is not implemented.~~** Discharged in §7.2: the
   replay estimate and the merged closed loop agree to 0.1 % on both rows, and a
@@ -755,7 +889,7 @@ the highest-value untried experiment (§10).
 
 ---
 
-## 10. Decision gate
+## 11. Decision gate
 
 Per §13.3 of the synthesis note, this is where autonomous work stops.
 
@@ -774,14 +908,20 @@ stiffness ratchet is untested beyond a 6 s run, so it needs a per-contact reset
 before hardware.
 
 **Decision 1 — how much workspace containment under disturbance is the
-predictive layer's authority worth?** That is the real form of findings 1–3.
-$K_0 = K_d = 200$ buys 6.8× the anchor headroom, 2.7× the residual share and a
-3.5× steeper $E_0$ trade, and pays with 160 mm of excursion at 12×
-disturbance against 79 mm. Neither end is obviously right.
+predictive layer's authority worth?** *Probably moot now.* This was the real
+form of findings 1–3: $K_0 = K_d = 200$ buys 6.8× the anchor headroom and 2.7×
+the residual share, and pays with 160 mm of excursion at 12× disturbance
+against 79 mm. §9.3 gets 19× the headroom and 3.2× the residual share from the
+pose instead, and *improves* the excursion to 59 mm. Unless the application
+pins the pose, take the pose and leave $K_0$ alone. Still worth a human's eye,
+because "the application pins the pose" is exactly the kind of constraint this
+study cannot see.
 
-**Decision 2 — which envelope does the merged paper claim?** Unchanged from
-before the implementation, and still the question that decides whether any of
-this is publishable as one paper:
+**Decision 2 — which envelope does the merged paper claim?** Run (§9), and the
+answer is **`phri2`'s derated-joint-4 envelope, at a pose that does not load
+joint 4**. $\rho = 0.28$ is reachable (§9.2 corrects §5.1's over-claim) but
+leaves at best 13 % of the cap for the nominal, which is not enough for the
+split. For the record, the three options as they stood:
 
 **Which envelope does the merged paper claim?** The two are not
 interchangeable and they give opposite answers. Three options, in the order I
@@ -803,26 +943,33 @@ would rank them:
    binding quantity, which is an 18.96 N·m bias torque at one configuration
    rather than anything about impedance.
 
-Option 3 has gained the most weight. The binding quantity is still an
-18.96 N·m bias torque at one configuration, §8.4 shows that even the fixed
-controller rests on $\tau_{\mathrm{base}}$ fitting, and §8.3 shows the only
-lever that widens the headroom without the fix costs workspace containment. A
-pose or push direction that does not load joint 4 would relieve all of it at
-once, and nothing measured so far tells us whether it would. **It is the
-highest-value untried experiment and it is cheap** — the gate is ~19 min and
-the fix comparison ~5 min. I have not chosen among these; the measurements say
-what each costs.
+Option 3 is what §9 ran, and it won: the pose relieves findings 1, 3 and 4 at
+once and improves containment rather than trading it. Option 1 is therefore the
+recommendation, *at the §9.3 pose rather than `phri2`'s*. Option 2 is not
+forced — the passive-nominal split is viable, so there is no reason to retreat
+to dissipativity-on-the-realized-port.
 
 ### Owed before any claim
 
-- [ ] **Human:** decisions 0, 1 and 2 above.
+- [x] ~~Decision 0: adopt `nominal_auth_mono`~~ — adopted; it is the
+      controller's default, with `pir_no_nominal_auth` kept as the ablation.
+- [x] ~~Decision 2: which envelope~~ — §9. Derated-joint-4, at the §9.3 pose.
+- [ ] **Human:** decision 1, which §9.3 suggests is moot unless the application
+      pins the pose.
 - [x] ~~Root-cause the three Section 7 findings~~ — §8.1. One constraint,
       monotone in $K_0$.
 - [x] ~~Fix the precondition failure~~ — §8.2, `nominal_auth_mono`. Both
       guarantees to 16×.
 - [x] ~~Try anisotropic $(K_0, D_0)$~~ — §8.3. It does not help here and
       slightly hurts; the displacement is 8:1 push-axis dominated.
-- [ ] **Re-run the gate at a pose that does not load joint 4** (see above).
+- [x] ~~Re-run the gate at a pose that does not load joint 4~~ — §9.3.
+      481 cells against 33, and 45.7 % headroom against 2.4 %.
+- [ ] Re-run Tasks 2 and 3 *at the §9.3 pose*: every number in §7 and §8 is
+      measured at the old one, and the merged paper should report the pose it
+      recommends, not the pose that motivated the fixes.
+- [ ] Search poses properly rather than on a $q_2, q_4, q_6$ grid screened by
+      one scenario, and check whether the recommended pose is one a real task
+      would accept.
 - [x] ~~Implement the merged controller and re-measure rows 1 and 4 in its own
       closed loop~~ — §7.1–7.2. Replay and closed loop agree to 0.1 %.
 - [x] ~~Task 3: re-sweep the authorization-vs-tracking curve ($E_0$) with both
@@ -853,7 +1000,7 @@ what each costs.
 
 ---
 
-## 11. Reproducing
+## 12. Reproducing
 
 ```bash
 cd simulation
@@ -865,6 +1012,9 @@ python3 run_pir_closed_loop.py --scenario merged   # ~35 s          (Section 7.3
 python3 pir_e0_sweep.py                      # ~6 min              (Section 7.4, 7.5)
 python3 pir_rootcause.py                     # ~4 min              (Section 8.1)
 python3 pir_fixes.py                         # ~5 min              (Section 8.3)
+python3 pir_pose_study.py                    # ~4 min              (Section 9.1, 9.2)
+python3 pir_knot_scan.py --pose -1.30 -1.30 1.571 \
+        --tag pose_q2m13_q4m13               # ~19 min             (Section 9.3)
 python3 -m pytest test_pir_knot_scan.py test_pir_controller.py -q
 ```
 

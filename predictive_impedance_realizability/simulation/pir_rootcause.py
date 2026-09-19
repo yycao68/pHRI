@@ -61,11 +61,16 @@ def _probe(args: tuple) -> dict:
     k0, = args
     d0 = damping_for(k0)
 
+    # Pinned OFF throughout: this study is the diagnosis of the pre-decision-0
+    # controller, and its point is that the symptoms are monotone in K0.
+    off = {"nominal_authorization": False}
+
     # (a) The constraint that pushes K0 up: the alpha -> 0 fallback.
     fallback = pc.run_fallback_equilibrium(k0, d0)
 
     # (b) Symptoms (i) and the anchor, on the merged scenario at nominal stress.
-    base = run_variant("pir", k0, d0, "derated_joint4", scenario="merged")["summary"]
+    base = run_variant("pir", k0, d0, "derated_joint4", scenario="merged",
+                       overrides=off)["summary"]
 
     # (c) Symptom (iii): how far the disturbance scales before the precondition
     #     stops holding.
@@ -73,7 +78,7 @@ def _probe(args: tuple) -> dict:
     first_fail = None
     for scale in PROBE_SCALES:
         s = run_variant("pir", k0, d0, "derated_joint4", scenario="merged",
-                        disturbance_scale=scale)["summary"]
+                        disturbance_scale=scale, overrides=off)["summary"]
         if s["lemma1_precondition_holds"]:
             largest_ok = scale
         elif first_fail is None:
@@ -82,9 +87,11 @@ def _probe(args: tuple) -> dict:
     # (d) Symptom (ii): the E0 trade, as the spread between a nearly empty tank
     #     and a full one.  A flat pair means the passivity axis buys nothing.
     empty = run_variant("pir", k0, d0, "derated_joint4", scenario="merged",
-                        tank_initial=0.021, disturbance_scale=4.0)["summary"]
+                        tank_initial=0.021, disturbance_scale=4.0,
+                        overrides=off)["summary"]
     full = run_variant("pir", k0, d0, "derated_joint4", scenario="merged",
-                       tank_initial=0.080, disturbance_scale=4.0)["summary"]
+                       tank_initial=0.080, disturbance_scale=4.0,
+                       overrides=off)["summary"]
 
     return {
         "K0": k0,

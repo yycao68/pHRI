@@ -223,6 +223,15 @@ def test_nominal_authorization_keeps_the_anchor_legal(plant):
     assert on.tau_ratio <= 1.0 + 1e-9, "the fix must make the applied torque legal"
 
 
+def test_adopted_default_is_inert_on_the_published_closed_loop():
+    """Decision 0 must not move any number Section 7 reports: at nominal load
+    the anchor fits, so alpha_nom stays 1 and the controller is unchanged."""
+    s = run_variant("pir", K0, D0, "derated_joint4", scenario="push")["summary"]
+    assert s["alpha_nom_min"] == 1.0
+    assert s["diag1_anchor_ratio_closed_loop"] == pytest.approx(0.9762, abs=5e-4)
+    assert s["diag4_budget_ratio_closed_loop"] == pytest.approx(0.3474, abs=5e-4)
+
+
 def test_nominal_authorization_is_inert_when_the_anchor_fits(plant):
     """It must not perturb the certified operating point in normal operation."""
     _, _, J_v, Lam_inv, tau_base = plant
@@ -241,7 +250,11 @@ def test_nominal_authorization_is_inert_when_the_anchor_fits(plant):
 def test_restiffening_charges_the_tank_and_softening_does_not(plant):
     """Only one direction of a time-varying spring gain is an injection."""
     _, _, J_v, Lam_inv, tau_base = plant
-    cfg = PIRConfig(k0=K0, d0=D0, nominal_authorization=True)
+    # The rate is pinned to inf: the adopted default forbids alpha_nom from
+    # rising at all, which is precisely what removes the charge this test is
+    # about.  Testing the charge means testing the unrestricted rule.
+    cfg = PIRConfig(k0=K0, d0=D0, nominal_authorization=True,
+                    nominal_reauth_rate=float("inf"))
     cap = pc.torque_envelope("derated_joint4")
     e, v = np.array([0.0, 0.0, 0.30]), np.zeros(3)
     common = dict(tau_base=tau_base, J_v=J_v, Lam_inv=Lam_inv, e=e, v=v,
@@ -254,10 +267,12 @@ def test_restiffening_charges_the_tank_and_softening_does_not(plant):
 
 
 def test_monotone_alpha_nom_never_rises():
-    """rate = 0 is what makes both guarantees hold together (Section 7.8)."""
-    out = run_variant("pir_nominal_auth", K0, D0, "derated_joint4",
-                      scenario="merged", disturbance_scale=12.0,
-                      overrides={"nominal_reauth_rate": 0.0})
+    """rate = 0 is what makes both guarantees hold together, and is what
+    decision 0 adopted as the default -- so this runs plain ``pir``."""
+    assert PIRConfig().nominal_authorization is True
+    assert PIRConfig().nominal_reauth_rate == 0.0
+    out = run_variant("pir", K0, D0, "derated_joint4",
+                      scenario="merged", disturbance_scale=12.0)
     log, s = out["log"], out["summary"]
     assert np.all(np.diff(log["alpha_nom"]) <= 1e-12), "alpha_nom rose"
     assert s["lemma1_conclusion_holds"], "torque envelope lost"
@@ -267,9 +282,14 @@ def test_monotone_alpha_nom_never_rises():
 
 def test_unrestricted_reauthorization_loses_the_tank_floor():
     """The contrast the monotone rule is there to fix. If this stops failing,
-    the comparison in pir_fixes.py is vacuous."""
-    s = run_variant("pir_nominal_auth", K0, D0, "derated_joint4",
-                    scenario="merged", disturbance_scale=12.0)["summary"]
+    the comparison in pir_fixes.py is vacuous.
+
+    The rate is pinned to inf explicitly rather than relying on the default,
+    so this keeps testing the pre-decision-0 rule after the default changed.
+    """
+    s = run_variant("pir", K0, D0, "derated_joint4", scenario="merged",
+                    disturbance_scale=12.0,
+                    overrides={"nominal_reauth_rate": float("inf")})["summary"]
     assert s["lemma1_conclusion_holds"]
     assert not s["tank_floor_holds"]
 

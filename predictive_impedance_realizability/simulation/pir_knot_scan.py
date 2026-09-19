@@ -172,10 +172,10 @@ def score_envelope(
     }
 
 
-def _fallback_worker(args: tuple[float, float]) -> tuple:
+def _fallback_worker(args: tuple) -> tuple:
     """Closed-loop alpha -> 0 run for one cell (process-pool entry point)."""
-    k, d = args
-    r = pc.run_fallback_equilibrium(k, d)
+    k, d, pose, push_axis = args
+    r = pc.run_fallback_equilibrium(k, d, pose=pose, push_axis=push_axis)
     return k, d, r["e_ss_axis"], r["e_peak_axis"], bool(r["settled"]), r["anchor_max_abs"]
 
 
@@ -184,12 +184,17 @@ def run_scan(
     d_grid: np.ndarray,
     beta: float = BETA_DEFAULT,
     workers: int = 4,
+    pose: np.ndarray | None = None,
+    push_axis: np.ndarray | None = None,
 ) -> dict:
-    traj = pc.load_or_generate_trajectory()
+    # The replay trajectory is generated under the permissive envelope and
+    # scanned against both, exactly as at the neutral pose: it is phri2's
+    # operating trajectory, not a per-envelope one.
+    traj = pc.load_or_generate_trajectory(pose=pose, push_axis=push_axis)
     nk, nd = len(k_grid), len(d_grid)
 
     # --- Diagnostic 3 / 1b: one closed-loop MuJoCo run per cell ------------
-    cells = [(float(k), float(d)) for k in k_grid for d in d_grid]
+    cells = [(float(k), float(d), pose, push_axis) for k in k_grid for d in d_grid]
     e_ss = np.zeros((nk, nd))
     e_peak = np.zeros((nk, nd))
     settled = np.zeros((nk, nd), dtype=bool)
@@ -207,8 +212,11 @@ def run_scan(
     report: dict = {
         "scenario": {
             "source_trajectory": "phri2 FR3 20 N sustained push (run_fr3_experiments.human_force_at)",
+            "pose": pc.nominal_pose(pose).tolist(),
+            "pose_tag": pc.scenario_tag(pose, push_axis),
             "push_magnitude_N": pc.PUSH_MAGNITUDE_N,
-            "push_axis": pc.PUSH_AXIS.tolist(),
+            "push_axis": (pc.PUSH_AXIS if push_axis is None
+                          else np.asarray(push_axis, float)).tolist(),
             "duration_s": pc.DURATION_S,
             "workspace_bound_m": pc.WORKSPACE_BOUND_M,
             "servo_rate_Hz": 1000.0,
@@ -263,7 +271,7 @@ def _heatmap(ax, data, k_grid, d_grid, title, cmap, vmin=None, vmax=None,
     return mesh
 
 
-def make_figures(report: dict, outdir: Path) -> list[Path]:
+def make_figures(report: dict, outdir: Path, suffix: str = "") -> list[Path]:
     outdir.mkdir(parents=True, exist_ok=True)
     k_grid = np.array(report["grid"]["k_N_per_m"])
     d_grid = np.array(report["grid"]["d_Ns_per_m"])
@@ -294,7 +302,7 @@ def make_figures(report: dict, outdir: Path) -> list[Path]:
             fig.colorbar(mesh, ax=ax)
             fig.suptitle(f"envelope: {envelope}", fontsize=8, y=0.99)
             fig.tight_layout()
-            path = outdir / f"pir_knot_scan_{tag}_{envelope}.png"
+            path = outdir / f"pir_knot_scan{suffix}_{tag}_{envelope}.png"
             fig.savefig(path, dpi=170)
             plt.close(fig)
             written.append(path)
@@ -370,7 +378,7 @@ def make_figures(report: dict, outdir: Path) -> list[Path]:
         fontsize=11,
     )
     fig.tight_layout(rect=(0, 0.055, 1, 1))
-    path = outdir / "pir_knot_scan_overlay.png"
+    path = outdir / f"pir_knot_scan{suffix}_overlay.png"
     fig.savefig(path, dpi=170)
     plt.close(fig)
     written.append(path)
@@ -409,19 +417,34 @@ def main() -> None:
     parser.add_argument("--beta", type=float, default=BETA_DEFAULT)
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--outdir", type=Path, default=pc.RESULTS)
+    parser.add_argument("--pose", type=float, nargs=3, metavar=("Q2", "Q4", "Q6"),
+                        help="interaction pose as (q2, q4, q6); other joints "
+                             "stay at Q_NEUTRAL. Default: phri2's own pose.")
+    parser.add_argument("--push-axis", type=float, nargs=3, metavar=("X", "Y", "Z"),
+                        help="push direction. Default: phri2's own -z.")
+    parser.add_argument("--tag", default="",
+                        help="suffix for output filenames, so a pose study does "
+                             "not overwrite the neutral-pose result")
     args = parser.parse_args()
 
     args.outdir.mkdir(parents=True, exist_ok=True)
+    suffix = f"_{args.tag}" if args.tag else ""
+    pose = None
+    if args.pose is not None:
+        pose = pc.Q_NEUTRAL.copy()
+        pose[1], pose[3], pose[5] = args.pose
+    push_axis = np.array(args.push_axis) if args.push_axis else None
     if args.rescore:
-        report = rescore(args.outdir / "pir_knot_scan.json", beta=args.beta)
+        report = rescore(args.outdir / f"pir_knot_scan{suffix}.json", beta=args.beta)
         k_grid = np.array(report["grid"]["k_N_per_m"])
         d_grid = np.array(report["grid"]["d_Ns_per_m"])
     else:
         k_grid = QUICK_K if args.quick else K_GRID
         d_grid = QUICK_D if args.quick else D_GRID
-        report = run_scan(k_grid, d_grid, beta=args.beta, workers=args.workers)
-    (args.outdir / "pir_knot_scan.json").write_text(json.dumps(report, indent=2))
-    figures = make_figures(report, args.outdir)
+        report = run_scan(k_grid, d_grid, beta=args.beta, workers=args.workers,
+                          pose=pose, push_axis=push_axis)
+    (args.outdir / f"pir_knot_scan{suffix}.json").write_text(json.dumps(report, indent=2))
+    figures = make_figures(report, args.outdir, suffix=suffix)
 
     print(f"grid: {len(k_grid)} k x {len(d_grid)} d = {len(k_grid) * len(d_grid)} cells")
     for envelope, block in report["envelopes"].items():
@@ -450,7 +473,7 @@ def main() -> None:
     print("\nwrote:")
     for path in figures:
         print(f"  {path}")
-    print(f"  {args.outdir / 'pir_knot_scan.json'}")
+    print(f"  {args.outdir / f'pir_knot_scan{suffix}.json'}")
 
 
 if __name__ == "__main__":

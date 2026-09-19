@@ -17,9 +17,14 @@ Read `predictive_impedance_realizability.md` for the result. In three lines:
   precondition fails at 4× the source disturbance.
 - §8 root-causes those: they are **one** problem, monotone in K₀, forced by a
   single diagnostic. The precondition failure is fixed outright by giving the
-  servo authority over the nominal with a monotone gain (both guarantees now
-  hold to 16×); the rest is a priced trade the human has to make. The plan's
-  own deferred "anisotropic gains" refinement does **not** help here.
+  servo authority over the nominal with a monotone gain — **adopted as the
+  default** (both guarantees now hold to 16×). The plan's own deferred
+  "anisotropic gains" refinement does **not** help here.
+- **§9 is the one to read.** All of the above was measured at one FR3 pose, and
+  it is a bad one. At a pose that does not load joint 4, the feasible region
+  goes from 33 cells to **481**, the residual's torque headroom from 2.4 % to
+  **45.7 %**, and the workspace excursion under a 16× disturbance *improves*
+  from 164 mm to 59 mm. Most of the bad news was the scenario.
 
 ## Layout
 
@@ -33,6 +38,7 @@ simulation/run_pir_closed_loop.py       closed-loop runs and variant comparison
 simulation/pir_e0_sweep.py              authorization vs tracking — Task 3
 simulation/pir_rootcause.py             why the three findings happen (K₀ sweep)
 simulation/pir_fixes.py                 candidate fixes, scored side by side
+simulation/pir_pose_study.py            pose / push-direction screen — decision 2
 simulation/test_pir_knot_scan.py        regression tests for the gate
 simulation/test_pir_controller.py       regression tests for the controller
 results/                                figures and machine-readable results
@@ -64,6 +70,8 @@ python3 run_pir_closed_loop.py --scenario merged # ~35 s
 python3 pir_e0_sweep.py                          # ~6 min
 python3 pir_rootcause.py                         # ~4 min
 python3 pir_fixes.py                             # ~5 min
+python3 pir_pose_study.py                        # ~4 min
+python3 pir_knot_scan.py --pose -1.30 -1.30 1.571 --tag pose_q2m13_q4m13   # ~19 min
 python3 -m pytest test_pir_knot_scan.py test_pir_controller.py -q
 ```
 

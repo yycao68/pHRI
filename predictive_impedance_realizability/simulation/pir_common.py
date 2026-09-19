@@ -40,7 +40,7 @@ from __future__ import annotations
 
 import os
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 import numpy as np
@@ -58,7 +58,7 @@ for _p in (str(SHARED_SIM), str(PHRI2_SIM), str(IMPEDANCE_SIM)):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-from fr3_mujoco import FR3MuJoCoEnv, TAU_LIMIT  # noqa: E402
+from fr3_mujoco import FR3MuJoCoEnv, Q_NEUTRAL, TAU_LIMIT  # noqa: E402
 from fr3_interaction_dynamics_mpc import (  # noqa: E402
     FR3MPCConfig,
     FR3RealizationMPC,
@@ -114,6 +114,21 @@ WORKSPACE_BOUND_M = FR3MPCConfig().position_limit
 DURATION_S = 6.0
 
 
+def nominal_pose(pose: np.ndarray | None = None) -> np.ndarray:
+    """The interaction pose, defaulting to phri2's own Q_NEUTRAL."""
+    return Q_NEUTRAL.copy() if pose is None else np.asarray(pose, dtype=float).copy()
+
+
+def params_at(cfg: FR3MPCConfig, pose: np.ndarray | None = None):
+    """phri2's impedance params with the null-space spring centred on ``pose``.
+
+    Moving the interaction pose without moving ``q_null`` would leave the
+    posture spring permanently fighting the nominal, which is not a different
+    pose so much as a different (and worse) controller.
+    """
+    return replace(make_default_impedance_params(cfg), q_null=nominal_pose(pose))
+
+
 # ---------------------------------------------------------------------------
 # Reference trajectory (generated once, replayed by every grid cell)
 # ---------------------------------------------------------------------------
@@ -165,6 +180,8 @@ class Trajectory:
 def generate_reference_trajectory(
     duration: float = DURATION_S,
     envelope: str = "derated_joint4",
+    pose: np.ndarray | None = None,
+    push_axis: np.ndarray | None = None,
 ) -> Trajectory:
     """Run phri2's own predictive realization controller and log the replay.
 
@@ -179,10 +196,11 @@ def generate_reference_trajectory(
     cap = torque_envelope(envelope)
     cfg = FR3MPCConfig(tau_max=cap)
     generator = ImpedanceReference3D()
-    imp_params = make_default_impedance_params(cfg)
+    imp_params = params_at(cfg, pose)
+    axis = PUSH_AXIS if push_axis is None else np.asarray(push_axis, dtype=float)
 
     env = FR3MuJoCoEnv(timestep=0.001)
-    env.reset()
+    env.reset(q=nominal_pose(pose))
     _, state0 = env.get_dynamics_and_state()
     p_nominal = state0.ee_pos.copy()
     R_d = state0.ee_rot.copy()
@@ -197,7 +215,7 @@ def generate_reference_trajectory(
 
     for i in range(n_steps):
         t = env.time
-        force = human_force_at(t)
+        force = human_force_at(t, axis=tuple(axis))
         dyn, state = env.get_dynamics_and_state(
             f_ext_override=np.concatenate([force, np.zeros(3)])
         )
@@ -231,16 +249,35 @@ def generate_reference_trajectory(
     return Trajectory(**{k: np.asarray(v) for k, v in cols.items()})
 
 
+def scenario_tag(pose: np.ndarray | None, push_axis: np.ndarray | None) -> str:
+    """Short, stable name for a (pose, push axis) pair, used for cache keys."""
+    if pose is None and push_axis is None:
+        return "neutral"
+    q = nominal_pose(pose)
+    axis = PUSH_AXIS if push_axis is None else np.asarray(push_axis, dtype=float)
+    return ("q" + "_".join(f"{v:+.3f}" for v in q[[1, 3, 5]])
+            + "__a" + "_".join(f"{v:+.0f}" for v in axis))
+
+
 def load_or_generate_trajectory(
     cache: Path | None = None,
     duration: float = DURATION_S,
     envelope: str = "derated_joint4",
     refresh: bool = False,
+    pose: np.ndarray | None = None,
+    push_axis: np.ndarray | None = None,
 ) -> Trajectory:
-    cache = cache or (RESULTS / "pir_reference_trajectory.npz")
+    # The cache key carries the scenario: a trajectory generated at one pose is
+    # not a valid replay for another, and silently reusing it would make every
+    # downstream diagnostic wrong in a way nothing would flag.
+    tag = scenario_tag(pose, push_axis)
+    default = ("pir_reference_trajectory.npz" if tag == "neutral"
+               else f"pir_reference_trajectory_{tag}.npz")
+    cache = cache or (RESULTS / default)
     if cache.exists() and not refresh:
         return Trajectory.load(cache)
-    traj = generate_reference_trajectory(duration=duration, envelope=envelope)
+    traj = generate_reference_trajectory(duration=duration, envelope=envelope,
+                                         pose=pose, push_axis=push_axis)
     traj.save(cache)
     return traj
 
@@ -328,6 +365,8 @@ def run_fallback_equilibrium(
     duration: float = FALLBACK_DURATION_S,
     hold: float = FALLBACK_HOLD_S,
     window: float = FALLBACK_AVERAGING_WINDOW_S,
+    pose: np.ndarray | None = None,
+    push_axis: np.ndarray | None = None,
 ) -> dict:
     """Closed-loop MuJoCo run of the alpha -> 0 law: ``tau = tau_base + J_v^T F_nom``.
 
@@ -340,9 +379,11 @@ def run_fallback_equilibrium(
     the push cannot be silently reported as an equilibrium.
     """
     cfg = FR3MPCConfig()
-    imp_params = make_default_impedance_params(cfg)
+    imp_params = params_at(cfg, pose)
+    axis = PUSH_AXIS if push_axis is None else np.asarray(push_axis, dtype=float)
+    axis_index = int(np.argmax(np.abs(axis)))
     env = FR3MuJoCoEnv(timestep=0.001)
-    env.reset()
+    env.reset(q=nominal_pose(pose))
     _, state0 = env.get_dynamics_and_state()
     p_nominal = state0.ee_pos.copy()
     R_d = state0.ee_rot.copy()
@@ -355,7 +396,7 @@ def run_fallback_equilibrium(
 
     for i in range(n_steps):
         t = env.time
-        force = human_force_at(t, hold=hold)
+        force = human_force_at(t, axis=tuple(axis), hold=hold)
         dyn, state = env.get_dynamics_and_state(
             f_ext_override=np.concatenate([force, np.zeros(3)])
         )
@@ -382,15 +423,15 @@ def run_fallback_equilibrium(
     if not plateau.any():  # pragma: no cover - only if hold is made tiny
         plateau = t_log >= t_log[-1] - window
     e_ss = e_log[plateau].mean(axis=0)
-    speed_in_window = float(np.abs(v_log[plateau, PUSH_AXIS_INDEX]).max())
+    speed_in_window = float(np.abs(v_log[plateau, axis_index]).max())
     return {
         "e_ss": e_ss,
-        "e_ss_axis": float(abs(e_ss[PUSH_AXIS_INDEX])),
+        "e_ss_axis": float(abs(e_ss[axis_index])),
         "e_ss_norm": float(np.linalg.norm(e_ss)),
         "e_ss_spread_axis": float(
-            e_log[plateau, PUSH_AXIS_INDEX].max() - e_log[plateau, PUSH_AXIS_INDEX].min()
+            e_log[plateau, axis_index].max() - e_log[plateau, axis_index].min()
         ),
-        "e_peak_axis": float(np.abs(e_log[:, PUSH_AXIS_INDEX]).max()),
+        "e_peak_axis": float(np.abs(e_log[:, axis_index]).max()),
         "settled": bool(speed_in_window < SETTLED_SPEED_M_PER_S),
         "window_peak_speed": speed_in_window,
         "anchor_max_abs": np.abs(anchor_log).max(axis=0),

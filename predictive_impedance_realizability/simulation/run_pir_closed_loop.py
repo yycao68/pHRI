@@ -24,6 +24,14 @@ Four variants, all sharing the same plant, nominal, QP and torque envelope:
                       passive nominal, which is phri2's structure.  Its anchor
                       is tau_base alone, so it is the reference row (1) and (4)
                       are compared against.
+``pir_no_nominal_auth``  ``pir`` with the servo's authority over the nominal
+                      taken away again.  This is what Section 7 measured before
+                      decision 0, and it is kept as the ablation that shows why
+                      the adopted default is there: it is the variant whose
+                      torque envelope fails at 8x disturbance.
+
+Every variant differs from ``pir`` in exactly one knob, so a difference between
+two rows is attributable.
 
 Two scenarios, because the two source papers stress **different axes** and
 neither benchmark exercises both:
@@ -64,8 +72,11 @@ from pir_controller import PIRConfig, PIRRealizationMPC, pir_servo_step
 from verify_fr3_two_rate_benchmark import rejectable_force  # noqa: E402
 
 VARIANTS = ("pir", "pir_manager_guard", "pir_no_tank", "zero_nominal")
-#: Section 7.7's structural fix: the servo may scale the nominal too.
-FIX_VARIANTS = ("pir_nominal_auth",)
+#: Ablations kept for the studies rather than the headline comparison.
+#: ``pir_nominal_auth`` is retained as an alias of ``pir`` so the Section 7/8
+#: scripts and their stored JSON keep resolving after decision 0 made nominal
+#: authorization the default.
+FIX_VARIANTS = ("pir_no_nominal_auth", "pir_nominal_auth")
 ALL_VARIANTS = VARIANTS + FIX_VARIANTS
 SCENARIOS = ("push", "merged")
 
@@ -75,7 +86,8 @@ DISTURBANCE_SEED = 0
 
 
 def external_force(t: float, scenario: str, phases: np.ndarray,
-                   disturbance_scale: float = 1.0) -> tuple[np.ndarray, np.ndarray]:
+                   disturbance_scale: float = 1.0,
+                   push_axis: np.ndarray | None = None) -> tuple[np.ndarray, np.ndarray]:
     """Return (total external force, the part the behaviour layer is about).
 
     The push is what the impedance behaviour is defined against; the
@@ -83,7 +95,8 @@ def external_force(t: float, scenario: str, phases: np.ndarray,
     QP forecasts their sum by zero-order hold -- phri2 freezes the human force,
     impedance_residual freezes ``disturbance_hat``, and this does both at once.
     """
-    push = pc.human_force_at(t)
+    axis = pc.PUSH_AXIS if push_axis is None else np.asarray(push_axis, float)
+    push = pc.human_force_at(t, axis=tuple(axis))
     if scenario == "push":
         return push, push
     if scenario == "merged":
@@ -101,6 +114,8 @@ def run_variant(
     tank_initial: float | None = None,
     disturbance_scale: float = 1.0,
     overrides: dict | None = None,
+    pose: np.ndarray | None = None,
+    push_axis: np.ndarray | None = None,
 ) -> dict:
     if variant not in ALL_VARIANTS:
         raise ValueError(variant)
@@ -109,27 +124,39 @@ def run_variant(
     generator = pc.ImpedanceReference3D()
 
     env = pc.FR3MuJoCoEnv(timestep=0.001)
-    env.reset()
+    env.reset(q=pc.nominal_pose(pose))
     _, state0 = env.get_dynamics_and_state()
     p_nominal = state0.ee_pos.copy()
     R_d = state0.ee_rot.copy()
 
-    pir_cfg = PIRConfig(
-        k0=0.0 if variant == "zero_nominal" else k0,
-        d0=0.0 if variant == "zero_nominal" else d0,
-        envelope=envelope,
-        auth_period_ticks=20 if variant == "pir_manager_guard" else 1,
-        energy_authorization=variant != "pir_no_tank",
-        nominal_authorization=variant == "pir_nominal_auth",
-        **({} if tank_initial is None else {"tank_initial": tank_initial}),
-        # Late-bound knobs (anisotropic gains, the re-authorization rate) so a
-        # study can vary them without another positional argument here.
-        **(overrides or {}),
-    )
+    # Each variant flips exactly one knob away from the adopted default.
+    per_variant: dict[str, dict] = {
+        "pir": {},
+        "pir_manager_guard": {"auth_period_ticks": 20},
+        "pir_no_tank": {"energy_authorization": False},
+        "zero_nominal": {"k0": 0.0, "d0": 0.0},
+        "pir_no_nominal_auth": {"nominal_authorization": False},
+        "pir_nominal_auth": {},  # alias of the adopted default, kept for callers
+    }
+    # Precedence, low to high: the call's gains, then the variant's one knob,
+    # then the study's explicit overrides.  Built as a dict rather than keyword
+    # splats because a variant may legitimately override k0/d0 (zero_nominal
+    # does), which duplicate keyword arguments cannot express.
+    settings: dict = {"k0": k0, "d0": d0, "envelope": envelope}
+    if tank_initial is not None:
+        settings["tank_initial"] = tank_initial
+    settings.update(per_variant[variant])
+    settings.update(overrides or {})
+    pir_cfg = PIRConfig(**settings)
     cfg = pir_cfg.resolved_mpc()
     mpc = PIRRealizationMPC(generator, pir_cfg)
 
-    imp_params = pc.make_default_impedance_params(cfg)
+    # The posture spring is centred on the interaction pose, not on Q_NEUTRAL:
+    # otherwise a pose change is really a pose change plus a fight with the
+    # null-space term.
+    imp_params = pc.params_at(cfg, pose)
+    axis_index = int(np.argmax(np.abs(
+        pc.PUSH_AXIS if push_axis is None else np.asarray(push_axis, float))))
     mpc_every = max(1, round(cfg.dt / env.dt))
     n_steps = int(round(duration / env.dt))
     h = env.dt
@@ -153,7 +180,8 @@ def run_variant(
 
     for i in range(n_steps):
         t = env.time
-        force, behaviour_force = external_force(t, scenario, phases, disturbance_scale)
+        force, behaviour_force = external_force(t, scenario, phases,
+                                               disturbance_scale, push_axis)
         dyn, state = env.get_dynamics_and_state(
             f_ext_override=np.concatenate([force, np.zeros(3)])
         )
@@ -237,6 +265,8 @@ def run_variant(
         "variant": variant,
         "envelope": envelope,
         "scenario": scenario,
+        "pose": pc.nominal_pose(pose).tolist(),
+        "pose_tag": pc.scenario_tag(pose, push_axis),
         "K0_vector": pir_cfg.k0_vector().tolist(),
         "D0_vector": pir_cfg.d0_vector().tolist(),
         "nominal_authorization": pir_cfg.nominal_authorization,
@@ -263,7 +293,7 @@ def run_variant(
         "tank_floor_holds": bool(log["tank_floor_ok"].all()),
         "tank_floor_breach_ticks": int((~log["tank_floor_ok"].astype(bool)).sum()),
         # --- behaviour
-        "max_abs_e_axis_m": float(np.abs(log["e"][:, pc.PUSH_AXIS_INDEX]).max()),
+        "max_abs_e_axis_m": float(np.abs(log["e"][:, axis_index]).max()),
         "workspace_bound_m": pc.WORKSPACE_BOUND_M,
         "rms_realization_residual": float(
             np.sqrt(np.mean(np.sum((log["a_modelled"] - log["a_id"]) ** 2, axis=1)))),
@@ -308,7 +338,7 @@ def make_figure(results: dict, outdir: Path, envelope: str, scenario: str) -> Pa
         axes[0].plot(t, log["anchor_ratio"], color=c, lw=1.2, label=name)
         axes[1].plot(t, log["tau_ratio"], color=c, lw=1.2)
         axes[2].plot(t, log["tank"], color=c, lw=1.2)
-        axes[3].plot(t, log["e"][:, pc.PUSH_AXIS_INDEX], color=c, lw=1.2)
+        axes[3].plot(t, log["e"][:, axis_index], color=c, lw=1.2)
 
     axes[0].axhline(1.0, color="k", ls="--", lw=1.0)
     axes[0].set_ylabel(r"anchor $\|a\|_\infty/\bar\tau$")

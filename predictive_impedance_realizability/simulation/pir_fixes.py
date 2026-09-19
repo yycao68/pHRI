@@ -67,14 +67,21 @@ D_D = 28.0  # ImpedanceReference3D.damping
 PROBE_SCALES = (1.0, 2.0, 4.0, 6.0, 8.0, 12.0, 16.0)
 
 #: name -> (variant, k0, d0, overrides)
+#: Every candidate pins nominal_authorization and nominal_reauth_rate
+#: explicitly, so this comparison stays meaningful independently of what the
+#: adopted default happens to be.
+_OFF = {"nominal_authorization": False}
+_ON = {"nominal_authorization": True, "nominal_reauth_rate": float("inf")}
+_MONO = {"nominal_authorization": True, "nominal_reauth_rate": 0.0}
+
 CANDIDATES: dict[str, tuple] = {
-    "certified": ("pir", 380.0, 29.07, {}),
-    "soft_nominal": ("pir", K_D, D_D, {}),
-    "anisotropic": ("pir", (60.0, 60.0, 380.0), (8.0, 8.0, 29.07), {}),
-    "nominal_auth": ("pir_nominal_auth", 380.0, 29.07, {}),
-    "nominal_auth_mono": ("pir_nominal_auth", 380.0, 29.07, {"nominal_reauth_rate": 0.0}),
-    "soft_plus_auth": ("pir_nominal_auth", K_D, D_D, {}),
-    "soft_plus_mono": ("pir_nominal_auth", K_D, D_D, {"nominal_reauth_rate": 0.0}),
+    "certified": ("pir", 380.0, 29.07, _OFF),
+    "soft_nominal": ("pir", K_D, D_D, _OFF),
+    "anisotropic": ("pir", (60.0, 60.0, 380.0), (8.0, 8.0, 29.07), _OFF),
+    "nominal_auth": ("pir", 380.0, 29.07, _ON),
+    "nominal_auth_mono": ("pir", 380.0, 29.07, _MONO),
+    "soft_plus_auth": ("pir", K_D, D_D, _ON),
+    "soft_plus_mono": ("pir", K_D, D_D, _MONO),
 }
 
 

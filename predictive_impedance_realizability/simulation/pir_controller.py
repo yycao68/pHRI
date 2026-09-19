@@ -125,7 +125,13 @@ class PIRConfig:
     #: APPLIED damping alpha_nom * D0 |v|^2, and any drop in alpha_nom debits
     #: the spring energy it releases.  Whether the floor still holds under that
     #: accounting is measured, not assumed (see pir_fixes.py).
-    nominal_authorization: bool = False
+    #:
+    #: ADOPTED (decision 0).  Together with ``nominal_reauth_rate = 0`` below
+    #: this holds BOTH the torque envelope and the tank floor out to 16x the
+    #: source disturbance, against 4x without it, and is provably inert while
+    #: the anchor fits.  ``pir_fixes.py`` scores it against the alternatives;
+    #: ``pir_no_nominal_auth`` is the ablation that shows why it is on.
+    nominal_authorization: bool = True
 
     #: Ceiling on how fast alpha_nom may RISE, in units of alpha per second.
     #: Re-stiffening is the direction that charges the tank (see the servo), so
@@ -133,7 +139,11 @@ class PIRConfig:
     #: has not earned.  ``inf`` leaves the rise unrestricted; ``0.0`` makes
     #: alpha_nom monotone non-increasing, which removes the charge entirely at
     #: the cost of never recovering the floor's stiffness after a transient.
-    nominal_reauth_rate: float = float("inf")
+    #:
+    #: ADOPTED at 0.0 (decision 0).  A deployed system needs to reset the
+    #: ratchet per contact episode; this benchmark is short enough that it
+    #: does not, and Section 9 of the draft records that as owed.
+    nominal_reauth_rate: float = 0.0
 
     mpc: FR3MPCConfig = field(default_factory=FR3MPCConfig)
 
