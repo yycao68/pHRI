@@ -56,9 +56,11 @@ DISTURBANCE_GRID = (1.0, 2.0, 4.0, 8.0, 12.0)
 
 
 def _point(variant: str, k0: float, d0: float, envelope: str,
-           tank_initial: float, disturbance_scale: float) -> dict:
+           tank_initial: float, disturbance_scale: float,
+           pose=None, push_axis=None) -> dict:
     out = run_variant(variant, k0, d0, envelope, scenario="merged",
-                      tank_initial=tank_initial, disturbance_scale=disturbance_scale)
+                      tank_initial=tank_initial, disturbance_scale=disturbance_scale,
+                      pose=pose, push_axis=push_axis)
     s = out["summary"]
     return {
         "variant": variant,
@@ -80,15 +82,17 @@ def _point(variant: str, k0: float, d0: float, envelope: str,
     }
 
 
-def run_sweeps(k0: float, d0: float, envelope: str) -> dict:
+def run_sweeps(k0: float, d0: float, envelope: str, pose=None, push_axis=None) -> dict:
     default_e0 = PIRConfig().tank_initial
-    e0_rows = [_point(v, k0, d0, envelope, e0, 1.0)
+    e0_rows = [_point(v, k0, d0, envelope, e0, 1.0, pose, push_axis)
                for e0 in E0_GRID for v in SWEEP_VARIANTS]
-    dist_rows = [_point(v, k0, d0, envelope, default_e0, scale)
+    dist_rows = [_point(v, k0, d0, envelope, default_e0, scale, pose, push_axis)
                  for scale in DISTURBANCE_GRID for v in SWEEP_VARIANTS]
     return {
         "operating_point": {"K0": k0, "D0": d0, "envelope": envelope,
-                            "scenario": "merged"},
+                            "scenario": "merged",
+                            "pose": pc.nominal_pose(pose).tolist(),
+                            "pose_tag": pc.scenario_tag(pose, push_axis)},
         "tank_floor": PIRConfig().tank_minimum,
         "e0_sweep": e0_rows,
         "disturbance_sweep": dist_rows,
@@ -101,7 +105,7 @@ def _series(rows: list[dict], variant: str, x: str, y: str) -> tuple[np.ndarray,
     return np.array([r[x] for r in sel]), np.array([r[y] for r in sel])
 
 
-def make_figure(report: dict, outdir: Path) -> Path:
+def make_figure(report: dict, outdir: Path, suffix: str = "") -> Path:
     colors = {"pir": "tab:blue", "pir_manager_guard": "tab:orange",
               "pir_no_tank": "tab:green"}
     floor = report["tank_floor"]
@@ -149,7 +153,7 @@ def make_figure(report: dict, outdir: Path) -> Path:
     )
     fig.tight_layout(rect=(0, 0, 1, 0.96))
     outdir.mkdir(parents=True, exist_ok=True)
-    path = outdir / "pir_e0_sweep.png"
+    path = outdir / f"pir_e0_sweep{suffix}.png"
     fig.savefig(path, dpi=170)
     plt.close(fig)
     return path
@@ -163,16 +167,26 @@ def main() -> None:
     parser.add_argument("--outdir", type=Path, default=pc.RESULTS)
     parser.add_argument("--refigure", action="store_true",
                         help="redraw from an existing pir_e0_sweep.json")
+    parser.add_argument("--pose", type=float, nargs=3, metavar=("Q2", "Q4", "Q6"))
+    parser.add_argument("--push-axis", type=float, nargs=3, metavar=("X", "Y", "Z"))
+    parser.add_argument("--tag", default="")
     args = parser.parse_args()
 
+    pose = None
+    if args.pose is not None:
+        pose = pc.Q_NEUTRAL.copy()
+        pose[1], pose[3], pose[5] = args.pose
+    push_axis = np.array(args.push_axis) if args.push_axis else None
+    suffix = f"_{args.tag}" if args.tag else ""
+
     args.outdir.mkdir(parents=True, exist_ok=True)
-    path = args.outdir / "pir_e0_sweep.json"
+    path = args.outdir / f"pir_e0_sweep{suffix}.json"
     if args.refigure:
         report = json.loads(path.read_text())
     else:
-        report = run_sweeps(args.k0, args.d0, args.envelope)
+        report = run_sweeps(args.k0, args.d0, args.envelope, pose, push_axis)
         path.write_text(json.dumps(report, indent=2))
-    figure = make_figure(report, args.outdir)
+    figure = make_figure(report, args.outdir, suffix=suffix)
 
     for key, xkey, label in (("e0_sweep", "E0", "E0 [J]"),
                              ("disturbance_sweep", "disturbance_scale", "dist scale")):

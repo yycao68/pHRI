@@ -142,7 +142,8 @@ def run_variant(
     # then the study's explicit overrides.  Built as a dict rather than keyword
     # splats because a variant may legitimately override k0/d0 (zero_nominal
     # does), which duplicate keyword arguments cannot express.
-    settings: dict = {"k0": k0, "d0": d0, "envelope": envelope}
+    settings: dict = {"k0": k0, "d0": d0, "envelope": envelope,
+                      "pose": None if pose is None else tuple(pc.nominal_pose(pose))}
     if tank_initial is not None:
         settings["tank_initial"] = tank_initial
     settings.update(per_variant[variant])
@@ -267,6 +268,9 @@ def run_variant(
         "scenario": scenario,
         "pose": pc.nominal_pose(pose).tolist(),
         "pose_tag": pc.scenario_tag(pose, push_axis),
+        # Which task-space row the workspace diagnostics are read off, so the
+        # figure does not have to re-derive it from the push axis.
+        "axis_index": axis_index,
         "K0_vector": pir_cfg.k0_vector().tolist(),
         "D0_vector": pir_cfg.d0_vector().tolist(),
         "nominal_authorization": pir_cfg.nominal_authorization,
@@ -326,8 +330,11 @@ def run_variant(
     return {"summary": summary, "log": log}
 
 
-def make_figure(results: dict, outdir: Path, envelope: str, scenario: str) -> Path:
+def make_figure(results: dict, outdir: Path, envelope: str, scenario: str,
+                suffix: str = "") -> Path:
     order = [v for v in VARIANTS if v in results]
+    axis_index = results[order[0]]["summary"]["axis_index"]
+    axis_label = "xyz"[axis_index]
     colors = {"pir": "tab:blue", "pir_manager_guard": "tab:orange",
               "pir_no_tank": "tab:green", "zero_nominal": "0.45"}
     fig, axes = plt.subplots(4, 1, figsize=(7.2, 9.4), sharex=True)
@@ -354,9 +361,10 @@ def make_figure(results: dict, outdir: Path, envelope: str, scenario: str) -> Pa
     bound = pc.WORKSPACE_BOUND_M
     for sign in (1, -1):
         axes[3].axhline(sign * bound, color="k", ls="--", lw=1.0)
-    axes[3].set_ylabel(r"$e_z$  [m]")
+    axes[3].set_ylabel(rf"$e_{axis_label}$  [m]")
     axes[3].set_xlabel("time [s]")
-    axes[3].set_title(f"workspace excursion vs the {bound} m bound", fontsize=9)
+    axes[3].set_title(f"workspace excursion on the push axis vs the {bound} m bound",
+                      fontsize=9)
     for ax in axes:
         ax.grid(alpha=0.25)
     axes[0].legend(fontsize=8, ncol=2)
@@ -364,7 +372,7 @@ def make_figure(results: dict, outdir: Path, envelope: str, scenario: str) -> Pa
                  f"envelope '{envelope}'", fontsize=11)
     fig.tight_layout(rect=(0, 0, 1, 0.985))
     outdir.mkdir(parents=True, exist_ok=True)
-    path = outdir / f"pir_closed_loop_{scenario}_{envelope}.png"
+    path = outdir / f"pir_closed_loop{suffix}_{scenario}_{envelope}.png"
     fig.savefig(path, dpi=170)
     plt.close(fig)
     return path
@@ -377,29 +385,52 @@ def main() -> None:
     parser.add_argument("--k0", type=float, default=380.0)
     parser.add_argument("--d0", type=float, default=29.07)
     parser.add_argument("--outdir", type=Path, default=pc.RESULTS)
+    parser.add_argument("--pose", type=float, nargs=3, metavar=("Q2", "Q4", "Q6"),
+                        help="interaction pose as (q2, q4, q6); other joints stay "
+                             "at Q_NEUTRAL. Default: phri2's own pose.")
+    parser.add_argument("--push-axis", type=float, nargs=3, metavar=("X", "Y", "Z"),
+                        help="push direction. Default: phri2's own -z.")
+    parser.add_argument("--tag", default="",
+                        help="suffix for output filenames, so a pose study does "
+                             "not overwrite the neutral-pose result")
     args = parser.parse_args()
 
-    results = {v: run_variant(v, args.k0, args.d0, args.envelope, args.scenario)
-               for v in VARIANTS}
-    figure = make_figure(results, args.outdir, args.envelope, args.scenario)
+    pose = None
+    if args.pose is not None:
+        pose = pc.Q_NEUTRAL.copy()
+        pose[1], pose[3], pose[5] = args.pose
+    push_axis = np.array(args.push_axis) if args.push_axis else None
+    suffix = f"_{args.tag}" if args.tag else ""
 
-    # The replay estimates the Task 1 gate used, for the comparison.
-    traj = pc.load_or_generate_trajectory()
+    results = {v: run_variant(v, args.k0, args.d0, args.envelope, args.scenario,
+                              pose=pose, push_axis=push_axis)
+               for v in VARIANTS}
+    figure = make_figure(results, args.outdir, args.envelope, args.scenario,
+                         suffix=suffix)
+
+    # The replay estimates the Task 1 gate used, for the comparison.  Must be
+    # the trajectory for THIS scenario, or the comparison is against a
+    # different robot configuration entirely.
+    traj = pc.load_or_generate_trajectory(pose=pose, push_axis=push_axis)
     cap = pc.torque_envelope(args.envelope)
     replay = pc.replay_diagnostics(traj, args.k0, args.d0, cap)
 
     out = {
         "operating_point": {"K0": args.k0, "D0": args.d0, "envelope": args.envelope,
-                            "scenario": args.scenario},
+                            "scenario": args.scenario,
+                            "pose": pc.nominal_pose(pose).tolist(),
+                            "pose_tag": pc.scenario_tag(pose, push_axis)},
         "replay_estimate": {"diag1_anchor_ratio": replay["anchor_ratio"],
                             "diag4_budget_ratio": replay["budget_ratio"]},
         "variants": {v: results[v]["summary"] for v in VARIANTS},
     }
-    path = args.outdir / f"pir_closed_loop_{args.scenario}_{args.envelope}.json"
+    path = args.outdir / f"pir_closed_loop{suffix}_{args.scenario}_{args.envelope}.json"
     path.write_text(json.dumps(out, indent=2))
 
     print(f"operating point: K0 = {args.k0} N/m, D0 = {args.d0} N.s/m, "
           f"envelope = {args.envelope}, scenario = {args.scenario}")
+    print(f"pose: {np.round(pc.nominal_pose(pose), 3).tolist()}  "
+          f"({pc.scenario_tag(pose, push_axis)})")
     print(f"\nrow (1) anchor ratio  -- replay estimate (Task 1): {replay['anchor_ratio']:.4f}")
     print(f"row (4) budget ratio  -- replay estimate (Task 1): {replay['budget_ratio']:.4f}")
     for v in VARIANTS:

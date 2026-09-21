@@ -304,3 +304,31 @@ def test_anisotropic_gains_are_wired_through(plant):
     step = pir_servo_step(cfg, tau_base, J_v, Lam_inv, np.full(3, 0.01),
                           np.zeros(3), np.zeros(3), tank=0.08, h=1e-3, cap=cap)
     np.testing.assert_allclose(step.f_nom, [-0.6, -0.6, -3.8], rtol=1e-9)
+
+
+def test_qp_and_servo_agree_on_the_interaction_pose():
+    """The QP and the 1 kHz servo each build tau_base, and both must centre the
+    null-space spring on the SAME pose.  Centring the QP on Q_NEUTRAL while the
+    servo sits elsewhere makes the QP plan against a tau_base the servo never
+    applies -- invisible at Q_NEUTRAL, and caught away from it only by the
+    four-term closure.  This pins the closure at both poses.
+    """
+    q = pc.Q_NEUTRAL.copy()
+    q[1], q[3], q[5] = -1.30, -1.30, 1.571
+    for pose, k0, d0 in ((None, K0, D0), (q, 520.0, 56.13)):
+        s = run_variant("pir", k0, d0, "derated_joint4", scenario="push",
+                        duration=1.0, pose=pose)["summary"]
+        assert s["decomposition_closure_max_on_qp_ticks"] < 1e-10, (
+            f"four-term residual does not close at pose {s['pose_tag']}")
+
+
+def test_moving_the_pose_moves_the_qp_s_nominal_params():
+    """The guard behind the test above: PIRConfig.pose must actually reach the
+    realization QP's impedance params, not just the servo's."""
+    q = pc.Q_NEUTRAL.copy()
+    q[1], q[3], q[5] = -1.30, -1.30, 1.571
+    at_neutral = PIRRealizationMPC(pc.ImpedanceReference3D(), PIRConfig(k0=K0, d0=D0))
+    at_pose = PIRRealizationMPC(pc.ImpedanceReference3D(),
+                                PIRConfig(k0=K0, d0=D0, pose=tuple(q)))
+    np.testing.assert_allclose(at_neutral.imp_params.q_null, pc.Q_NEUTRAL)
+    np.testing.assert_allclose(at_pose.imp_params.q_null, q)

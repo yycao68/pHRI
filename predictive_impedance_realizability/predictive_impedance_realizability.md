@@ -332,6 +332,8 @@ the one it did not list.
 | `pir_fixes.png/json` | §8.3: candidate fixes scored on all four findings |
 | `pir_pose_study.png/json` | §9.1–9.2: the pose screen and its two traps |
 | `pir_knot_scan_pose_*` | §9.3: the full gate re-run at the better pose |
+| `pir_closed_loop_pose_*` | §9.4: Task 2 re-run at the recommended pose |
+| `pir_e0_sweep_pose_*` | §9.4: Task 3 re-run at the recommended pose |
 
 ---
 
@@ -498,11 +500,16 @@ disturbance (0.9/1.4/1.9 Hz sinusoids and a 12 N pulse placed deliberately
 between two 50 Hz manager ticks) — and sweeps $E_0$ toward its floor and the
 disturbance amplitude upward. 36 points, three variants:
 
-| variant | tank floor held | breach points | breached ticks | worst tank |
-|---|---|---|---|---|
-| `pir` (1 kHz re-authorization) | **12 / 12** | 0 | 0 | 0.0200 J = $E_{\min}$ |
-| `pir_manager_guard` (20 ms, held) | 4 / 12 | 8 | 2105 | −0.188 J |
-| `pir_no_tank` | 4 / 12 | 8 | 5537 | −1.473 J |
+| variant | tank floor held | breached ticks | worst tank |
+|---|---|---|---|
+| `pir` (1 kHz re-authorization) | **12 / 12** | 0 | 0.0200 J = $E_{\min}$ |
+| `pir_manager_guard` (20 ms, held) | 4 / 12 | 6 189 | −1.285 J |
+| `pir_no_tank` | 4 / 12 | 13 050 | −28.43 J |
+
+*(Re-measured after decision 0 made $\alpha_{\mathrm{nom}}$ the default, which
+is why the breach counts are larger than the pre-decision-0 run: keeping the
+torque envelope legal at 16× disturbance leaves more energy for the ledger to
+have to account for. `pir` still holds the floor everywhere.)*
 
 **`impedance_residual`'s central result transfers to the merged port.** Fast
 re-authorization holds the floor in every stressed configuration — and holds it
@@ -526,26 +533,30 @@ disturbance amplitude. The middle column is the result: `pir` (blue) sits
 autoscales it — on the $E_0$ axis the total variation is 0.03 %, i.e. flat
 (§7.5), and only on the disturbance axis does a real trade appear.
 
-### 7.5 The authorization-vs-tracking trade is *flatter*, not steeper
+### 7.5 The authorization-vs-tracking trade looks flat here
+
+> **Corrected by §9.4.** This subsection originally concluded that the merged
+> $E_0$ trade is *flatter* than `impedance_residual`'s, against the synthesis
+> note's prediction that it would be steeper. That conclusion was a pose
+> artifact. At the recommended pose the same sweep gives a **7.7 %** spread and
+> the note's prediction is confirmed. The measurement below is correct at
+> *this* pose; the generalisation from it was not.
 
 The synthesis note predicts the $E_0$ curve gets steeper after the merge,
-because the two tightenings compound in series. It gets flatter. Over the whole
+because the two tightenings compound in series. Here it is flat: over the whole
 $E_0$ sweep, RMS realization residual varies by **0.03 %** (2.5095 →
-2.5103 m/s²) — against `impedance_residual`'s own 21.49 → 15.98 mm swing on its
+2.5103 m/s²), against `impedance_residual`'s own 21.49 → 15.98 mm swing on its
 unmerged nominal.
 
-The reason is the §7.6 boundary, and it is not good news: the passive nominal
-has already absorbed the authority the tank would otherwise have taken away.
-De-authorizing a residual that is 16 % of the command costs almost nothing,
-because the other 84 % is a PD law the tank has no say over. A flat
-authorization-vs-tracking curve here means the passivity axis is *cheap*
-precisely because it is *weak*.
+The reason is the §7.6 boundary. The passive nominal has already absorbed the
+authority the tank would otherwise take away: de-authorizing a residual that is
+16 % of the command costs almost nothing, because the other 84 % is a PD law
+the tank has no say over. The passivity axis is *cheap* here precisely because
+it is *weak* — and §9.4 shows that when the residual is given room, the cost
+appears exactly as the note said it would.
 
-On the disturbance axis, where the residual does matter, the trade reappears:
-RMS spans 2.510 → 4.026 m/s² (60 %). Notably `pir` tracks *better* than
-`pir_no_tank` at disturbance scale 4 (2.624 vs 3.233 m/s²) — an unauthorized,
-energy-injecting residual makes realization worse, not better. That is one
-scenario at one seed and should not be leaned on.
+On the disturbance axis, where the residual does matter, the trade appears even
+at this pose: RMS spans 2.510 → 4.434 m/s² (77 %).
 
 ### 7.6 The nominal dominates the command, and eats the headroom
 
@@ -832,7 +843,94 @@ bought headroom *with* containment. **Decision 1 may therefore be moot**: the
 pose change delivers what softening $K_0$ was being considered for, and improves
 the thing softening $K_0$ would have cost.
 
-### 9.4 What this does not settle
+![](results/pir_closed_loop_pose_q2m13_q4m13_push_derated_joint4.png)
+
+**Figure 7 — the merged controller at the recommended pose**, on `phri2`'s
+plain 20 N push. The third panel is the one to read: `pir` (blue) rides
+*exactly* on $E_{\min}$ for the whole push — it is under the dashed line, which
+is the guarantee made visible — while `pir_manager_guard` (orange) sits below
+the floor for roughly two seconds and `pir_no_tank` (green) plunges to
+−0.117 J. `zero_nominal` (grey) saturates at $E_{\max}$ because with no nominal
+its residual *is* the impedance and is purely dissipative. Compare the top two
+panels with Figure 2: everything now runs at 0.4–0.55 of the envelope rather
+than pinned against it.
+
+### 9.4 Tasks 2 and 3 re-run at the recommended pose
+
+Everything in §7 and §8 was measured at `phri2`'s pose. The merged paper should
+report the pose it recommends, so both tasks were re-run at
+$(q_2,q_4,q_6) = (-1.30,-1.30,1.571)$ with that pose's own operating point,
+$K_0 = 520$ N/m, $D_0 = 56.1$ N·s/m.
+
+**A bug surfaced first, and the four-term residual is what caught it.** The
+realization QP and the 1 kHz servo each build $\tau_{\mathrm{base}}$, and the
+QP was centring the null-space posture spring on `Q_NEUTRAL` while the servo
+centred it on the actual pose — so the QP planned against a
+$\tau_{\mathrm{base}}$ and a $d_{\mathrm{known}}$ the servo never applied. At
+`Q_NEUTRAL` the two coincide and the bug is invisible; at the new pose the
+closure went from $4\times10^{-16}$ to $8\times10^{-5}$. Fixed, closure back to
+$1.3\times10^{-15}$, and a regression test now pins it at both poses. This is
+the second time the closure identity has caught something no other diagnostic
+would have.
+
+**Task 2 — the merged controller.** On `phri2`'s plain 20 N push:
+
+| | `phri2` pose | recommended pose |
+|---|---|---|
+| row (1), replay → closed loop | 0.9771 → 0.9762 | 0.5411 → **0.5432** |
+| anchor headroom | 2.4 % | **45.7 %** |
+| residual share of command | 15.6 % | **53.5 %** |
+| max $\|\tau\|/\bar\tau$ | 1.0000 | **0.5330** |
+| authorization active | 0.6 % of ticks | **29.3 %** |
+| $\min \alpha_E$ | 1.0000 | **0.0006** |
+| $r_{\mathrm{auth}}$ RMS | 0.0000 | **1.387** m/s² |
+| max excursion | 60.4 mm | **51.4 mm** |
+
+**The passivity axis is now exercised by `phri2`'s own benchmark.** §7.4 had to
+borrow `impedance_residual`'s oscillatory disturbance to make the tank do
+anything, and concluded that neither source benchmark stresses both axes. At
+the recommended pose that is no longer true: on the plain push, authorization
+fires on 29 % of ticks, $\alpha_E$ reaches 0.0006, and `pir_manager_guard`
+breaches the floor for **2 039 ticks** while `pir_no_tank` reaches −0.117 J.
+One scenario, both axes, no borrowed disturbance — which is what the merged
+paper needs.
+
+**Task 3 — the authorization-vs-tracking trade, and a correction.** The
+$E_0$ sweep at the recommended pose:
+
+| | `phri2` pose | recommended pose |
+|---|---|---|
+| $E_0$ trade, RMS spread | 0.03 % | **7.66 %** |
+| authorization active over the sweep | 0.0–1.9 % | **30.1–33.9 %** |
+| `pir` floor held | 12 / 12 | **12 / 12** |
+| `pir_manager_guard` floor held | 4 / 12 | **1 / 12** (21 138 ticks) |
+| `pir_no_tank` floor held | 4 / 12 | **1 / 12** (25 525 ticks) |
+| tank's cost vs no tank at $E_0 = 0.08$ | +0.0 % | **+38.4 %** RMS |
+
+So **§7.5's "flatter, not steeper" was a pose artifact and is corrected**: the
+synthesis note's prediction was right. Give the residual room and the passivity
+axis costs what the note said it would — 7.7 % across the $E_0$ sweep, and
+38 % against running with no tank at all. It is no longer cheap-because-weak;
+it is doing real work and charging real money for it. The fast-vs-manager-rate
+result also gets stronger, holding across the *entire* $E_0$ range rather than
+only its bottom end.
+
+![](results/pir_e0_sweep_pose_q2m13_q4m13.png)
+
+**Figure 8 — authorization vs tracking at the recommended pose.** Against
+Figure 3, the middle column now shows `pir` holding $E_{\min}$ across the whole
+sweep while both baselines breach everywhere, and the right column carries a
+7.7 % spread instead of 0.03 % — a real trade rather than a flat line.
+
+One counter-intuitive detail, stated because it is not obvious: authorization
+becomes *less* active as the disturbance grows (30.1 % → 0.0 % at 12×), the
+opposite of the `phri2` pose. The tank harvests $\alpha_{\mathrm{nom}} v^\top
+D_0 v$, which grows quadratically with the disturbance-driven velocity, while
+the residual's debit $F_r^\top v$ grows linearly — so a large disturbance fills
+the tank faster than it drains it. The stressing case here is the *nominal*
+scenario, not the extreme one.
+
+### 9.5 What this does not settle
 
 The pose was chosen by a screen tuned on one scenario, and only $q_2, q_4, q_6$
 were varied. Nothing here says it is optimal, or that it is a pose a real task
@@ -964,9 +1062,13 @@ to dissipativity-on-the-realized-port.
       slightly hurts; the displacement is 8:1 push-axis dominated.
 - [x] ~~Re-run the gate at a pose that does not load joint 4~~ — §9.3.
       481 cells against 33, and 45.7 % headroom against 2.4 %.
-- [ ] Re-run Tasks 2 and 3 *at the §9.3 pose*: every number in §7 and §8 is
-      measured at the old one, and the merged paper should report the pose it
-      recommends, not the pose that motivated the fixes.
+- [x] ~~Re-run Tasks 2 and 3 at the §9.3 pose~~ — §9.4. Both axes are now
+      exercised by `phri2`'s own benchmark, and §7.5's "flatter" conclusion is
+      corrected: the trade is 7.7 %, as the synthesis note predicted.
+- [ ] Re-run §8's root-cause and fix comparison at the recommended pose too.
+      They are diagnoses of a problem the pose largely removes, so they are
+      still correct as history, but the numbers a paper quotes should be the
+      recommended pose's.
 - [ ] Search poses properly rather than on a $q_2, q_4, q_6$ grid screened by
       one scenario, and check whether the recommended pose is one a real task
       would accept.
@@ -1015,6 +1117,10 @@ python3 pir_fixes.py                         # ~5 min              (Section 8.3)
 python3 pir_pose_study.py                    # ~4 min              (Section 9.1, 9.2)
 python3 pir_knot_scan.py --pose -1.30 -1.30 1.571 \
         --tag pose_q2m13_q4m13               # ~19 min             (Section 9.3)
+POSE="--pose -1.30 -1.30 1.571 --k0 520.0 --d0 56.13 --tag pose_q2m13_q4m13"
+python3 run_pir_closed_loop.py $POSE --scenario push     # (Section 9.4)
+python3 run_pir_closed_loop.py $POSE --scenario merged   # (Section 9.4)
+python3 pir_e0_sweep.py $POSE                # ~25 min             (Section 9.4)
 python3 -m pytest test_pir_knot_scan.py test_pir_controller.py -q
 ```
 

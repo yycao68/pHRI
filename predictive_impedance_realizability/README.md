@@ -25,6 +25,10 @@ Read `predictive_impedance_realizability.md` for the result. In three lines:
   goes from 33 cells to **481**, the residual's torque headroom from 2.4 % to
   **45.7 %**, and the workspace excursion under a 16× disturbance *improves*
   from 164 mm to 59 mm. Most of the bad news was the scenario.
+- Tasks 2 and 3 re-run there (§9.4): the passivity axis is now exercised by
+  `phri2`'s **own** benchmark — no borrowed disturbance — and the
+  authorization-vs-tracking trade is 7.7 % rather than 0.03 %, which corrects
+  §7.5's "flatter, not steeper" conclusion. That too was a pose artifact.
 
 ## Layout
 

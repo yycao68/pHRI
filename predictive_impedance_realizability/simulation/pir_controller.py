@@ -91,6 +91,16 @@ class PIRConfig:
     #: Torque envelope by name; see pir_common.torque_envelope.
     envelope: str = "derated_joint4"
 
+    #: The interaction pose, which is also where the null-space posture spring
+    #: is centred.  The QP and the 1 kHz servo must agree on this: they each
+    #: call ``compute_tau_base``, and centring one on Q_NEUTRAL while the other
+    #: is centred on the actual pose makes the QP plan against a ``tau_base``
+    #: and a ``d_known`` the servo never applies.  That is invisible at
+    #: Q_NEUTRAL (where the two coincide) and was caught at another pose only
+    #: by the four-term residual's closure check, which went from 4e-16 to
+    #: 8e-05.  None means phri2's own Q_NEUTRAL.
+    pose: tuple[float, ...] | None = None
+
     #: Energy tank, from impedance_residual's Config.  E_min is the floor the
     #: fast authorization defends; E_max caps harvesting so a long dissipative
     #: stretch cannot bank unlimited authority.
@@ -194,7 +204,8 @@ class PIRRealizationMPC:
         self.generator = generator
         self.pir = config or PIRConfig()
         self.cfg = self.pir.resolved_mpc()
-        self.imp_params = make_default_impedance_params(self.cfg)
+        self.imp_params = pc.params_at(
+            self.cfg, None if self.pir.pose is None else np.asarray(self.pir.pose))
         self.previous_residual = np.zeros(3)
         self._warm_x: np.ndarray | None = None
         self._warm_y: np.ndarray | None = None
