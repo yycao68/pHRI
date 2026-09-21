@@ -74,28 +74,38 @@ _OFF = {"nominal_authorization": False}
 _ON = {"nominal_authorization": True, "nominal_reauth_rate": float("inf")}
 _MONO = {"nominal_authorization": True, "nominal_reauth_rate": 0.0}
 
-CANDIDATES: dict[str, tuple] = {
-    "certified": ("pir", 380.0, 29.07, _OFF),
-    "soft_nominal": ("pir", K_D, D_D, _OFF),
-    "anisotropic": ("pir", (60.0, 60.0, 380.0), (8.0, 8.0, 29.07), _OFF),
-    "nominal_auth": ("pir", 380.0, 29.07, _ON),
-    "nominal_auth_mono": ("pir", 380.0, 29.07, _MONO),
-    "soft_plus_auth": ("pir", K_D, D_D, _ON),
-    "soft_plus_mono": ("pir", K_D, D_D, _MONO),
-}
+def candidates(k0: float = 380.0, d0: float = 29.07) -> dict[str, tuple]:
+    """The comparison, parameterised by the pose's own certified operating point.
+
+    ``soft_nominal`` stays pinned at the desired impedance's own gains, since
+    that is the whole point of it; everything else moves with the pose.
+    """
+    return {
+        "certified": ("pir", k0, d0, _OFF),
+        "soft_nominal": ("pir", K_D, D_D, _OFF),
+        "anisotropic": ("pir", (60.0, 60.0, k0), (8.0, 8.0, d0), _OFF),
+        "nominal_auth": ("pir", k0, d0, _ON),
+        "nominal_auth_mono": ("pir", k0, d0, _MONO),
+        "soft_plus_auth": ("pir", K_D, D_D, _ON),
+        "soft_plus_mono": ("pir", K_D, D_D, _MONO),
+    }
 
 
-def _evaluate(name: str) -> dict:
-    variant, k0, d0, overrides = CANDIDATES[name]
+CANDIDATES: dict[str, tuple] = candidates()
+
+
+def _evaluate(args: tuple) -> dict:
+    name, table, pose = args
+    variant, k0, d0, overrides = table[name]
 
     # (0) The constraint that caused everything: the alpha -> 0 fallback.
     # Uses the push-axis gain, which is what the fallback equilibrium sees.
     k_axis = float(np.broadcast_to(np.asarray(k0, float), (3,))[pc.PUSH_AXIS_INDEX])
     d_axis = float(np.broadcast_to(np.asarray(d0, float), (3,))[pc.PUSH_AXIS_INDEX])
-    fallback = pc.run_fallback_equilibrium(k_axis, d_axis)
+    fallback = pc.run_fallback_equilibrium(k_axis, d_axis, pose=pose)
 
     base = run_variant(variant, k0, d0, "derated_joint4", scenario="merged",
-                       overrides=overrides)["summary"]
+                       overrides=overrides, pose=pose)["summary"]
 
     # (iii) How far the disturbance scales before EITHER guarantee is lost.
     torque_ok_to = 0.0
@@ -103,7 +113,8 @@ def _evaluate(name: str) -> dict:
     probe_rows = []
     for scale in PROBE_SCALES:
         s = run_variant(variant, k0, d0, "derated_joint4", scenario="merged",
-                        disturbance_scale=scale, overrides=overrides)["summary"]
+                        disturbance_scale=scale, overrides=overrides,
+                        pose=pose)["summary"]
         torque_ok = s["lemma1_conclusion_holds"]
         both_ok = torque_ok and s["tank_floor_holds"]
         if torque_ok:
@@ -124,10 +135,10 @@ def _evaluate(name: str) -> dict:
     # (ii) Does the passivity axis buy anything: empty tank vs full, under load.
     empty = run_variant(variant, k0, d0, "derated_joint4", scenario="merged",
                         tank_initial=0.021, disturbance_scale=4.0,
-                        overrides=overrides)["summary"]
+                        overrides=overrides, pose=pose)["summary"]
     full = run_variant(variant, k0, d0, "derated_joint4", scenario="merged",
                        tank_initial=0.080, disturbance_scale=4.0,
-                       overrides=overrides)["summary"]
+                       overrides=overrides, pose=pose)["summary"]
 
     return {
         "name": name,
@@ -157,10 +168,11 @@ def _evaluate(name: str) -> dict:
     }
 
 
-def run(workers: int = 4) -> dict:
+def run(workers: int = 4, pose=None, k0: float = 380.0, d0: float = 29.07) -> dict:
+    table = candidates(k0, d0)
     with ProcessPoolExecutor(max_workers=workers) as pool:
-        rows = list(pool.map(_evaluate, list(CANDIDATES)))
-    order = list(CANDIDATES)
+        rows = list(pool.map(_evaluate, [(n, table, pose) for n in table]))
+    order = list(table)
     rows.sort(key=lambda r: order.index(r["name"]))
     return {
         "cause": (
@@ -170,11 +182,14 @@ def run(workers: int = 4) -> dict:
         ),
         "workspace_bound_m": pc.WORKSPACE_BOUND_M,
         "K_d": K_D,
+        "pose": pc.nominal_pose(pose).tolist(),
+        "pose_tag": pc.scenario_tag(pose, None),
+        "certified_operating_point": {"K0": k0, "D0": d0},
         "candidates": rows,
     }
 
 
-def make_figure(report: dict, outdir: Path) -> Path:
+def make_figure(report: dict, outdir: Path, suffix: str = "") -> Path:
     rows = report["candidates"]
     names = [r["name"] for r in rows]
     x = np.arange(len(names))
@@ -226,7 +241,7 @@ def make_figure(report: dict, outdir: Path) -> Path:
     fig.suptitle("Candidate fixes for the three Section 7 findings", fontsize=11)
     fig.tight_layout(rect=(0, 0, 1, 0.93))
     outdir.mkdir(parents=True, exist_ok=True)
-    path = outdir / "pir_fixes.png"
+    path = outdir / f"pir_fixes{suffix}.png"
     fig.savefig(path, dpi=170)
     plt.close(fig)
     return path
@@ -238,15 +253,26 @@ def main() -> None:
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--refigure", action="store_true",
                         help="redraw from an existing pir_fixes.json")
+    parser.add_argument("--pose", type=float, nargs=3, metavar=("Q2", "Q4", "Q6"))
+    parser.add_argument("--k0", type=float, default=380.0)
+    parser.add_argument("--d0", type=float, default=29.07)
+    parser.add_argument("--tag", default="")
     args = parser.parse_args()
 
+    pose = None
+    if args.pose is not None:
+        pose = pc.Q_NEUTRAL.copy()
+        pose[1], pose[3], pose[5] = args.pose
+    suffix = f"_{args.tag}" if args.tag else ""
+
     args.outdir.mkdir(parents=True, exist_ok=True)
+    path = args.outdir / f"pir_fixes{suffix}.json"
     if args.refigure:
-        report = json.loads((args.outdir / "pir_fixes.json").read_text())
+        report = json.loads(path.read_text())
     else:
-        report = run(workers=args.workers)
-        (args.outdir / "pir_fixes.json").write_text(json.dumps(report, indent=2))
-    figure = make_figure(report, args.outdir)
+        report = run(workers=args.workers, pose=pose, k0=args.k0, d0=args.d0)
+        path.write_text(json.dumps(report, indent=2))
+    figure = make_figure(report, args.outdir, suffix=suffix)
 
     print(f"{'candidate':<19} {'(0)mm':>6} {'(0)ok':>6} {'headrm':>7} "
           f"{'resid%':>7} {'tau ok':>7} {'both ok':>8} {'worstJ':>8} {'aNmin':>6} "
@@ -260,7 +286,7 @@ def main() -> None:
               f"{r['worst_tank_deficit_J']:>8.3f} "
               f"{r['alpha_nom_min_over_probe']:>6.3f} "
               f"{r['e0_trade_rms_spread']:>8.4f} {r['rms_realization_residual']:>6.3f}")
-    print(f"\nwrote {args.outdir / 'pir_fixes.json'}\nwrote {figure}")
+    print(f"\nwrote {path}\nwrote {figure}")
 
 
 if __name__ == "__main__":

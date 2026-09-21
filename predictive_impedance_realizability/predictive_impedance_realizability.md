@@ -91,7 +91,17 @@ the residual's torque headroom from 2.4 % to **45.7 %**, and the workspace
 excursion under a 16× disturbance *improves* from 164 mm to 59 mm. Findings 1–3
 were substantially an artifact of the scenario, not of the architecture.
 
-§11 states what is left for a human.
+**§10 is the one that changes what the paper claims.** Aggregating every run,
+the two axes turn out to be *anti-correlated*: at `phri2`'s pose the
+feasibility axis fires and $r_{\mathrm{auth}}$ is exactly zero; at the
+recommended pose $r_{\mathrm{auth}}$ carries 49 % of the realization residual
+and $\alpha_\tau$ never fires at all. Both act on the same residual through
+the same torque budget, so a nominal stiff enough to make saturation bind
+leaves too small a residual to drain the tank, and vice versa. The framing that
+survives this is stronger than "both axes matter": **you cannot tell in advance
+which axis will bind**, and one innocuous-looking joint-angle change flips it.
+
+§12 states what is left for a human.
 
 ---
 
@@ -334,6 +344,8 @@ the one it did not list.
 | `pir_knot_scan_pose_*` | §9.3: the full gate re-run at the better pose |
 | `pir_closed_loop_pose_*` | §9.4: Task 2 re-run at the recommended pose |
 | `pir_e0_sweep_pose_*` | §9.4: Task 3 re-run at the recommended pose |
+| `pir_axis_tension.png/json` | §10: which axis fires where, aggregated over every run |
+| `pir_rootcause_pose_*`, `pir_fixes_pose_*` | §8.4: §8 re-run at the recommended pose |
 
 ---
 
@@ -726,7 +738,39 @@ fallback that may never happen" — it is **workspace containment under
 disturbance**, which is a live property. That is a genuine engineering
 decision, and it is the human's to make, not the scan's.
 
-### 8.4 What this does and does not settle
+### 8.4 Re-run at the recommended pose: the fixes solve a problem the pose removes
+
+§8.1–8.3 were measured at `phri2`'s pose. Re-run at the recommended one
+(`pir_rootcause.py --pose`, `pir_fixes.py --pose`):
+
+| $K_0$ | headroom (`phri2`) | headroom (rec.) | safe disturbance (`phri2`) | safe disturbance (rec.) |
+|---|---|---|---|---|
+| 100 | 26.4 % | 55.8 % | 12× | **12×** |
+| 250 | 13.7 % | 52.4 % | 8× | **12×** |
+| 380 | 2.4 % | 49.7 % | 4× | **12×** |
+| 460 | −1.2 % | 47.5 % | **0×** | **12×** |
+| 600 | −5.3 % | 46.5 % | **0×** | **12×** |
+
+The headroom never drops below 46 % at any $K_0$, and the feasibility axis
+never binds at any $K_0$ — the safe disturbance scale is pinned at the top of
+the probe range throughout. The whole monotone-collapse story of §8.1 is a
+property of a tight torque budget, and this pose does not have one.
+
+The fix comparison collapses with it. All seven candidates of §8.3 now score
+**identically at the ceiling**: both guarantees hold to 16×, no tank deficit,
+and **$\alpha_{\mathrm{nom}}$ never fires for any of them**. Decision 0's fix,
+which quadrupled the safe range at `phri2`'s pose, is entirely inert here.
+
+That is not an argument against adopting it — insurance that never pays out in
+the tested scenario is still the right thing to carry, and §8.2's failure mode
+is real wherever the budget *is* tight. But it does mean **§8 is a diagnosis of
+a configuration, not of the architecture**, and the paper should present it that
+way. Two of §8's conclusions also need narrowing: the "passivity peaks at
+intermediate $K_0$" shape inverts at this pose (§10.2), and `anisotropic`
+stops being harmful — 47.9 % headroom against `certified`'s 45.7 %, and the
+same 16× safe range, so at this pose it is merely useless rather than costly.
+
+### 8.5 What this does and does not settle
 
 Findings 1–3 are one problem with a known knob and a priced trade. Finding 4 is
 solved. What remains open is the same thing §7.7 pointed at: even with
@@ -941,7 +985,168 @@ one disturbance profile on one arm in simulation.
 
 ---
 
-## 10. What this does not show
+## 10. The tension between the two axes
+
+PIR's name rests on realizability having *two* axes — feasibility, reported by
+$r_{\mathrm{con}}$, and passivity, reported by $r_{\mathrm{auth}}$ — and the
+synthesis note is explicit that without the second axis the whole thing is a
+rebrand of constrained-MPC impedance. So the question that decides the framing
+is not whether each axis works. It is whether there is an operating point where
+**both are load-bearing at once and the controller is well behaved**.
+
+On the evidence so far, there is not. `pir_axis_tension.py` aggregates every
+closed-loop run and sweep point in `results/` and classifies each by which
+authorization actually fired.
+
+![](results/pir_axis_tension.png)
+
+**Figure 9 — each axis binds where the other does not.**
+
+### 10.1 Each axis is inert where the other is strong
+
+| run | $\min\alpha_\tau$ | $\min\alpha_E$ | $r_{\mathrm{con}}$ share | $r_{\mathrm{auth}}$ share | headroom |
+|---|---|---|---|---|---|
+| `phri2` pose / push | 0.8504 | **1.0000** | 0.2 % | **0.0 %** | 2.4 % |
+| `phri2` pose / merged | **1.0000** | **1.0000** | 0.0 % | **0.0 %** | 2.4 % |
+| recommended / push | **1.0000** | 0.0006 | **0.0 %** | 48.9 % | 45.7 % |
+| recommended / merged | **1.0000** | 0.0010 | **0.0 %** | 48.4 % | 45.7 % |
+
+At the recommended pose the passivity axis carries **49 %** of the realization
+residual and the feasibility axis contributes **nothing** — $\alpha_\tau$ stays
+at 1.0 across all 12 sweep points there, so the fast torque projection never
+once intervenes. At `phri2`'s pose the situation inverts: $\alpha_\tau$ fires
+and $r_{\mathrm{auth}}$ is *exactly* zero.
+
+Across all 24 sweep points, **4 have both axes firing** — and all four are at
+`phri2`'s pose under 4–12× disturbance, which is precisely the regime §9.3
+showed to be badly behaved (negative headroom, 103–108 mm excursion against a
+60 mm box). The one well-conditioned dual-axis point, $E_0 = 0.026$ at nominal
+disturbance, has $\alpha_\tau = 0.9999$ — the feasibility axis is technically
+firing and doing nothing.
+
+### 10.2 Why — and one place where I over-generalised again
+
+Both authorizations act on the **same object**, the residual $F_r$, through the
+**same** torque budget. When that budget is tight they compete: a nominal stiff
+enough for saturation to bind squeezes the residual (17 % of the command at
+$K_0 = 380$, `phri2` pose), and a small residual does little port work, so the
+tank never drains.
+
+The $K_0$ sweep at `phri2`'s pose shows exactly that:
+
+| $K_0$ | headroom | residual share | feasibility: safe disturbance | passivity: $E_0$ trade |
+|---|---|---|---|---|
+| 100 | 26.4 % | 72.6 % | 12× | 0.0068 |
+| 200 | 17.9 % | 46.4 % | 8× | 0.0125 |
+| **250** | 13.7 % | 34.1 % | 8× | **0.0358** ← strongest here |
+| 380 | 2.4 % | 17.1 % | 4× | 0.0020 |
+| 600 | −5.3 % | 48.4 % | **0×** | 0.0010 |
+
+**I first wrote that up as a structural law — passivity peaks at intermediate
+$K_0$, feasibility binds monotonically — and the re-run at the recommended pose
+(§8.4) contradicts it**, which is the same over-generalisation §11.0 catalogues,
+committed while writing the section that catalogues it. At the recommended pose
+the headroom never falls below 46 % at *any* $K_0$, the feasibility axis never
+binds at any $K_0$, and the $E_0$ trade *rises* with $K_0$ (0.021 up to
+$K_0 = 380$, then 0.32 at 460) instead of peaking in the middle.
+
+What survives is narrower and still sufficient:
+
+- **The competition is real only when the torque budget is tight.** With ample
+  headroom a stiff nominal does *not* squeeze the residual — at the recommended
+  pose $K_0 = 460$ still leaves the residual 50 % of the command — so the two
+  axes decouple. But they decouple into a regime where feasibility never binds
+  at all, which is not a dual-axis regime either.
+- **The axis-firing evidence is pose-robust and is what §10.1 rests on**, since
+  it is measured directly rather than inferred: $\alpha_\tau$ never once fires
+  across 12 sweep points at the recommended pose, and $r_{\mathrm{auth}}$ is
+  exactly zero across the headline runs at `phri2`'s.
+- **Only a large disturbance loads both at once**, because it raises velocity
+  (draining the tank) and the anchor (loading the envelope) together. That is
+  why all four dual-axis points are high-disturbance ones.
+
+So the conclusion of §10.1 stands — no well-behaved dual-axis operating point
+exists in the data — but the tidy mechanism I reached for does not, and §10.5's
+joint scan is the way to find out which story is right.
+
+### 10.3 The recommended pose optimises away PIR's own feasibility half
+
+Panel C quantifies it. Taking the static anchor proxy of §9.1 — which is
+*optimistic* about feasibility, so these are lower bounds:
+
+| pose | $\tau_{\mathrm{base}}$ floor | push needed for the anchor to reach $\bar\tau$ |
+|---|---|---|
+| `phri2` | 0.602 | **27 N** |
+| recommended | 0.377 | **106 N** |
+
+The benchmark push is 20 N, which is already a firm two-handed shove. At the
+recommended pose you would need roughly **five times** that before saturation
+became the binding constraint — outside the range a human interaction produces.
+
+So the pose that makes the passive-nominal split work is a pose where the
+saturation story PIR inherits from `phri2` does not arise. That is an
+uncomfortable sentence and it belongs in the paper, not in a footnote.
+
+### 10.4 What this means for the framing
+
+It does **not** mean the second axis is unearned. It means the claim has to be
+stated as what the evidence supports, which is a *stronger* claim than "both
+axes always bind":
+
+> The value of a two-axis certificate is not that both axes bind together. It
+> is that **you cannot tell in advance which one will bind.** This study
+> changes one FR3 joint angle — a change a practitioner would consider
+> innocuous, and which *improves* every behavioural metric — and the binding
+> axis flips from feasibility to passivity. A single-axis certificate is
+> silent after that flip: at the recommended pose `phri2`'s $r_{\mathrm{con}}$
+> reports zero while half the realization deviation is energy authorization,
+> and at `phri2`'s pose `impedance_residual`'s tank reports zero while the
+> torque projection is the only thing intervening.
+
+That is what the four-term residual buys, and it is demonstrable on the data
+already collected. The honest presentation is two case studies — a saturation
+case at `phri2`'s pose and a passivity case at the recommended one — with §10.2
+as the explanation for why one experiment cannot be both.
+
+### 10.5 What would settle it
+
+A single operating point that is dual-axis *and* well behaved would strengthen
+the paper considerably, and §10.2 says where to look: an intermediate pose with
+$K_0 \approx 250$, where the passivity axis is at its strongest and the anchor
+still has 14 % headroom. Neither knob currently in the code reaches it — pose
+and $K_0$ were swept separately, never jointly — so this is a two-dimensional
+scan that has not been run. It is the highest-value remaining experiment, and
+unlike the earlier ones it is aimed at the framing rather than at the design.
+
+---
+
+## 11. What this does not show
+
+### 11.0 A pattern in what turned out to be wrong
+
+Six conclusions in this document were later overturned or narrowed by a
+subsequent experiment, and the pattern is worth stating because it bears on how
+much anything here should be trusted:
+
+| conclusion | fate |
+|---|---|
+| $\rho = 0.28$ is *structurally* infeasible (§5.1) | ✗ pose-specific (§9.2) |
+| the $E_0$ trade is *flatter*, not steeper (§7.5) | ✗ pose artifact (§9.4) |
+| neither source benchmark stresses both axes (§7.4) | ✗ pose artifact (§9.4) |
+| the nominal dominates the command, 84 % (§7.6) | ✗ pose artifact, → 46 % (§9.4) |
+| the split makes a hard guarantee conditional (§7.7) | ✓ true, but fixable (§8.2) and inert at the good pose (§8.4) |
+| anisotropic gains do not help *and slightly hurt* (§8.3) | ~ the "hurt" is pose-specific; useless but harmless at the good pose (§8.4) |
+| passivity peaks at intermediate $K_0$ (§10.2, first draft) | ✗ inverts at the good pose — committed *while writing this table* |
+
+Five of seven were properties of **one FR3 configuration**, not of the
+architecture — and in each case the erroneous generalisation was made from a
+carefully measured, internally consistent experiment. The measurements were
+right; the scope claimed for them was not. **Nothing in this line should be
+claimed without a pose sweep** — a rule I restated in §10.2 and then broke in
+the next paragraph, which is the most honest evidence available for how strong
+the pull toward the tidy generalisation is. The two bugs that the four-term
+residual's closure check caught (§8.2, §9.4) suggest the same about any
+diagnostic that cannot be checked against an identity.
 
 - **~~The merged controller is not implemented.~~** Discharged in §7.2: the
   replay estimate and the merged closed loop agree to 0.1 % on both rows, and a
@@ -987,7 +1192,7 @@ one disturbance profile on one arm in simulation.
 
 ---
 
-## 11. Decision gate
+## 12. Decision gate
 
 Per §13.3 of the synthesis note, this is where autonomous work stops.
 
@@ -995,9 +1200,18 @@ Per §13.3 of the synthesis note, this is where autonomous work stops.
 merged controller is implemented, Merged Lemma 1 holds in closed loop and the
 four-term residual closes exactly. What is left is not a coding decision.
 
-§8 has changed what is being decided. One of the four findings is now fixed
-outright and should simply be adopted; the other three collapse into a single
-priced trade. What is left for a human:
+§8, §9 and §10 have each changed what is being decided. Finding 4 is fixed and
+adopted; findings 1–3 turned out to be largely the pose; and §10 has moved the
+open question from the design to the **framing**. What is left for a human:
+
+**Decision 3 — how is the two-axis claim stated?** This is now the one that
+matters most, because it is what the paper is *for*. §10.4 proposes the
+formulation the evidence supports: not "both axes bind", which the data
+contradicts, but "you cannot tell in advance which binds, and a change that
+improves every behavioural metric flips it". That is defensible on data already
+collected and is a stronger claim. The alternative — hold the paper until a
+joint pose × $K_0$ scan finds a well-behaved dual-axis operating point
+(§10.5) — is better evidence but a new experiment, and it may not exist.
 
 **Decision 0 — adopt `nominal_auth_mono`?** I recommend yes. It quadruples the
 range over which both guarantees survive, is provably inert while the anchor
@@ -1052,6 +1266,7 @@ to dissipativity-on-the-realized-port.
 - [x] ~~Decision 0: adopt `nominal_auth_mono`~~ — adopted; it is the
       controller's default, with `pir_no_nominal_auth` kept as the ablation.
 - [x] ~~Decision 2: which envelope~~ — §9. Derated-joint-4, at the §9.3 pose.
+- [ ] **Human:** decision 3 (the framing, §10.4) — now the highest-stakes one.
 - [ ] **Human:** decision 1, which §9.3 suggests is moot unless the application
       pins the pose.
 - [x] ~~Root-cause the three Section 7 findings~~ — §8.1. One constraint,
@@ -1072,6 +1287,10 @@ to dissipativity-on-the-realized-port.
 - [ ] Search poses properly rather than on a $q_2, q_4, q_6$ grid screened by
       one scenario, and check whether the recommended pose is one a real task
       would accept.
+- [ ] **Joint pose × $K_0$ scan (§10.5)** looking for a well-behaved operating
+      point where both axes are simultaneously load-bearing. Pose and $K_0$
+      have only ever been swept separately. This is aimed at the framing, not
+      the design, and is the highest-value remaining experiment.
 - [x] ~~Implement the merged controller and re-measure rows 1 and 4 in its own
       closed loop~~ — §7.1–7.2. Replay and closed loop agree to 0.1 %.
 - [x] ~~Task 3: re-sweep the authorization-vs-tracking curve ($E_0$) with both
@@ -1102,7 +1321,7 @@ to dissipativity-on-the-realized-port.
 
 ---
 
-## 12. Reproducing
+## 13. Reproducing
 
 ```bash
 cd simulation
@@ -1121,6 +1340,10 @@ POSE="--pose -1.30 -1.30 1.571 --k0 520.0 --d0 56.13 --tag pose_q2m13_q4m13"
 python3 run_pir_closed_loop.py $POSE --scenario push     # (Section 9.4)
 python3 run_pir_closed_loop.py $POSE --scenario merged   # (Section 9.4)
 python3 pir_e0_sweep.py $POSE                # ~25 min             (Section 9.4)
+python3 pir_rootcause.py --pose -1.30 -1.30 1.571 --tag pose_q2m13_q4m13
+python3 pir_fixes.py --pose -1.30 -1.30 1.571 --k0 520.0 --d0 56.13 \
+        --tag pose_q2m13_q4m13               # ~9 min              (Section 8)
+python3 pir_axis_tension.py                  # seconds; reads results/ (Section 10)
 python3 -m pytest test_pir_knot_scan.py test_pir_controller.py -q
 ```
 

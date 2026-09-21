@@ -189,3 +189,39 @@ def test_pose_screen_rejects_braced_poses():
     ratio = (axis @ braced["Lambda"] @ axis) / (axis @ ref["Lambda"] @ axis)
     assert ratio > MAX_LAMBDA_RATIO, "this pose is the guard's motivating case"
     assert braced["sigma_min"] < ref["sigma_min"]
+
+
+# --- the axis-tension analysis (Section 10) ----------------------------
+
+
+def test_axis_classification_matches_the_stored_runs():
+    """Section 10 rests on which authorization actually fired. Pin it, so a
+    controller change that quietly activates or kills an axis is caught."""
+    from pir_axis_tension import classify
+
+    report = classify(pc.RESULTS)
+    by_label = {r["label"]: r for r in report["runs"]}
+    # At phri2's pose the passivity axis is inert; at the recommended pose the
+    # feasibility axis is. If either flips, Section 10's argument changes.
+    assert not by_label["phri2 pose / push"]["passivity_fires"]
+    assert by_label["phri2 pose / push"]["r_auth_rms"] == 0.0
+    assert not by_label["recommended / push"]["feasibility_fires"]
+    assert by_label["recommended / push"]["r_auth_share"] > 0.4
+
+    both = [p for p in report["points"]
+            if p["feasibility_fires"] and p["passivity_fires"]]
+    assert both, "no dual-axis points at all would make Section 10 vacuous"
+    assert all(p["pose"] == "phri2" for p in both), (
+        "a dual-axis point away from phri2's pose would change Section 10's "
+        "conclusion and must be looked at, not silently absorbed")
+
+
+def test_push_to_saturation_separates_the_two_poses():
+    """Section 10.3's claim: the recommended pose needs a push far outside the
+    pHRI range before saturation binds."""
+    from pir_axis_tension import push_to_saturation
+
+    d = push_to_saturation()
+    assert d["phri2"]["push_N_to_saturate"] < 2 * pc.PUSH_MAGNITUDE_N
+    assert d["recommended"]["push_N_to_saturate"] > 4 * pc.PUSH_MAGNITUDE_N
+    assert d["recommended"]["tau_base_floor"] < d["phri2"]["tau_base_floor"]

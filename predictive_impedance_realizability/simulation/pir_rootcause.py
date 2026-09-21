@@ -58,7 +58,7 @@ def damping_for(k0: float) -> float:
 
 
 def _probe(args: tuple) -> dict:
-    k0, = args
+    k0, pose = args
     d0 = damping_for(k0)
 
     # Pinned OFF throughout: this study is the diagnosis of the pre-decision-0
@@ -66,11 +66,11 @@ def _probe(args: tuple) -> dict:
     off = {"nominal_authorization": False}
 
     # (a) The constraint that pushes K0 up: the alpha -> 0 fallback.
-    fallback = pc.run_fallback_equilibrium(k0, d0)
+    fallback = pc.run_fallback_equilibrium(k0, d0, pose=pose)
 
     # (b) Symptoms (i) and the anchor, on the merged scenario at nominal stress.
     base = run_variant("pir", k0, d0, "derated_joint4", scenario="merged",
-                       overrides=off)["summary"]
+                       overrides=off, pose=pose)["summary"]
 
     # (c) Symptom (iii): how far the disturbance scales before the precondition
     #     stops holding.
@@ -78,7 +78,7 @@ def _probe(args: tuple) -> dict:
     first_fail = None
     for scale in PROBE_SCALES:
         s = run_variant("pir", k0, d0, "derated_joint4", scenario="merged",
-                        disturbance_scale=scale, overrides=off)["summary"]
+                        disturbance_scale=scale, overrides=off, pose=pose)["summary"]
         if s["lemma1_precondition_holds"]:
             largest_ok = scale
         elif first_fail is None:
@@ -88,10 +88,10 @@ def _probe(args: tuple) -> dict:
     #     and a full one.  A flat pair means the passivity axis buys nothing.
     empty = run_variant("pir", k0, d0, "derated_joint4", scenario="merged",
                         tank_initial=0.021, disturbance_scale=4.0,
-                        overrides=off)["summary"]
+                        overrides=off, pose=pose)["summary"]
     full = run_variant("pir", k0, d0, "derated_joint4", scenario="merged",
                        tank_initial=0.080, disturbance_scale=4.0,
-                       overrides=off)["summary"]
+                       overrides=off, pose=pose)["summary"]
 
     return {
         "K0": k0,
@@ -114,9 +114,9 @@ def _probe(args: tuple) -> dict:
     }
 
 
-def run(workers: int = 4) -> dict:
+def run(workers: int = 4, pose=None) -> dict:
     with ProcessPoolExecutor(max_workers=workers) as pool:
-        rows = list(pool.map(_probe, [(k,) for k in K0_GRID]))
+        rows = list(pool.map(_probe, [(k, pose) for k in K0_GRID]))
     rows.sort(key=lambda r: r["K0"])
     return {
         "hypothesis": (
@@ -126,11 +126,13 @@ def run(workers: int = 4) -> dict:
         "desired_impedance_K_d": pc.ImpedanceReference3D().stiffness,
         "diag3_required_K0": pc.PUSH_MAGNITUDE_N / pc.WORKSPACE_BOUND_M,
         "zeta": ZETA,
+        "pose": pc.nominal_pose(pose).tolist(),
+        "pose_tag": pc.scenario_tag(pose, None),
         "rows": rows,
     }
 
 
-def make_figure(report: dict, outdir: Path) -> Path:
+def make_figure(report: dict, outdir: Path, suffix: str = "") -> Path:
     rows = report["rows"]
     k = np.array([r["K0"] for r in rows])
     kd = report["desired_impedance_K_d"]
@@ -169,7 +171,7 @@ def make_figure(report: dict, outdir: Path) -> Path:
                  "diagnostic (3) wants $K_0$ large", fontsize=11)
     fig.tight_layout(rect=(0, 0, 1, 0.94))
     outdir.mkdir(parents=True, exist_ok=True)
-    path = outdir / "pir_rootcause.png"
+    path = outdir / f"pir_rootcause{suffix}.png"
     fig.savefig(path, dpi=170)
     plt.close(fig)
     return path
@@ -179,12 +181,20 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--outdir", type=Path, default=pc.RESULTS)
     parser.add_argument("--workers", type=int, default=4)
+    parser.add_argument("--pose", type=float, nargs=3, metavar=("Q2", "Q4", "Q6"))
+    parser.add_argument("--tag", default="")
     args = parser.parse_args()
 
-    report = run(workers=args.workers)
+    pose = None
+    if args.pose is not None:
+        pose = pc.Q_NEUTRAL.copy()
+        pose[1], pose[3], pose[5] = args.pose
+    suffix = f"_{args.tag}" if args.tag else ""
+
+    report = run(workers=args.workers, pose=pose)
     args.outdir.mkdir(parents=True, exist_ok=True)
-    (args.outdir / "pir_rootcause.json").write_text(json.dumps(report, indent=2))
-    figure = make_figure(report, args.outdir)
+    (args.outdir / f"pir_rootcause{suffix}.json").write_text(json.dumps(report, indent=2))
+    figure = make_figure(report, args.outdir, suffix=suffix)
 
     print(f"desired impedance K_d = {report['desired_impedance_K_d']:.0f} N/m; "
           f"diagnostic (3) needs K0 >= {report['diag3_required_K0']:.0f} N/m; "
@@ -201,7 +211,7 @@ def main() -> None:
               f"{r['largest_safe_disturbance_scale']:>7.0f} "
               f"{r['e0_trade_rms_spread']:>8.4f} "
               f"{r['rms_realization_residual']:>7.3f}")
-    print(f"\nwrote {args.outdir / 'pir_rootcause.json'}\nwrote {figure}")
+    print(f"\nwrote {args.outdir / f'pir_rootcause{suffix}.json'}\nwrote {figure}")
 
 
 if __name__ == "__main__":

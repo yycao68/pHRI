@@ -1,0 +1,477 @@
+{
+  "classification": {
+    "runs": [
+      {
+        "label": "phri2 pose / push",
+        "pose": "phri2",
+        "alpha_tau_min": 0.850447988386766,
+        "alpha_E_min": 1.0,
+        "feasibility_fires": true,
+        "passivity_fires": false,
+        "r_con_fast_rms": 0.004469954149301263,
+        "r_auth_rms": 0.0,
+        "rms_realization_residual": 2.5081614164821158,
+        "r_auth_share": 0.0,
+        "anchor_headroom": 0.023796447854923852,
+        "max_abs_e_axis_m": 0.06035669946476696
+      },
+      {
+        "label": "phri2 pose / merged",
+        "pose": "phri2",
+        "alpha_tau_min": 1.0,
+        "alpha_E_min": 1.0,
+        "feasibility_fires": false,
+        "passivity_fires": false,
+        "r_con_fast_rms": 0.0,
+        "r_auth_rms": 0.0,
+        "rms_realization_residual": 2.5102977644446747,
+        "r_auth_share": 0.0,
+        "anchor_headroom": 0.023798797197264743,
+        "max_abs_e_axis_m": 0.06022107626544593
+      },
+      {
+        "label": "recommended / push",
+        "pose": "recommended",
+        "alpha_tau_min": 1.0,
+        "alpha_E_min": 0.0005560339970467362,
+        "feasibility_fires": false,
+        "passivity_fires": true,
+        "r_con_fast_rms": 0.0,
+        "r_auth_rms": 1.3870884017126561,
+        "rms_realization_residual": 2.833981661230802,
+        "r_auth_share": 0.4894486159484327,
+        "anchor_headroom": 0.4567902182724086,
+        "max_abs_e_axis_m": 0.05143537099909101
+      },
+      {
+        "label": "recommended / merged",
+        "pose": "recommended",
+        "alpha_tau_min": 1.0,
+        "alpha_E_min": 0.0010159759402826355,
+        "feasibility_fires": false,
+        "passivity_fires": true,
+        "r_con_fast_rms": 0.0,
+        "r_auth_rms": 1.3657933894199663,
+        "rms_realization_residual": 2.8207675501310727,
+        "r_auth_share": 0.48419210911459254,
+        "anchor_headroom": 0.4569563920342049,
+        "max_abs_e_axis_m": 0.051462618581754715
+      }
+    ],
+    "points": [
+      {
+        "pose": "phri2",
+        "sweep": "e0_sweep",
+        "E0": 0.021,
+        "disturbance_scale": 1.0,
+        "alpha_tau_min": 1.0,
+        "alpha_E_min": 0.22840679491274707,
+        "feasibility_fires": false,
+        "passivity_fires": true,
+        "r_auth_rms": 0.1074923199974282,
+        "rms_realization_residual": 2.5100295045814423,
+        "max_abs_e_axis_m": 0.060203120759683815
+      },
+      {
+        "pose": "phri2",
+        "sweep": "e0_sweep",
+        "E0": 0.023,
+        "disturbance_scale": 1.0,
+        "alpha_tau_min": 1.0,
+        "alpha_E_min": 0.32628475003081514,
+        "feasibility_fires": false,
+        "passivity_fires": true,
+        "r_auth_rms": 0.08811930902855114,
+        "rms_realization_residual": 2.5095787860958194,
+        "max_abs_e_axis_m": 0.06020633830357802
+      },
+      {
+        "pose": "phri2",
+        "sweep": "e0_sweep",
+        "E0": 0.026,
+        "disturbance_scale": 1.0,
+        "alpha_tau_min": 0.9999125609997532,
+        "alpha_E_min": 0.39436786223268605,
+        "feasibility_fires": true,
+        "passivity_fires": true,
+        "r_auth_rms": 0.06998059525399551,
+        "rms_realization_residual": 2.509525462173136,
+        "max_abs_e_axis_m": 0.06020950068403397
+      },
+      {
+        "pose": "phri2",
+        "sweep": "e0_sweep",
+        "E0": 0.03,
+        "disturbance_scale": 1.0,
+        "alpha_tau_min": 1.0,
+        "alpha_E_min": 0.49358830277347454,
+        "feasibility_fires": false,
+        "passivity_fires": true,
+        "r_auth_rms": 0.05223480979858122,
+        "rms_realization_residual": 2.5096733577966446,
+        "max_abs_e_axis_m": 0.060213491638196115
+      },
+      {
+        "pose": "phri2",
+        "sweep": "e0_sweep",
+        "E0": 0.04,
+        "disturbance_scale": 1.0,
+        "alpha_tau_min": 1.0,
+        "alpha_E_min": 0.6870233714536504,
+        "feasibility_fires": false,
+        "passivity_fires": true,
+        "r_auth_rms": 0.017286026584039386,
+        "rms_realization_residual": 2.510024465930206,
+        "max_abs_e_axis_m": 0.060217551882281395
+      },
+      {
+        "pose": "phri2",
+        "sweep": "e0_sweep",
+        "E0": 0.06,
+        "disturbance_scale": 1.0,
+        "alpha_tau_min": 1.0,
+        "alpha_E_min": 1.0,
+        "feasibility_fires": false,
+        "passivity_fires": false,
+        "r_auth_rms": 0.0,
+        "rms_realization_residual": 2.5102977644446747,
+        "max_abs_e_axis_m": 0.06022107626544593
+      },
+      {
+        "pose": "phri2",
+        "sweep": "e0_sweep",
+        "E0": 0.08,
+        "disturbance_scale": 1.0,
+        "alpha_tau_min": 1.0,
+        "alpha_E_min": 1.0,
+        "feasibility_fires": false,
+        "passivity_fires": false,
+        "r_auth_rms": 0.0,
+        "rms_realization_residual": 2.5102977644446747,
+        "max_abs_e_axis_m": 0.06022107626544593
+      },
+      {
+        "pose": "phri2",
+        "sweep": "disturbance_sweep",
+        "E0": 0.08,
+        "disturbance_scale": 1.0,
+        "alpha_tau_min": 1.0,
+        "alpha_E_min": 1.0,
+        "feasibility_fires": false,
+        "passivity_fires": false,
+        "r_auth_rms": 0.0,
+        "rms_realization_residual": 2.5102977644446747,
+        "max_abs_e_axis_m": 0.06022107626544593
+      },
+      {
+        "pose": "phri2",
+        "sweep": "disturbance_sweep",
+        "E0": 0.08,
+        "disturbance_scale": 2.0,
+        "alpha_tau_min": 0.8607273877201228,
+        "alpha_E_min": 1.0,
+        "feasibility_fires": true,
+        "passivity_fires": false,
+        "r_auth_rms": 0.0,
+        "rms_realization_residual": 2.5152703626687383,
+        "max_abs_e_axis_m": 0.06016225038689438
+      },
+      {
+        "pose": "phri2",
+        "sweep": "disturbance_sweep",
+        "E0": 0.08,
+        "disturbance_scale": 4.0,
+        "alpha_tau_min": 0.3198498589657312,
+        "alpha_E_min": 0.0024310454625133455,
+        "feasibility_fires": true,
+        "passivity_fires": true,
+        "r_auth_rms": 2.4296572932618083,
+        "rms_realization_residual": 2.6239274474724583,
+        "max_abs_e_axis_m": 0.06949754465956515
+      },
+      {
+        "pose": "phri2",
+        "sweep": "disturbance_sweep",
+        "E0": 0.08,
+        "disturbance_scale": 8.0,
+        "alpha_tau_min": 0.0,
+        "alpha_E_min": 0.001407420054005156,
+        "feasibility_fires": true,
+        "passivity_fires": true,
+        "r_auth_rms": 8.064277084038654,
+        "rms_realization_residual": 3.3805636480696712,
+        "max_abs_e_axis_m": 0.10795886126526494
+      },
+      {
+        "pose": "phri2",
+        "sweep": "disturbance_sweep",
+        "E0": 0.08,
+        "disturbance_scale": 12.0,
+        "alpha_tau_min": 0.0,
+        "alpha_E_min": 0.011734845658164461,
+        "feasibility_fires": true,
+        "passivity_fires": true,
+        "r_auth_rms": 7.024851640671143,
+        "rms_realization_residual": 4.4343499232380665,
+        "max_abs_e_axis_m": 0.10309790843977729
+      },
+      {
+        "pose": "recommended",
+        "sweep": "e0_sweep",
+        "E0": 0.021,
+        "disturbance_scale": 1.0,
+        "alpha_tau_min": 1.0,
+        "alpha_E_min": 0.0022954728505771085,
+        "feasibility_fires": false,
+        "passivity_fires": true,
+        "r_auth_rms": 1.607937636222204,
+        "rms_realization_residual": 3.017496014081777,
+        "max_abs_e_axis_m": 0.04890467276355004
+      },
+      {
+        "pose": "recommended",
+        "sweep": "e0_sweep",
+        "E0": 0.023,
+        "disturbance_scale": 1.0,
+        "alpha_tau_min": 1.0,
+        "alpha_E_min": 0.002345859923725738,
+        "feasibility_fires": false,
+        "passivity_fires": true,
+        "r_auth_rms": 1.6283094959412054,
+        "rms_realization_residual": 3.033853274600229,
+        "max_abs_e_axis_m": 0.04863379723046801
+      },
+      {
+        "pose": "recommended",
+        "sweep": "e0_sweep",
+        "E0": 0.026,
+        "disturbance_scale": 1.0,
+        "alpha_tau_min": 1.0,
+        "alpha_E_min": 0.0023529387072707,
+        "feasibility_fires": false,
+        "passivity_fires": true,
+        "r_auth_rms": 1.631199242153238,
+        "rms_realization_residual": 3.0367002564701506,
+        "max_abs_e_axis_m": 0.04852477325953852
+      },
+      {
+        "pose": "recommended",
+        "sweep": "e0_sweep",
+        "E0": 0.03,
+        "disturbance_scale": 1.0,
+        "alpha_tau_min": 1.0,
+        "alpha_E_min": 0.002423623821818439,
+        "feasibility_fires": false,
+        "passivity_fires": true,
+        "r_auth_rms": 1.62723656916438,
+        "rms_realization_residual": 3.031370114162177,
+        "max_abs_e_axis_m": 0.04859148133556612
+      },
+      {
+        "pose": "recommended",
+        "sweep": "e0_sweep",
+        "E0": 0.04,
+        "disturbance_scale": 1.0,
+        "alpha_tau_min": 1.0,
+        "alpha_E_min": 0.002474428662162345,
+        "feasibility_fires": false,
+        "passivity_fires": true,
+        "r_auth_rms": 1.589695210566109,
+        "rms_realization_residual": 2.999437562556599,
+        "max_abs_e_axis_m": 0.049012334113141875
+      },
+      {
+        "pose": "recommended",
+        "sweep": "e0_sweep",
+        "E0": 0.06,
+        "disturbance_scale": 1.0,
+        "alpha_tau_min": 1.0,
+        "alpha_E_min": 0.0016620381353914476,
+        "feasibility_fires": false,
+        "passivity_fires": true,
+        "r_auth_rms": 1.4787758448371222,
+        "rms_realization_residual": 2.9118610250426933,
+        "max_abs_e_axis_m": 0.05025594505754938
+      },
+      {
+        "pose": "recommended",
+        "sweep": "e0_sweep",
+        "E0": 0.08,
+        "disturbance_scale": 1.0,
+        "alpha_tau_min": 1.0,
+        "alpha_E_min": 0.0010159759402826355,
+        "feasibility_fires": false,
+        "passivity_fires": true,
+        "r_auth_rms": 1.3657933894199663,
+        "rms_realization_residual": 2.8207675501310727,
+        "max_abs_e_axis_m": 0.051462618581754715
+      },
+      {
+        "pose": "recommended",
+        "sweep": "disturbance_sweep",
+        "E0": 0.08,
+        "disturbance_scale": 1.0,
+        "alpha_tau_min": 1.0,
+        "alpha_E_min": 0.0010159759402826355,
+        "feasibility_fires": false,
+        "passivity_fires": true,
+        "r_auth_rms": 1.3657933894199663,
+        "rms_realization_residual": 2.8207675501310727,
+        "max_abs_e_axis_m": 0.051462618581754715
+      },
+      {
+        "pose": "recommended",
+        "sweep": "disturbance_sweep",
+        "E0": 0.08,
+        "disturbance_scale": 2.0,
+        "alpha_tau_min": 1.0,
+        "alpha_E_min": 0.0017764003791138608,
+        "feasibility_fires": false,
+        "passivity_fires": true,
+        "r_auth_rms": 1.310826250375167,
+        "rms_realization_residual": 2.776551587370726,
+        "max_abs_e_axis_m": 0.052114216230201627
+      },
+      {
+        "pose": "recommended",
+        "sweep": "disturbance_sweep",
+        "E0": 0.08,
+        "disturbance_scale": 4.0,
+        "alpha_tau_min": 1.0,
+        "alpha_E_min": 0.0014814165995303483,
+        "feasibility_fires": false,
+        "passivity_fires": true,
+        "r_auth_rms": 1.1295672054477037,
+        "rms_realization_residual": 2.631712372755622,
+        "max_abs_e_axis_m": 0.054353150793433724
+      },
+      {
+        "pose": "recommended",
+        "sweep": "disturbance_sweep",
+        "E0": 0.08,
+        "disturbance_scale": 8.0,
+        "alpha_tau_min": 1.0,
+        "alpha_E_min": 0.004776778489092769,
+        "feasibility_fires": false,
+        "passivity_fires": true,
+        "r_auth_rms": 0.40383684783293045,
+        "rms_realization_residual": 2.2232301757824913,
+        "max_abs_e_axis_m": 0.058900970833762334
+      },
+      {
+        "pose": "recommended",
+        "sweep": "disturbance_sweep",
+        "E0": 0.08,
+        "disturbance_scale": 12.0,
+        "alpha_tau_min": 1.0,
+        "alpha_E_min": 1.0,
+        "feasibility_fires": false,
+        "passivity_fires": false,
+        "r_auth_rms": 0.0,
+        "rms_realization_residual": 2.305756887455788,
+        "max_abs_e_axis_m": 0.05890726160849313
+      }
+    ]
+  },
+  "push_to_saturation": {
+    "phri2": {
+      "tau_base_floor": 0.6018820588841018,
+      "curve": [
+        [
+          20.0,
+          0.9015752621060775
+        ],
+        [
+          40.0,
+          1.2012684653280532
+        ],
+        [
+          60.0,
+          1.500961668550029
+        ],
+        [
+          80.0,
+          1.8006548717720046
+        ],
+        [
+          100.0,
+          2.1003480749939802
+        ],
+        [
+          120.0,
+          2.400041278215956
+        ]
+      ],
+      "push_N_to_saturate": 26.56836637172726
+    },
+    "recommended": {
+      "tau_base_floor": 0.3769962923704483,
+      "curve": [
+        [
+          20.0,
+          0.43629138632253056
+        ],
+        [
+          40.0,
+          0.4955864802746129
+        ],
+        [
+          60.0,
+          0.5875431251876088
+        ],
+        [
+          80.0,
+          0.7658465827521859
+        ],
+        [
+          100.0,
+          0.9441500403167629
+        ],
+        [
+          120.0,
+          1.1224534978813399
+        ]
+      ],
+      "push_N_to_saturate": 106.26459637363001
+    }
+  },
+  "summary": {
+    "n_sweep_points": 24,
+    "n_both_axes_fire": 4,
+    "both_axes_points": [
+      {
+        "pose": "phri2",
+        "E0": 0.026,
+        "disturbance_scale": 1.0,
+        "alpha_tau_min": 0.9999125609997532,
+        "alpha_E_min": 0.39436786223268605,
+        "max_abs_e_axis_m": 0.06020950068403397
+      },
+      {
+        "pose": "phri2",
+        "E0": 0.08,
+        "disturbance_scale": 4.0,
+        "alpha_tau_min": 0.3198498589657312,
+        "alpha_E_min": 0.0024310454625133455,
+        "max_abs_e_axis_m": 0.06949754465956515
+      },
+      {
+        "pose": "phri2",
+        "E0": 0.08,
+        "disturbance_scale": 8.0,
+        "alpha_tau_min": 0.0,
+        "alpha_E_min": 0.001407420054005156,
+        "max_abs_e_axis_m": 0.10795886126526494
+      },
+      {
+        "pose": "phri2",
+        "E0": 0.08,
+        "disturbance_scale": 12.0,
+        "alpha_tau_min": 0.0,
+        "alpha_E_min": 0.011734845658164461,
+        "max_abs_e_axis_m": 0.10309790843977729
+      }
+    ],
+    "feasibility_ever_fires_at_recommended_pose": false
+  }
+}

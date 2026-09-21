@@ -29,6 +29,13 @@ Read `predictive_impedance_realizability.md` for the result. In three lines:
   `phri2`'s **own** benchmark — no borrowed disturbance — and the
   authorization-vs-tracking trade is 7.7 % rather than 0.03 %, which corrects
   §7.5's "flatter, not steeper" conclusion. That too was a pose artifact.
+- **§10 is what changes the paper's claim.** Aggregating every run, the two
+  axes turn out to be anti-correlated: at `phri2`'s pose the feasibility axis
+  fires and `r_auth` is exactly zero; at the recommended pose `r_auth` carries
+  49 % of the realization residual and `alpha_tau` never fires at all. There is
+  no well-behaved operating point in the data where both are load-bearing. The
+  framing that survives is stronger than "both axes matter": you cannot tell in
+  advance which one will bind, and one innocuous joint-angle change flips it.
 
 ## Layout
 
@@ -43,6 +50,7 @@ simulation/pir_e0_sweep.py              authorization vs tracking — Task 3
 simulation/pir_rootcause.py             why the three findings happen (K₀ sweep)
 simulation/pir_fixes.py                 candidate fixes, scored side by side
 simulation/pir_pose_study.py            pose / push-direction screen — decision 2
+simulation/pir_axis_tension.py          which axis fires where, over every stored run
 simulation/test_pir_knot_scan.py        regression tests for the gate
 simulation/test_pir_controller.py       regression tests for the controller
 results/                                figures and machine-readable results
@@ -74,6 +82,7 @@ python3 run_pir_closed_loop.py --scenario merged # ~35 s
 python3 pir_e0_sweep.py                          # ~6 min
 python3 pir_rootcause.py                         # ~4 min
 python3 pir_fixes.py                             # ~5 min
+python3 pir_axis_tension.py                      # seconds; reads results/
 python3 pir_pose_study.py                        # ~4 min
 python3 pir_knot_scan.py --pose -1.30 -1.30 1.571 --tag pose_q2m13_q4m13   # ~19 min
 python3 -m pytest test_pir_knot_scan.py test_pir_controller.py -q
