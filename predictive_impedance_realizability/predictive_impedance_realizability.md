@@ -114,10 +114,11 @@ leaves too small a residual to drain the tank, and vice versa. The framing that
 survives this is stronger than "both axes matter": **you cannot tell in advance
 which axis will bind**, and one innocuous-looking joint-angle change flips it.
 A joint pose × $K_0$ scan (§10.5, 96 cells) then finds exactly one operating
-point where both axes carry real load with every certificate intact — `phri2`'s
-own pose at the originally certified gains under 4× disturbance — and whether
-it counts turns entirely on whether the 0.06 m workspace box is read as hard or
-slack-relaxed.
+point where both axes carry real load with every certificate intact — and
+§10.6 resampling it across 10 seeds shows that point keeps all its certificates
+in only **5 of 20** runs, always failing on Lemma 1's precondition. The flip,
+by contrast, is **20/20**. So the claim the evidence supports is the flip, and
+the dual-axis regime is a remark rather than an exhibit.
 
 §12 states what is left for a human.
 
@@ -365,6 +366,7 @@ the one it did not list.
 | `pir_axis_tension.png/json` | §10: which axis fires where, aggregated over every run |
 | `pir_rootcause_pose_*`, `pir_fixes_pose_*` | §8.4: §8 re-run at the recommended pose |
 | `pir_joint_scan.png/json` | §10.5: the joint pose × $K_0$ scan and its box-allowance sensitivity |
+| `pir_robustness.png/json` | §10.6: decision 3's two formulations across 10 seeds × 2 profiles |
 
 ---
 
@@ -1247,6 +1249,76 @@ budget, and accepting an excursion the recommended pose avoids.
 
 ---
 
+### 10.6 Both formulations, tested across seeds
+
+§12's decision 3 offered two ways to state the claim, and both rested on a
+single disturbance seed — (b) on a single cell at a single seed.
+`pir_robustness.py` re-runs both across 10 seeds × 2 disturbance profiles (with
+and without `rejectable_force`'s between-manager-tick pulse, the component
+`impedance_residual` added specifically to defeat a slow guard). 60 runs.
+
+![](results/pir_robustness.png)
+
+**Figure 11 — decision 3 under resampling.**
+
+#### (a) The flip survives, 20/20 — with one correction to how it is stated
+
+| | `phri2` pose | recommended pose |
+|---|---|---|
+| $r_{\mathrm{auth}}/\|a_{id}\|$ | **exactly 0** in 20/20 | **39.8 – 50.6 %** in 20/20 |
+| $r_{\mathrm{con}}/\|a_{id}\|$ | 0.00 – 1.51 % | **exactly 0** in 20/20 |
+| classification | neither axis load-bearing, 20/20 | passivity-only, 20/20 |
+
+The assignment never swaps. But the strict load-bearing threshold exposes
+something §10.4's wording glosses: at 1× disturbance the feasibility axis
+**never reaches 2 % of the intended behaviour at either pose** — it fires
+($\alpha_\tau$ ranges 0.77–1.00 at `phri2`'s pose) but what it removes is
+under 1.5 %. So the robust statement is not "the load moves from one axis to
+the other". It is:
+
+> The passivity axis goes from **exactly zero** to **40–51 %** of the intended
+> behaviour, and the feasibility axis from small-but-nonzero to **exactly
+> zero**, on a joint-angle change that improves every behavioural metric. What
+> flips is **which axis is capable of carrying load at all**.
+
+That is still the claim §10.4 wants and it is now 20/20 rather than 1/1. It is
+weaker than "the axes exchange the load", and the paper should say the weaker
+thing.
+
+#### (b) The exhibit does not survive as stated
+
+| | result |
+|---|---|
+| dual-axis **and** every certificate intact | **5 / 20** |
+| Lemma 1 precondition holds | **10 / 20** |
+| Lemma 1 conclusion holds | 20 / 20 |
+| tank floor holds | 20 / 20 |
+| excursion, all runs | 100 – 163 % of the box |
+| excursion, runs that qualify | 111 – 120 % |
+
+§10.5's cell was seed 0 with the pulse — one of the lucky draws. Resampled,
+the candidate is dual-axis in 15 of 20 runs but keeps **all** its certificates
+in only 5, and the failure is always the same one: **Lemma 1's precondition**,
+which holds in exactly half the runs. (The conclusion and the tank floor never
+fail — $\alpha_{\mathrm{nom}}$ and the fast re-authorization do their jobs
+every time. That is a real result in itself, and it is decision 0's fix earning
+its place.)
+
+The pattern in the failures is §10's anti-correlation appearing *within a
+single cell*: the runs with the largest $r_{\mathrm{auth}}$ (122–403 %) and the
+largest excursions (137–163 %) are exactly the runs where the precondition
+breaks. Loading both axes harder does not get you a better exhibit; it gets you
+a broken anchor.
+
+**So (b) is not a one-off fluke — it recurs at three distinct seeds — but it is
+a minority outcome (25 %) that always sits outside the nominal box (111–120 %
+even when it qualifies).** It is not something to build a paper's central claim
+on. §12's decision 3 resolves to **(a), with (b) demoted to a remark**: that a
+dual-axis regime exists at all is worth one sentence and a pointer to the data;
+it is not the exhibit.
+
+---
+
 ## 11. What this does not show
 
 ### 11.0 A pattern in what turned out to be wrong
@@ -1341,23 +1413,28 @@ recommended pose too, which makes it insurance rather than a load-bearing part.
 The one reservation is §11's: its stiffness ratchet is untested beyond a 6 s
 run, so it needs a per-contact reset before hardware.
 
-**Decision 3 — how is the two-axis claim stated? OPEN, and now the one that
-matters most**, because it is what the paper is *for*. Two formulations are
-available and §10.5 has made the choice concrete rather than speculative:
+**Decision 3 — how is the two-axis claim stated? SETTLED by §10.6:
+formulation (a), with (b) demoted to a remark.** Both candidates were resampled
+across 10 seeds × 2 disturbance profiles:
 
-- **(a) The flip.** §10.4's formulation: not "both axes bind", which the data
-  contradicts, but "you cannot tell in advance which binds, and a change that
-  improves every behavioural metric flips it". Defensible on data already
-  collected, and a stronger claim than the obvious one.
-- **(b) The dual-axis case study.** §10.5 found exactly one operating point
-  where both axes carry real load with every certificate intact. It is
-  `phri2`'s own pose at the originally certified gains under 4× disturbance,
-  and it qualifies **only if the 0.06 m box is read as slack-relaxed** — which
-  it is in `phri2`'s own QP. Stronger if it holds up; it rests on one cell at
-  one seed, 16 % outside the nominal box.
+- **(a) The flip — survives 20/20.** The passivity axis goes from exactly zero
+  at `phri2`'s pose to 40–51 % of the intended behaviour at the recommended
+  one, and the feasibility axis from small-but-nonzero to exactly zero, on a
+  joint-angle change that improves every behavioural metric. One correction
+  §10.6 forces: at 1× disturbance the feasibility axis never reaches the
+  load-bearing threshold at *either* pose, so the claim is "**which axis can
+  carry load at all** flips", not "the axes exchange the load". Say the weaker
+  thing.
+- **(b) The dual-axis exhibit — does not survive as stated.** §10.5's cell was
+  a lucky seed. Resampled, it is dual-axis in 15/20 runs but keeps all its
+  certificates in **5/20**, always failing on Lemma 1's precondition, and even
+  when it qualifies it sits 111–120 % outside the box. It recurs at three
+  distinct seeds so it is not noise, but a 25 % outcome is not a central
+  claim's evidence.
 
-These are not exclusive: (a) is the safe framing and (b) is the exhibit. The
-decision is whether to spend more runs hardening (b) before committing.
+This also **retires the box question as a framing blocker.** It still matters
+for the Task 1 region size, but the exhibit it would have licensed does not
+survive resampling, so the framing no longer waits on it.
 
 **Decision 1 — how much workspace containment under disturbance is the
 predictive layer's authority worth?** *Probably moot now.* This was the real
@@ -1398,12 +1475,12 @@ recommendation, *at the §9.3 pose rather than `phri2`'s*. Option 2 is not
 forced — the passive-nominal split is viable, so there is no reason to retreat
 to dissipativity-on-the-realized-port.
 
-One tension the reader should be handed rather than left to find: decision 2
-recommends the §9.3 pose, and §10.5's dual-axis exhibit lives at `phri2`'s. If
-decision 3 goes to formulation (b), the paper recommends one operating point
-and demonstrates its central claim at another. That is defensible — the
-recommendation is about deployment and the exhibit is about what the
-certificate detects — but it has to be said out loud, not glossed.
+A tension that decision 3 has now dissolved rather than resolved: decision 2
+recommends the §9.3 pose while §10.5's dual-axis cell lives at `phri2`'s, so
+formulation (b) would have had the paper recommending one operating point and
+demonstrating its central claim at another. §10.6 demoted (b), so the question
+no longer arises — but it is recorded because it is the kind of thing that
+would have been easy to gloss.
 
 ### Owed before any claim
 
@@ -1433,9 +1510,16 @@ certificate detects — but it has to be said out loud, not glossed.
       would accept.
 - [x] ~~Joint pose × $K_0$ scan looking for a well-behaved dual-axis operating
       point~~ — §10.5. 96 cells; one candidate, conditional on the box reading.
-- [ ] If the box is read as slack-relaxed: promote §10.5's candidate to a
-      proper case study — repeat it across seeds and disturbance profiles, and
-      check whether the 16 % excursion is stable or incidental.
+- [x] ~~Promote §10.5's candidate to a proper case study — repeat it across
+      seeds and disturbance profiles~~ — §10.6. It does not survive: 5/20 on
+      all certificates, and the 16 % excursion was a mid-range draw of a
+      100–163 % spread. Demoted to a remark.
+- [ ] The one thing §10.6 leaves open: the precondition fails in 10/20 runs at
+      the candidate cell while the *conclusion* never does. That gap is
+      $\alpha_{\mathrm{nom}}$ working, and it means "precondition violated" and
+      "envelope violated" have come apart. Merged Lemma 1 should be restated to
+      say what is guaranteed when the precondition fails but
+      $\alpha_{\mathrm{nom}}$ is active — the proof currently has no such case.
 - [x] ~~Implement the merged controller and re-measure rows 1 and 4 in its own
       closed loop~~ — §7.1–7.2. Replay and closed loop agree to 0.1 %.
 - [x] ~~Task 3: re-sweep the authorization-vs-tracking curve ($E_0$) with both
@@ -1457,10 +1541,10 @@ certificate detects — but it has to be said out loud, not glossed.
       joint 4, and check whether the headroom problem is FR3-pose-specific.
 - [ ] Implement and test the per-contact reset `nominal_auth_mono` needs, and
       characterise the ratchet over runs longer than 6 s.
-- [ ] **Resolve whether the 0.06 m bound is hard or slack-relaxed.** This has
-      been on the list since the Task 1 gate, where it decided a 33-cell versus
-      6-cell region; §10.5 has now made it decide whether PIR's central claim
-      has a supporting experiment at all. It is no longer a loose end.
+- [ ] **Resolve whether the 0.06 m bound is hard or slack-relaxed.** Back to
+      being a Task 1 question only — it decides a 33-cell versus 6-cell region.
+      §10.5 briefly made it decisive for the framing too; §10.6 retired that,
+      because the exhibit it would have licensed does not survive resampling.
 - [ ] Explicitly disclaim the force-misclassification pillar in whatever is
       written. §7.1's channel split makes the assumption visible; it does not
       discharge it.
@@ -1491,6 +1575,7 @@ python3 pir_fixes.py --pose -1.30 -1.30 1.571 --k0 520.0 --d0 56.13 \
         --tag pose_q2m13_q4m13               # ~9 min              (Section 8)
 python3 pir_axis_tension.py                  # seconds; reads results/ (Section 10)
 python3 pir_joint_scan.py                    # ~8 min              (Section 10.5)
+python3 pir_robustness.py                    # ~10 min             (Section 10.6)
 python3 -m pytest test_pir_knot_scan.py test_pir_controller.py -q
 ```
 

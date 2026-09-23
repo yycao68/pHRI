@@ -87,7 +87,8 @@ DISTURBANCE_SEED = 0
 
 def external_force(t: float, scenario: str, phases: np.ndarray,
                    disturbance_scale: float = 1.0,
-                   push_axis: np.ndarray | None = None) -> tuple[np.ndarray, np.ndarray]:
+                   push_axis: np.ndarray | None = None,
+                   pulse_scale: float | None = None) -> tuple[np.ndarray, np.ndarray]:
     """Return (total external force, the part the behaviour layer is about).
 
     The push is what the impedance behaviour is defined against; the
@@ -100,7 +101,8 @@ def external_force(t: float, scenario: str, phases: np.ndarray,
     if scenario == "push":
         return push, push
     if scenario == "merged":
-        return push + rejectable_force(t, phases, disturbance_scale), push
+        return push + rejectable_force(t, phases, disturbance_scale,
+                                       pulse_scale=pulse_scale), push
     raise ValueError(scenario)
 
 
@@ -116,10 +118,12 @@ def run_variant(
     overrides: dict | None = None,
     pose: np.ndarray | None = None,
     push_axis: np.ndarray | None = None,
+    seed: int = DISTURBANCE_SEED,
+    pulse_scale: float | None = None,
 ) -> dict:
     if variant not in ALL_VARIANTS:
         raise ValueError(variant)
-    phases = np.random.default_rng(DISTURBANCE_SEED).uniform(-np.pi, np.pi, 3)
+    phases = np.random.default_rng(seed).uniform(-np.pi, np.pi, 3)
     cap = pc.torque_envelope(envelope)
     generator = pc.ImpedanceReference3D()
 
@@ -182,7 +186,8 @@ def run_variant(
     for i in range(n_steps):
         t = env.time
         force, behaviour_force = external_force(t, scenario, phases,
-                                               disturbance_scale, push_axis)
+                                               disturbance_scale, push_axis,
+                                               pulse_scale)
         dyn, state = env.get_dynamics_and_state(
             f_ext_override=np.concatenate([force, np.zeros(3)])
         )
@@ -277,6 +282,8 @@ def run_variant(
         "nominal_reauth_rate": pir_cfg.nominal_reauth_rate,
         "tank_initial": pir_cfg.tank_initial,
         "disturbance_scale": disturbance_scale,
+        "seed": seed,
+        "pulse_scale": disturbance_scale if pulse_scale is None else pulse_scale,
         "K0": k0 if variant != "phri2" else None,
         "D0": d0 if variant != "phri2" else None,
         # --- what Section 7 owed: rows (1) and (4), re-measured in closed loop

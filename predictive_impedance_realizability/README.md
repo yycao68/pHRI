@@ -37,10 +37,11 @@ Read `predictive_impedance_realizability.md` for the result. In three lines:
   framing that survives is stronger than "both axes matter": you cannot tell in
   advance which one will bind, and one innocuous joint-angle change flips it.
 - §10.5's joint pose × K₀ scan (96 cells) finds **one** operating point where
-  both axes carry real load with every certificate intact — phri2's own pose at
-  the originally certified gains, under 4× disturbance. Whether it counts turns
-  entirely on whether the 0.06 m workspace box is hard or slack-relaxed, which
-  promotes a long-standing loose end to the decisive question.
+  both axes carry real load with every certificate intact. §10.6 then resamples
+  it across 10 seeds: it keeps all its certificates in **5 of 20** runs, always
+  failing on Lemma 1's precondition. The flip, by contrast, is **20/20**. So
+  the claim the evidence supports is the flip; the dual-axis regime is a remark,
+  not an exhibit.
 
 ## Layout
 
@@ -57,6 +58,7 @@ simulation/pir_fixes.py                 candidate fixes, scored side by side
 simulation/pir_pose_study.py            pose / push-direction screen — decision 2
 simulation/pir_axis_tension.py          which axis fires where, over every stored run
 simulation/pir_joint_scan.py            joint pose x K0 scan for a dual-axis point
+simulation/pir_robustness.py            both framings resampled over seeds/profiles
 simulation/test_pir_knot_scan.py        regression tests for the gate
 simulation/test_pir_controller.py       regression tests for the controller
 results/                                figures and machine-readable results
@@ -90,6 +92,7 @@ python3 pir_rootcause.py                         # ~4 min
 python3 pir_fixes.py                             # ~5 min
 python3 pir_axis_tension.py                      # seconds; reads results/
 python3 pir_joint_scan.py                        # ~8 min
+python3 pir_robustness.py                        # ~10 min
 python3 pir_pose_study.py                        # ~4 min
 python3 pir_knot_scan.py --pose -1.30 -1.30 1.571 --tag pose_q2m13_q4m13   # ~19 min
 python3 -m pytest test_pir_knot_scan.py test_pir_controller.py -q

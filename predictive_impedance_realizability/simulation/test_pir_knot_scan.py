@@ -253,3 +253,21 @@ def test_every_well_behaved_joint_cell_has_a_dead_feasibility_axis():
     well = [c for c in report["cells"] if c["well_behaved"]]
     assert len(well) > 20, "too few well-behaved cells for this to mean anything"
     assert all(c["r_con_over_a_id"] == 0.0 for c in well)
+
+
+def test_decision_3_verdicts_are_what_the_draft_claims():
+    """Section 10.6 settles decision 3. Pin both verdicts: the flip is stable
+    across resampling, the dual-axis exhibit is not."""
+    import json
+
+    v = json.loads((pc.RESULTS / "pir_robustness.json").read_text())["verdict"]
+    # (a) the flip: assignment never swaps, and the feasibility axis never
+    # reaches the load-bearing threshold at 1x -- the correction 10.6 forces.
+    assert v["a_flip_assignment_stable"] is True
+    assert v["a_feasibility_ever_load_bearing_at_1x"] is False
+    assert v["a_recommended_r_auth_range"][0] > 0.35
+    # (b) the exhibit: a minority outcome, and the precondition is what fails.
+    assert v["b_n_dual_axis_and_intact"] < v["b_n_runs"] / 2
+    assert v["b_conclusion_holds"] == v["b_n_runs"]
+    assert v["b_tank_floor_holds"] == v["b_n_runs"]
+    assert v["b_precondition_holds"] < v["b_n_runs"]
