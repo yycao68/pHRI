@@ -1,11 +1,20 @@
-# Is the Passive-Nominal Split Feasible?
+# Predictive Interaction Realizability on the FR3
 
-### A design gate for Predictive Interaction Realizability on the FR3
+### From a design gate to a two-axis certificate — what holds, what broke, and what it costs
 
-*Working draft. Task 1 (the design gate), Task 2 (the merged controller),
-Task 3 (the authorization-vs-tracking sweep), the root-cause analysis and fixes
-for what those found, and the pose study that resolves most of it. Simulation
-only.*
+*Working draft, simulation only. It began as one question — is the
+passive-nominal split feasible? — and the answer to that (§1–§6) turned out to
+be the least interesting thing in it. The merged controller (§7), the fixes for
+what it exposed (§8), the pose study that dissolved most of those (§9), and the
+tension between PIR's two axes (§10) each changed the previous answer.*
+
+> **How to read this.** The document is written in the order the work happened,
+> and several conclusions were later overturned by a subsequent experiment.
+> Rather than silently rewriting them, superseded sections carry a **Corrected
+> by §x** banner at the top and the correction is made where the newer evidence
+> is. §11.0 tabulates every such reversal, because the *pattern* in them — five
+> of seven were properties of one FR3 configuration — is itself one of the
+> findings. If you want only the current state: §1, then §10, then §12.
 
 ---
 
@@ -39,8 +48,10 @@ only in a sliver.**
 | $\rho\,\tau_{\max}$, $\rho = 0.28$ | `impedance_residual` | **0 / 900 cells** | **NO-GO** (at this pose; see §9.2) |
 | $87/87/87/\mathbf{31.5}/12/12/12$ N·m | `phri2` | **33 / 900 cells**, $k \in [360, 400]$ N/m, $d \in [21.3, 48.4]$ N·s/m | **GO, thin** |
 
-Under the $\rho = 0.28$ envelope no $(K_0, D_0)$ works — not a tuning failure,
-a structural one (§5.1). Under `phri2`'s own envelope the split is viable at
+Under the $\rho = 0.28$ envelope no $(K_0, D_0)$ works *at this pose* — and
+§9.2 later shows that "at this pose" is the whole of it, correcting §5.1's
+original claim that the result was structural. Under `phri2`'s own envelope the
+split is viable at
 $K_0 = 380\,\mathrm{N/m}$, $D_0 = 29.1\,\mathrm{N \cdot s/m}$, with every hard
 diagnostic sitting at 93–98 % of its limit (§5.2).
 
@@ -75,8 +86,10 @@ other three:
    scale $F_r$ but never $F_{\mathrm{nom}}$ — so once
    $|\tau_{\mathrm{base}} + J_v^\top F_{\mathrm{nom}}| > \bar\tau$ nothing
    in the fast loop can prevent the overrun. With only 2.4 % of joint 4's cap
-   left as headroom, that happens at disturbance amplitudes well inside what
-   `impedance_residual`'s own benchmark uses.
+   left as headroom, that happens at 8× `impedance_residual`'s own disturbance
+   amplitude. (§8.2's fix, adopted since, removes it: the shipped default holds
+   the envelope at every scale tested. §7.7 records the behaviour that motivated
+   the fix.)
 
 §8 root-causes all four and reports what can be done about them: findings 1–3
 are one problem, not three — diagnostic 3 forces $K_0$ above the desired
@@ -94,7 +107,7 @@ were substantially an artifact of the scenario, not of the architecture.
 **§10 is the one that changes what the paper claims.** Aggregating every run,
 the two axes turn out to be *anti-correlated*: at `phri2`'s pose the
 feasibility axis fires and $r_{\mathrm{auth}}$ is exactly zero; at the
-recommended pose $r_{\mathrm{auth}}$ carries 49 % of the realization residual
+recommended pose $r_{\mathrm{auth}}$ removes 46 % of the intended behaviour
 and $\alpha_\tau$ never fires at all. Both act on the same residual through
 the same torque budget, so a nominal stiff enough to make saturation bind
 leaves too small a residual to drain the tank, and vice versa. The framing that
@@ -537,8 +550,10 @@ anyway, in 8 of the 12 configurations where the tank is loaded at all. The
 20 ms staleness is the whole difference.
 
 Authorization goes from silent to active as either axis is loaded: 0 % → 1.9 %
-of ticks as $E_0 \to E_{\min}$, and 0 % → 18.1 % of ticks as the disturbance
-scales 1 → 12.
+of ticks as $E_0 \to E_{\min}$, and 0 % → **73.4 %** of ticks as the disturbance
+scales 1 → 12. (That last figure counts any of the three scalings intervening,
+so past 4× it is dominated by $\alpha_{\mathrm{nom}}$, decision 0's fix, doing
+the work the anchor overrun used to do unchecked.)
 
 ![](results/pir_e0_sweep.png)
 
@@ -546,8 +561,8 @@ scales 1 → 12.
 sweeps the tank's initial charge toward its floor; bottom row sweeps the
 disturbance amplitude. The middle column is the result: `pir` (blue) sits
 *exactly* on $E_{\min}$, which is what the $\alpha_E$ construction guarantees;
-`pir_manager_guard` (orange) dips below it; `pir_no_tank` (green) reaches
-−1.47 J. The right column carries its own spread annotation because matplotlib
+`pir_manager_guard` (orange) dips below it to −1.29 J; `pir_no_tank` (green)
+reaches −28.4 J. The right column carries its own spread annotation because matplotlib
 autoscales it — on the $E_0$ axis the total variation is 0.03 %, i.e. flat
 (§7.5), and only on the disturbance axis does a real trade appear.
 
@@ -598,8 +613,19 @@ predictive correction, and the residual's torque headroom has collapsed
 
 ### 7.7 Where the guarantee breaks
 
+> **Measured before decision 0, and fixed by it.** The table below is the
+> controller *without* $\alpha_{\mathrm{nom}}$ — the variant now kept as
+> `pir_no_nominal_auth`. It is what motivated §8.2's fix. The shipped default
+> holds $\max|\tau|/\bar\tau = 1.0000$ at every scale tested, including the
+> two that break here, so **the failure below is no longer the behaviour of the
+> controller this document recommends**. It is retained because the precondition
+> it exposes still fails at those scales — $\alpha_{\mathrm{nom}}$ keeps the
+> envelope legal, it does not make the anchor feasible — and because §8.4 shows
+> the fix is inert at the pose §9 recommends, so the failure mode is dormant
+> rather than gone.
+
 That 2.4 % headroom is what §1's fourth finding cashes out. Sweeping the
-disturbance amplitude:
+disturbance amplitude, without $\alpha_{\mathrm{nom}}$:
 
 | disturbance scale | max anchor ratio | ticks with infeasible anchor | max $\|\tau\|/\bar\tau$ |
 |---|---|---|---|
@@ -611,17 +637,19 @@ Two things to read here. First, the applied-torque overrun **equals the anchor
 overrun exactly** at both failing scales. That is not a coincidence: when the
 precondition fails, $\alpha_\tau$ has already gone to zero and the fast layer
 has *no remaining authority* — the overrun is entirely the nominal's, and
-scaling the residual cannot touch it. Second, `pir_no_tank` fails identically
-(1.0074 at scale 8), confirming this is a property of the nominal and has
-nothing to do with the tank.
+scaling the residual cannot touch it. Second, removing the tank as well changes
+nothing (1.0074 at scale 8 either way), confirming this is a property of the
+nominal and has nothing to do with the passivity axis.
 
 So Merged Lemma 1 is sound and its precondition is doing real work: it is not a
 formality to be discharged once at design time. `phri2` guarantees the torque
 envelope unconditionally, because its QP owns the whole command. PIR guarantees
 it *conditional on the anchor being feasible*, and the Task 1 gate certified
-that condition against exactly one scenario. It does not survive a 4× larger
-disturbance. **This is the most important thing the implementation found, and
-it is a cost of the split that the synthesis note did not anticipate.**
+that condition against exactly one scenario. The condition does not survive an
+8× disturbance. **This was the most important thing the implementation found**,
+and it is a cost of the split the synthesis note did not anticipate — though
+§8.2 fixes the consequence and §9 shows the pose largely removes the exposure,
+so §10 rather than this section is what ends up changing the paper's claim.
 
 ---
 
@@ -1012,15 +1040,21 @@ which authorization actually fired.
 
 ### 10.1 Each axis is inert where the other is strong
 
-| run | $\min\alpha_\tau$ | $\min\alpha_E$ | $r_{\mathrm{con}}$ share | $r_{\mathrm{auth}}$ share | headroom |
+Each axis's contribution is reported against $|a_{id}|$, the behaviour the
+controller is trying to render — the same denominator §10.5 uses, so the two
+are comparable. (Normalising by the *net* realization residual would not be a
+share of anything: the four terms sum to the net but oppose one another, so a
+single term can exceed it.)
+
+| run | $\min\alpha_\tau$ | $\min\alpha_E$ | $r_{\mathrm{con}}/\|a_{id}\|$ | $r_{\mathrm{auth}}/\|a_{id}\|$ | headroom |
 |---|---|---|---|---|---|
 | `phri2` pose / push | 0.8504 | **1.0000** | 0.2 % | **0.0 %** | 2.4 % |
 | `phri2` pose / merged | **1.0000** | **1.0000** | 0.0 % | **0.0 %** | 2.4 % |
-| recommended / push | **1.0000** | 0.0006 | **0.0 %** | 48.9 % | 45.7 % |
-| recommended / merged | **1.0000** | 0.0010 | **0.0 %** | 48.4 % | 45.7 % |
+| recommended / push | **1.0000** | 0.0006 | **0.0 %** | 46.3 % | 45.7 % |
+| recommended / merged | **1.0000** | 0.0010 | **0.0 %** | 45.8 % | 45.7 % |
 
-At the recommended pose the passivity axis carries **49 %** of the realization
-residual and the feasibility axis contributes **nothing** — $\alpha_\tau$ stays
+At the recommended pose the passivity axis removes **46 %** of the intended
+behaviour and the feasibility axis contributes **nothing** — $\alpha_\tau$ stays
 at 1.0 across all 12 sweep points there, so the fast torque projection never
 once intervenes. At `phri2`'s pose the situation inverts: $\alpha_\tau$ fires
 and $r_{\mathrm{auth}}$ is *exactly* zero.
@@ -1150,7 +1184,17 @@ conclusion holds, the tank floor holds, and $\alpha_{\mathrm{nom}}$ never
 fires in any of them. They fail on **workspace containment** — 69.5 to
 134.7 mm against the 0.06 m box.
 
-### The candidate
+![](results/pir_joint_scan.png)
+
+**Figure 10 — the joint pose × $K_0$ scan.** Left column: the feasibility axis,
+which has colour only along the bottom edge ($\lambda = 0$, `phri2`'s pose).
+Middle: the passivity axis, concentrated at high $K_0$ and high $\lambda$. The
+two never light up together anywhere the verdict panel (right) calls well
+behaved — no cell is marked "BOTH". The one candidate of the next subsection is
+at $\lambda = 0$, $K_0 = 380$, and it is classified here as dual-axis but not
+well behaved, because the 10 % box allowance this figure uses excludes it.
+
+#### The candidate
 
 That makes the verdict turn on how much overshoot of a **slack-relaxed** box
 counts as a violation, which is a judgement call the scan should not make
@@ -1192,7 +1236,7 @@ region. It now also decides whether PIR's central claim has a supporting
 experiment. That convergence is not a coincidence — both are asking the same
 thing, whether the workspace box is a specification or a preference.
 
-### What it does not buy
+#### What it does not buy
 
 One cell, at 4× the source disturbance, 16 % outside the nominal box, at one
 seed on one arm. It is an existence proof, not an operating recommendation —
@@ -1207,7 +1251,7 @@ budget, and accepting an excursion the recommended pose avoids.
 
 ### 11.0 A pattern in what turned out to be wrong
 
-Six conclusions in this document were later overturned or narrowed by a
+Seven conclusions in this document were later overturned or narrowed by a
 subsequent experiment, and the pattern is worth stating because it bears on how
 much anything here should be trusted:
 
@@ -1277,7 +1321,9 @@ diagnostic that cannot be checked against an identity.
 
 ## 12. Decision gate
 
-Per §13.3 of the synthesis note, this is where autonomous work stops.
+The synthesis note's §13.3 put the decision gate right after Task 1. The work
+ran well past that, because each result changed what the next question was;
+what follows is where it actually stops.
 
 `common_region_nonempty == true` under `phri2`'s derated-joint-4 envelope, the
 merged controller is implemented, Merged Lemma 1 holds in closed loop and the
@@ -1285,22 +1331,33 @@ four-term residual closes exactly. What is left is not a coding decision.
 
 §8, §9 and §10 have each changed what is being decided. Finding 4 is fixed and
 adopted; findings 1–3 turned out to be largely the pose; and §10 has moved the
-open question from the design to the **framing**. What is left for a human:
+open question from the design to the **framing**. Two decisions are settled and
+two are open.
 
-**Decision 3 — how is the two-axis claim stated?** This is now the one that
-matters most, because it is what the paper is *for*. §10.4 proposes the
-formulation the evidence supports: not "both axes bind", which the data
-contradicts, but "you cannot tell in advance which binds, and a change that
-improves every behavioural metric flips it". That is defensible on data already
-collected and is a stronger claim. The alternative — hold the paper until a
-joint pose × $K_0$ scan finds a well-behaved dual-axis operating point
-(§10.5) — is better evidence but a new experiment, and it may not exist.
-
-**Decision 0 — adopt `nominal_auth_mono`?** I recommend yes. It quadruples the
+**Decision 0 — adopt `nominal_auth_mono`? SETTLED, adopted.** It quadruples the
 range over which both guarantees survive, is provably inert while the anchor
-fits, and costs nothing measurable. The only reservation is §9's: its
-stiffness ratchet is untested beyond a 6 s run, so it needs a per-contact reset
-before hardware.
+fits, and costs nothing measurable; §8.4 later showed it is inert at the
+recommended pose too, which makes it insurance rather than a load-bearing part.
+The one reservation is §11's: its stiffness ratchet is untested beyond a 6 s
+run, so it needs a per-contact reset before hardware.
+
+**Decision 3 — how is the two-axis claim stated? OPEN, and now the one that
+matters most**, because it is what the paper is *for*. Two formulations are
+available and §10.5 has made the choice concrete rather than speculative:
+
+- **(a) The flip.** §10.4's formulation: not "both axes bind", which the data
+  contradicts, but "you cannot tell in advance which binds, and a change that
+  improves every behavioural metric flips it". Defensible on data already
+  collected, and a stronger claim than the obvious one.
+- **(b) The dual-axis case study.** §10.5 found exactly one operating point
+  where both axes carry real load with every certificate intact. It is
+  `phri2`'s own pose at the originally certified gains under 4× disturbance,
+  and it qualifies **only if the 0.06 m box is read as slack-relaxed** — which
+  it is in `phri2`'s own QP. Stronger if it holds up; it rests on one cell at
+  one seed, 16 % outside the nominal box.
+
+These are not exclusive: (a) is the safe framing and (b) is the exhibit. The
+decision is whether to spend more runs hardening (b) before committing.
 
 **Decision 1 — how much workspace containment under disturbance is the
 predictive layer's authority worth?** *Probably moot now.* This was the real
@@ -1312,15 +1369,11 @@ pins the pose, take the pose and leave $K_0$ alone. Still worth a human's eye,
 because "the application pins the pose" is exactly the kind of constraint this
 study cannot see.
 
-**Decision 2 — which envelope does the merged paper claim?** Run (§9), and the
-answer is **`phri2`'s derated-joint-4 envelope, at a pose that does not load
-joint 4**. $\rho = 0.28$ is reachable (§9.2 corrects §5.1's over-claim) but
-leaves at best 13 % of the cap for the nominal, which is not enough for the
-split. For the record, the three options as they stood:
-
-**Which envelope does the merged paper claim?** The two are not
-interchangeable and they give opposite answers. Three options, in the order I
-would rank them:
+**Decision 2 — which envelope does the merged paper claim? SETTLED by §9:**
+`phri2`'s derated-joint-4 envelope, at a pose that does not load joint 4.
+$\rho = 0.28$ is reachable (§9.2 corrects §5.1's over-claim) but leaves at best
+13 % of the cap for the nominal, which is not enough for the split. For the
+record, the three options as they stood before §9 ran:
 
 1. **Write the merge against `phri2`'s derated-joint-4 envelope.**
    $(K_0, D_0) = (380, 29.1)$, region of 33 cells, margins of 2–7 %. Honest,
@@ -1330,8 +1383,9 @@ would rank them:
    could consume them.
 2. **Keep $\rho = 0.28$ and abandon the passive-nominal split**, retreating to
    "dissipativity directly on the realized port, no nominal" — a different and
-   harder design, and a separate planning decision. §5.1 says this is forced,
-   not a preference: under $\rho = 0.28$ no nominal exists.
+   harder design, and a separate planning decision. This looked *forced* when
+   §5.1 read its result as structural; §9.2 withdrew that, so it was never
+   forced — only expensive.
 3. **Change the scenario** — a different nominal pose, a lower push magnitude,
    or a push direction that does not load joint 4 — and re-run this gate.
    Cheap to try (the scan is ~19 min on 4 cores) and it attacks the actual
@@ -1343,6 +1397,13 @@ once and improves containment rather than trading it. Option 1 is therefore the
 recommendation, *at the §9.3 pose rather than `phri2`'s*. Option 2 is not
 forced — the passive-nominal split is viable, so there is no reason to retreat
 to dissipativity-on-the-realized-port.
+
+One tension the reader should be handed rather than left to find: decision 2
+recommends the §9.3 pose, and §10.5's dual-axis exhibit lives at `phri2`'s. If
+decision 3 goes to formulation (b), the paper recommends one operating point
+and demonstrates its central claim at another. That is defensible — the
+recommendation is about deployment and the exhibit is about what the
+certificate detects — but it has to be said out loud, not glossed.
 
 ### Owed before any claim
 

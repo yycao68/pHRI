@@ -12,6 +12,13 @@ It aggregates every closed-loop run and sweep point already stored in
 adds the one calculation the stored data does not contain: how large a push
 would have to be, at each pose, to bring the anchor to the torque envelope.
 
+Each axis's contribution is reported as a ratio against ``|a_id|``, the
+behaviour the controller is trying to render -- the same denominator
+``pir_joint_scan.py`` uses, so the two sections are comparable.  Normalising by
+the NET realization residual instead would not be a share of anything: the four
+residual terms sum to the net but oppose one another, so a single term can
+exceed it.
+
 The answer is not comfortable, and it is the reason this script exists rather
 than a paragraph of prose:
 
@@ -89,7 +96,9 @@ def classify(results: Path) -> dict:
             "passivity_fires": _fires(s["alpha_E_min"]),
             "r_con_fast_rms": s["r_con_fast_rms"], "r_auth_rms": s["r_auth_rms"],
             "rms_realization_residual": s["rms_realization_residual"],
-            "r_auth_share": s["r_auth_rms"] / max(s["rms_realization_residual"], 1e-12),
+            "a_id_rms": s["a_id_rms"],
+            "r_con_over_a_id": s["r_con_fast_rms"] / max(s["a_id_rms"], 1e-12),
+            "r_auth_over_a_id": s["r_auth_rms"] / max(s["a_id_rms"], 1e-12),
             "anchor_headroom": s["anchor_headroom"],
             "max_abs_e_axis_m": s["max_abs_e_axis_m"],
         })
@@ -163,22 +172,21 @@ def make_figure(report: dict, outdir: Path) -> Path:
     # --- A: which axis fires, per closed-loop run ------------------------
     labels = [r["label"] for r in runs]
     x = np.arange(len(labels))
-    axes[0].bar(x - 0.2, [100 * r["r_con_fast_rms"] / max(r["rms_realization_residual"], 1e-12)
-                          for r in runs], 0.4, label=r"feasibility ($r_{con}$, fast)",
-                color="tab:red")
-    axes[0].bar(x + 0.2, [100 * r["r_auth_share"] for r in runs], 0.4,
+    axes[0].bar(x - 0.2, [100 * r["r_con_over_a_id"] for r in runs], 0.4,
+                label=r"feasibility ($r_{con}$, fast)", color="tab:red")
+    axes[0].bar(x + 0.2, [100 * r["r_auth_over_a_id"] for r in runs], 0.4,
                 label=r"passivity ($r_{auth}$)", color="tab:blue")
     axes[0].set_xticks(x)
     axes[0].set_xticklabels(labels, rotation=25, ha="right", fontsize=8)
-    axes[0].set_ylabel("share of realization residual [%]")
+    axes[0].set_ylabel(r"contribution / $|a_{id}|$ [%]")
     axes[0].set_title("A. Which axis explains the deviation", fontsize=9)
     axes[0].legend(fontsize=8)
     # The feasibility bars are ~0 at both poses, so label every bar: an
     # invisible bar and a missing bar look identical, and here the difference
     # is the whole point.
     for i, r in enumerate(runs):
-        con = 100 * r["r_con_fast_rms"] / max(r["rms_realization_residual"], 1e-12)
-        for dx, val in ((-0.2, con), (0.2, 100 * r["r_auth_share"])):
+        for dx, val in ((-0.2, 100 * r["r_con_over_a_id"]),
+                        (0.2, 100 * r["r_auth_over_a_id"])):
             axes[0].annotate(f"{val:.1f}", xy=(i + dx, val), xytext=(0, 3),
                              textcoords="offset points", ha="center", fontsize=7)
 
@@ -254,9 +262,8 @@ def main() -> None:
     print(f"{'closed-loop run':<24} {'a_tau':>7} {'a_E':>8} {'r_con%':>7} {'r_auth%':>8} "
           f"{'headroom':>9}")
     for r in report["classification"]["runs"]:
-        share = 100 * r["r_con_fast_rms"] / max(r["rms_realization_residual"], 1e-12)
         print(f"{r['label']:<24} {r['alpha_tau_min']:>7.4f} {r['alpha_E_min']:>8.4f} "
-              f"{share:>6.1f}% {100 * r['r_auth_share']:>7.1f}% "
+              f"{100 * r['r_con_over_a_id']:>6.1f}% {100 * r['r_auth_over_a_id']:>7.1f}% "
               f"{100 * r['anchor_headroom']:>8.1f}%")
     s = report["summary"]
     print(f"\nsweep points where BOTH axes fire: {s['n_both_axes_fire']} / {s['n_sweep_points']}")

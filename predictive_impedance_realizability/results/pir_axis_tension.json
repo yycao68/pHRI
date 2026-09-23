@@ -11,7 +11,9 @@
         "r_con_fast_rms": 0.004469954149301263,
         "r_auth_rms": 0.0,
         "rms_realization_residual": 2.5081614164821158,
-        "r_auth_share": 0.0,
+        "a_id_rms": 2.4139588518421133,
+        "r_con_over_a_id": 0.0018517109957736858,
+        "r_auth_over_a_id": 0.0,
         "anchor_headroom": 0.023796447854923852,
         "max_abs_e_axis_m": 0.06035669946476696
       },
@@ -25,7 +27,9 @@
         "r_con_fast_rms": 0.0,
         "r_auth_rms": 0.0,
         "rms_realization_residual": 2.5102977644446747,
-        "r_auth_share": 0.0,
+        "a_id_rms": 2.4126164839954205,
+        "r_con_over_a_id": 0.0,
+        "r_auth_over_a_id": 0.0,
         "anchor_headroom": 0.023798797197264743,
         "max_abs_e_axis_m": 0.06022107626544593
       },
@@ -39,7 +43,9 @@
         "r_con_fast_rms": 0.0,
         "r_auth_rms": 1.3870884017126561,
         "rms_realization_residual": 2.833981661230802,
-        "r_auth_share": 0.4894486159484327,
+        "a_id_rms": 2.994960717926706,
+        "r_con_over_a_id": 0.0,
+        "r_auth_over_a_id": 0.4631407662244342,
         "anchor_headroom": 0.4567902182724086,
         "max_abs_e_axis_m": 0.05143537099909101
       },
@@ -53,7 +59,9 @@
         "r_con_fast_rms": 0.0,
         "r_auth_rms": 1.3657933894199663,
         "rms_realization_residual": 2.8207675501310727,
-        "r_auth_share": 0.48419210911459254,
+        "a_id_rms": 2.984952483123836,
+        "r_con_over_a_id": 0.0,
+        "r_auth_over_a_id": 0.4575595079458771,
         "anchor_headroom": 0.4569563920342049,
         "max_abs_e_axis_m": 0.051462618581754715
       }

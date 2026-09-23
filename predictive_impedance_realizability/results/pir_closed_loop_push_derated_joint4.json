@@ -3,7 +3,17 @@
     "K0": 380.0,
     "D0": 29.07,
     "envelope": "derated_joint4",
-    "scenario": "push"
+    "scenario": "push",
+    "pose": [
+      0.0,
+      -0.785,
+      0.0,
+      -2.356,
+      0.0,
+      1.571,
+      0.785
+    ],
+    "pose_tag": "neutral"
   },
   "replay_estimate": {
     "diag1_anchor_ratio": 0.9770776091937301,
@@ -14,6 +24,17 @@
       "variant": "pir",
       "envelope": "derated_joint4",
       "scenario": "push",
+      "pose": [
+        0.0,
+        -0.785,
+        0.0,
+        -2.356,
+        0.0,
+        1.571,
+        0.785
+      ],
+      "pose_tag": "neutral",
+      "axis_index": 2,
       "K0_vector": [
         380.0,
         380.0,
@@ -44,6 +65,7 @@
       "max_abs_e_axis_m": 0.06035669946476696,
       "workspace_bound_m": 0.06,
       "rms_realization_residual": 2.5081614164821158,
+      "a_id_rms": 2.4139588518421133,
       "authorization_active_fraction": 0.006,
       "alpha_E_min": 1.0,
       "alpha_tau_min": 0.850447988386766,
@@ -61,6 +83,17 @@
       "variant": "pir_manager_guard",
       "envelope": "derated_joint4",
       "scenario": "push",
+      "pose": [
+        0.0,
+        -0.785,
+        0.0,
+        -2.356,
+        0.0,
+        1.571,
+        0.785
+      ],
+      "pose_tag": "neutral",
+      "axis_index": 2,
       "K0_vector": [
         380.0,
         380.0,
@@ -91,6 +124,7 @@
       "max_abs_e_axis_m": 0.06035669946476696,
       "workspace_bound_m": 0.06,
       "rms_realization_residual": 2.5081614164821158,
+      "a_id_rms": 2.4139588518421133,
       "authorization_active_fraction": 0.006,
       "alpha_E_min": 1.0,
       "alpha_tau_min": 0.850447988386766,
@@ -108,6 +142,17 @@
       "variant": "pir_no_tank",
       "envelope": "derated_joint4",
       "scenario": "push",
+      "pose": [
+        0.0,
+        -0.785,
+        0.0,
+        -2.356,
+        0.0,
+        1.571,
+        0.785
+      ],
+      "pose_tag": "neutral",
+      "axis_index": 2,
       "K0_vector": [
         380.0,
         380.0,
@@ -138,6 +183,7 @@
       "max_abs_e_axis_m": 0.06035669946476696,
       "workspace_bound_m": 0.06,
       "rms_realization_residual": 2.5081614164821158,
+      "a_id_rms": 2.4139588518421133,
       "authorization_active_fraction": 0.006,
       "alpha_E_min": 1.0,
       "alpha_tau_min": 0.850447988386766,
@@ -155,6 +201,17 @@
       "variant": "zero_nominal",
       "envelope": "derated_joint4",
       "scenario": "push",
+      "pose": [
+        0.0,
+        -0.785,
+        0.0,
+        -2.356,
+        0.0,
+        1.571,
+        0.785
+      ],
+      "pose_tag": "neutral",
+      "axis_index": 2,
       "K0_vector": [
         0.0,
         0.0,
@@ -185,6 +242,7 @@
       "max_abs_e_axis_m": 0.06029463850604411,
       "workspace_bound_m": 0.06,
       "rms_realization_residual": 2.508044063396029,
+      "a_id_rms": 2.4181940445112393,
       "authorization_active_fraction": 0.0095,
       "alpha_E_min": 1.0,
       "alpha_tau_min": 0.9866501624069768,

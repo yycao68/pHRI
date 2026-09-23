@@ -206,7 +206,7 @@ def test_axis_classification_matches_the_stored_runs():
     assert not by_label["phri2 pose / push"]["passivity_fires"]
     assert by_label["phri2 pose / push"]["r_auth_rms"] == 0.0
     assert not by_label["recommended / push"]["feasibility_fires"]
-    assert by_label["recommended / push"]["r_auth_share"] > 0.4
+    assert by_label["recommended / push"]["r_auth_over_a_id"] > 0.4
 
     both = [p for p in report["points"]
             if p["feasibility_fires"] and p["passivity_fires"]]
