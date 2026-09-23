@@ -100,6 +100,11 @@ the same torque budget, so a nominal stiff enough to make saturation bind
 leaves too small a residual to drain the tank, and vice versa. The framing that
 survives this is stronger than "both axes matter": **you cannot tell in advance
 which axis will bind**, and one innocuous-looking joint-angle change flips it.
+A joint pose × $K_0$ scan (§10.5, 96 cells) then finds exactly one operating
+point where both axes carry real load with every certificate intact — `phri2`'s
+own pose at the originally certified gains under 4× disturbance — and whether
+it counts turns entirely on whether the 0.06 m workspace box is read as hard or
+slack-relaxed.
 
 §12 states what is left for a human.
 
@@ -346,6 +351,7 @@ the one it did not list.
 | `pir_e0_sweep_pose_*` | §9.4: Task 3 re-run at the recommended pose |
 | `pir_axis_tension.png/json` | §10: which axis fires where, aggregated over every run |
 | `pir_rootcause_pose_*`, `pir_fixes_pose_*` | §8.4: §8 re-run at the recommended pose |
+| `pir_joint_scan.png/json` | §10.5: the joint pose × $K_0$ scan and its box-allowance sensitivity |
 
 ---
 
@@ -994,9 +1000,11 @@ rebrand of constrained-MPC impedance. So the question that decides the framing
 is not whether each axis works. It is whether there is an operating point where
 **both are load-bearing at once and the controller is well behaved**.
 
-On the evidence so far, there is not. `pir_axis_tension.py` aggregates every
-closed-loop run and sweep point in `results/` and classifies each by which
-authorization actually fired.
+On the evidence of the runs collected up to §10.4, there is not; §10.5 then
+scans pose and $K_0$ jointly and finds exactly one candidate, whose status
+depends on how the workspace box is read. `pir_axis_tension.py` aggregates
+every closed-loop run and sweep point in `results/` and classifies each by
+which authorization actually fired.
 
 ![](results/pir_axis_tension.png)
 
@@ -1108,15 +1116,90 @@ already collected. The honest presentation is two case studies — a saturation
 case at `phri2`'s pose and a passivity case at the recommended one — with §10.2
 as the explanation for why one experiment cannot be both.
 
-### 10.5 What would settle it
+### 10.5 The joint scan: one candidate, and it hangs on a judgement call
 
-A single operating point that is dual-axis *and* well behaved would strengthen
-the paper considerably, and §10.2 says where to look: an intermediate pose with
-$K_0 \approx 250$, where the passivity axis is at its strongest and the anchor
-still has 14 % headroom. Neither knob currently in the code reaches it — pose
-and $K_0$ were swept separately, never jointly — so this is a two-dimensional
-scan that has not been run. It is the highest-value remaining experiment, and
-unlike the earlier ones it is aimed at the framing rather than at the design.
+Pose and $K_0$ had only ever been swept separately, so the two sweeps could
+have been cutting across a diagonal ridge neither resolved.
+`pir_joint_scan.py` scans them jointly: a pose family interpolating in joint
+space between `phri2`'s pose ($\lambda = 0$) and the recommended one
+($\lambda = 1$), crossed with $K_0 \in [150, 600]$ and disturbance
+$\in \{1\times, 4\times\}$ — 96 cells, with $D_0$ set from a fixed damping
+ratio against each pose's own task-space inertia so $K_0$ is the only gain
+varying.
+
+"Load-bearing" is deliberately stricter than "fired once": an axis counts only
+if its residual term removes at least 2 % of the intended behaviour $|a_{id}|$.
+(Reported as a *ratio*, not a share — under a 4× disturbance the QP's residual
+fights something much larger than $a_{id}$, so the ratio legitimately exceeds
+1. An earlier version of this script normalised by the *net* realization
+residual, which is not a share at all: the four terms sum to the net but oppose
+one another, and it produced "shares" of 468 %.)
+
+**Result: 41 cells are well behaved, 5 are dual-axis, and the intersection is
+empty at the headline box allowance.** In every one of the 41 well-behaved
+cells $r_{\mathrm{con}}$ is *identically zero* — even in the three with under
+5 % anchor headroom, where $\alpha_\tau$ still never fires because the tight
+budget has squeezed the residual small enough to fit in what is left. That is
+§10.2's surviving mechanism, confirmed on a grid rather than inferred from two
+points.
+
+All 5 dual-axis cells sit at $\lambda = 0$ — `phri2`'s own pose — under 4×
+disturbance. And they fail "well behaved" for a reason worth stating precisely:
+**not because the certificate breaks.** Lemma 1's precondition holds, its
+conclusion holds, the tank floor holds, and $\alpha_{\mathrm{nom}}$ never
+fires in any of them. They fail on **workspace containment** — 69.5 to
+134.7 mm against the 0.06 m box.
+
+### The candidate
+
+That makes the verdict turn on how much overshoot of a **slack-relaxed** box
+counts as a violation, which is a judgement call the scan should not make
+silently:
+
+| box allowance | dual-axis *and* well behaved |
+|---|---|
+| 1.00× – 1.15× | **0** |
+| 1.20× – 1.30× | **1** — $\lambda = 0$, $K_0 = 380$, 4× disturbance |
+
+At a 20 % allowance exactly one cell qualifies, and it is a striking one:
+**`phri2`'s own pose at the originally certified operating point**,
+$(K_0, D_0) = (380, 29.07)$ — the point this whole study started from — under
+4× the source disturbance:
+
+| | |
+|---|---|
+| $r_{\mathrm{con}} / \|a_{id}\|$ | **45.6 %** |
+| $r_{\mathrm{auth}} / \|a_{id}\|$ | **95.3 %** |
+| $\min\alpha_\tau$ / $\min\alpha_E$ | **0.320** / **0.0024** |
+| $\alpha_{\mathrm{nom}}$ | 1.0 (decision 0's fix not needed) |
+| anchor headroom | +1.1 % |
+| Lemma 1 precondition / conclusion | hold / hold |
+| tank floor | holds |
+| fallback $\|e_z\|$ (diagnostic 3) | 55.8 mm ✓ |
+| excursion | **69.5 mm**, 16 % over the box |
+
+Both axes carrying 46 % and 95 % of the intended behaviour, both $\alpha$'s
+deep into intervention, and every certificate intact. If `phri2`'s box is read
+as what it is in its own QP — slack-relaxed, a preference under model mismatch
+rather than an actuator limit — this is the dual-axis demonstration the paper
+needs, and §10.1's "no such point" becomes "exactly one, and it is the obvious
+one".
+
+**This promotes a question that was already on the owed list to a decisive
+one.** §12 has carried "resolve whether the 0.06 m bound is hard or
+slack-relaxed" since the Task 1 gate, where it decided a 33-cell versus 6-cell
+region. It now also decides whether PIR's central claim has a supporting
+experiment. That convergence is not a coincidence — both are asking the same
+thing, whether the workspace box is a specification or a preference.
+
+### What it does not buy
+
+One cell, at 4× the source disturbance, 16 % outside the nominal box, at one
+seed on one arm. It is an existence proof, not an operating recommendation —
+and note that it is *not* the pose §9 recommends. The honest reading is that
+PIR's two axes can be made simultaneously load-bearing, but only by running the
+arm harder than either source paper does, at the pose with the tight torque
+budget, and accepting an excursion the recommended pose avoids.
 
 ---
 
@@ -1287,10 +1370,11 @@ to dissipativity-on-the-realized-port.
 - [ ] Search poses properly rather than on a $q_2, q_4, q_6$ grid screened by
       one scenario, and check whether the recommended pose is one a real task
       would accept.
-- [ ] **Joint pose × $K_0$ scan (§10.5)** looking for a well-behaved operating
-      point where both axes are simultaneously load-bearing. Pose and $K_0$
-      have only ever been swept separately. This is aimed at the framing, not
-      the design, and is the highest-value remaining experiment.
+- [x] ~~Joint pose × $K_0$ scan looking for a well-behaved dual-axis operating
+      point~~ — §10.5. 96 cells; one candidate, conditional on the box reading.
+- [ ] If the box is read as slack-relaxed: promote §10.5's candidate to a
+      proper case study — repeat it across seeds and disturbance profiles, and
+      check whether the 16 % excursion is stable or incidental.
 - [x] ~~Implement the merged controller and re-measure rows 1 and 4 in its own
       closed loop~~ — §7.1–7.2. Replay and closed loop agree to 0.1 %.
 - [x] ~~Task 3: re-sweep the authorization-vs-tracking curve ($E_0$) with both
@@ -1312,9 +1396,10 @@ to dissipativity-on-the-realized-port.
       joint 4, and check whether the headroom problem is FR3-pose-specific.
 - [ ] Implement and test the per-contact reset `nominal_auth_mono` needs, and
       characterise the ratchet over runs longer than 6 s.
-- [ ] Resolve whether the 0.06 m bound is hard (region = 6 cells) or
-      slack-relaxed (region = 33 cells) — and note that §8.1 makes this the
-      same question as decision 1.
+- [ ] **Resolve whether the 0.06 m bound is hard or slack-relaxed.** This has
+      been on the list since the Task 1 gate, where it decided a 33-cell versus
+      6-cell region; §10.5 has now made it decide whether PIR's central claim
+      has a supporting experiment at all. It is no longer a loose end.
 - [ ] Explicitly disclaim the force-misclassification pillar in whatever is
       written. §7.1's channel split makes the assumption visible; it does not
       discharge it.
@@ -1344,6 +1429,7 @@ python3 pir_rootcause.py --pose -1.30 -1.30 1.571 --tag pose_q2m13_q4m13
 python3 pir_fixes.py --pose -1.30 -1.30 1.571 --k0 520.0 --d0 56.13 \
         --tag pose_q2m13_q4m13               # ~9 min              (Section 8)
 python3 pir_axis_tension.py                  # seconds; reads results/ (Section 10)
+python3 pir_joint_scan.py                    # ~8 min              (Section 10.5)
 python3 -m pytest test_pir_knot_scan.py test_pir_controller.py -q
 ```
 

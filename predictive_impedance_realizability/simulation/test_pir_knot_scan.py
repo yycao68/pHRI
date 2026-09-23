@@ -225,3 +225,31 @@ def test_push_to_saturation_separates_the_two_poses():
     assert d["phri2"]["push_N_to_saturate"] < 2 * pc.PUSH_MAGNITUDE_N
     assert d["recommended"]["push_N_to_saturate"] > 4 * pc.PUSH_MAGNITUDE_N
     assert d["recommended"]["tau_base_floor"] < d["phri2"]["tau_base_floor"]
+
+
+def test_joint_scan_candidate_survives_only_a_relaxed_box():
+    """Section 10.5's conclusion is conditional on the box reading, and that
+    conditionality is the finding. Pin both halves: nothing qualifies at a hard
+    box, exactly one cell does once the slack-relaxed reading is allowed."""
+    import json
+
+    report = json.loads((pc.RESULTS / "pir_joint_scan.json").read_text())
+    by_slack = {r["box_slack"]: r for r in report["box_slack_sensitivity"]}
+    assert by_slack[1.00]["n_target"] == 0, "a hard box must admit nothing"
+    assert by_slack[1.10]["n_target"] == 0
+    assert by_slack[1.20]["n_target"] == 1, "the candidate must survive a 20% allowance"
+    hit = by_slack[1.20]["cells"][0]
+    # It is phri2's own pose at the originally certified gains, under 4x.
+    assert hit["lambda"] == 0.0 and hit["K0"] == 380.0
+    assert hit["disturbance_scale"] == 4.0
+
+
+def test_every_well_behaved_joint_cell_has_a_dead_feasibility_axis():
+    """The grid-scale version of Section 10.2's surviving mechanism: wherever
+    the controller is well behaved, r_con is identically zero."""
+    import json
+
+    report = json.loads((pc.RESULTS / "pir_joint_scan.json").read_text())
+    well = [c for c in report["cells"] if c["well_behaved"]]
+    assert len(well) > 20, "too few well-behaved cells for this to mean anything"
+    assert all(c["r_con_over_a_id"] == 0.0 for c in well)

@@ -301,6 +301,12 @@ def run_variant(
         "workspace_bound_m": pc.WORKSPACE_BOUND_M,
         "rms_realization_residual": float(
             np.sqrt(np.mean(np.sum((log["a_modelled"] - log["a_id"]) ** 2, axis=1)))),
+        # The behaviour the controller is trying to render.  This is the right
+        # denominator for "how much of the intended behaviour did this axis
+        # remove": the four residual terms sum to the NET deviation but can
+        # oppose one another, so an individual term normalised by the net can
+        # exceed 1 and is not a share of anything.
+        "a_id_rms": float(np.sqrt(np.mean(np.sum(log["a_id"] ** 2, axis=1)))),
         "authorization_active_fraction": float(
             np.mean((log["alpha_tau"] < 1 - 1e-10) | (log["alpha_E"] < 1 - 1e-10)
                     | (log["alpha_nom"] < 1 - 1e-10))),
