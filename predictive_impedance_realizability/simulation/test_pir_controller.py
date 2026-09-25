@@ -332,3 +332,60 @@ def test_moving_the_pose_moves_the_qp_s_nominal_params():
                                 PIRConfig(k0=K0, d0=D0, pose=tuple(q)))
     np.testing.assert_allclose(at_neutral.imp_params.q_null, pc.Q_NEUTRAL)
     np.testing.assert_allclose(at_pose.imp_params.q_null, q)
+
+
+# --- Merged Lemma 1' (Section 8.5) --------------------------------------
+
+
+def test_lemma1_prime_C1_C2_hold_on_adversarial_ticks(plant):
+    """(C1) and (C2) are unconditional given (P1)-(P3): sample far outside
+    anything the QP emits and neither the envelope nor the floor moves."""
+    _, _, J_v, Lam_inv, tau_base = plant
+    cfg = PIRConfig(k0=K0, d0=D0)  # adopted default
+    cap = pc.torque_envelope(cfg.envelope)
+    assert np.all(np.abs(tau_base) <= cap), "(P1) must hold for the lemma to apply"
+    rng = np.random.default_rng(7)
+    tank, prev = cfg.tank_initial, 1.0
+    for _ in range(400):
+        step = pir_servo_step(cfg, tau_base, J_v, Lam_inv,
+                              rng.uniform(-0.35, 0.35, 3), rng.uniform(-1.2, 1.2, 3),
+                              rng.uniform(-600.0, 600.0, 3),
+                              tank=tank, h=1e-3, cap=cap, previous_alpha_nom=prev)
+        assert step.tau_ratio <= 1.0 + 1e-9, "(C1) torque envelope"
+        assert step.tank >= cfg.tank_minimum - 1e-12, "(C2) tank floor"
+        assert step.alpha_nom <= prev + 1e-12, "(P3) alpha_nom must not rise"
+        tank, prev = step.tank, step.alpha_nom
+
+
+def test_lemma1_prime_P3_is_what_makes_C2_provable(plant):
+    """Drop (P3) and (C2) fails. If this stops failing, the monotone rule has
+    become cosmetic and Section 8.5's argument needs revisiting."""
+    _, _, J_v, Lam_inv, tau_base = plant
+    cap = pc.torque_envelope("derated_joint4")
+    cfg = PIRConfig(k0=K0, d0=D0, nominal_reauth_rate=float("inf"))
+    rng = np.random.default_rng(7)
+    tank, prev = cfg.tank_initial, 1.0
+    breached = False
+    for _ in range(400):
+        step = pir_servo_step(cfg, tau_base, J_v, Lam_inv,
+                              rng.uniform(-0.35, 0.35, 3), rng.uniform(-1.2, 1.2, 3),
+                              rng.uniform(-600.0, 600.0, 3),
+                              tank=tank, h=1e-3, cap=cap, previous_alpha_nom=prev)
+        breached = breached or step.tank < cfg.tank_minimum - 1e-12
+        tank, prev = step.tank, step.alpha_nom
+    assert breached, "unrestricted alpha_nom must be able to overdraw the tank"
+
+
+def test_lemma1_prime_C4_cost_is_real(plant):
+    """(C4): alpha_nom buys the envelope by spending workspace. Pin the
+    direction and rough magnitude of the exchange, since Section 8.5 re-opens
+    decision 0 on it."""
+    on = run_variant("pir", K0, D0, "derated_joint4", scenario="merged",
+                     disturbance_scale=8.0)["summary"]
+    off = run_variant("pir_no_nominal_auth", K0, D0, "derated_joint4",
+                      scenario="merged", disturbance_scale=8.0)["summary"]
+    assert on["lemma1_conclusion_max_tau_ratio"] <= 1.0 + 1e-9
+    assert off["lemma1_conclusion_max_tau_ratio"] > 1.0
+    # The fix trades a small torque overrun for a large excursion.
+    assert off["lemma1_conclusion_max_tau_ratio"] < 1.02
+    assert on["max_abs_e_axis_m"] > off["max_abs_e_axis_m"] * 1.4

@@ -1,0 +1,90 @@
+{
+  "lemma": "Merged Lemma 1' (nominal authorization, monotone)",
+  "hypotheses": {
+    "P1": "|tau_base| <= tau_bar at every tick (pose property; no K0, D0, e, v)",
+    "P2": "E_0 >= E_min",
+    "P3": "alpha_nom monotone non-increasing (nominal_reauth_rate = 0)"
+  },
+  "clauses": {
+    "n_samples": 4000,
+    "C1_torque_violations": 0,
+    "C1_worst_tau_ratio": 1.0000000000000007,
+    "C2_floor_violations": 0,
+    "C2_worst_tank_J": 0.020000000000000007,
+    "C2_floor_J": 0.02,
+    "C3_checked_ticks": 1326,
+    "C3_inertness_violations_from_fresh_state": 0,
+    "C5_ticks_where_latch_broke_inertness": 1326,
+    "n_ticks_alpha_nom_fired": 4000,
+    "alpha_nom_ever_rose": 0,
+    "spring_release_nonzero_ticks": 0
+  },
+  "P3_is_load_bearing": {
+    "monotone (adopted)": {
+      "floor_violations": 0,
+      "worst_tank_J": 0.020000000000000014
+    },
+    "unrestricted": {
+      "floor_violations": 3997,
+      "worst_tank_J": -12700.827545433822
+    }
+  },
+  "C4_cost": {
+    "fallback_vs_effective_stiffness": [
+      {
+        "alpha": 1.0,
+        "effective_K0": 380.0,
+        "fallback_e_ss_m": 0.055775037601889454,
+        "within_box": true
+      },
+      {
+        "alpha": 0.75,
+        "effective_K0": 285.0,
+        "fallback_e_ss_m": 0.07635866828604343,
+        "within_box": false
+      },
+      {
+        "alpha": 0.5,
+        "effective_K0": 190.0,
+        "fallback_e_ss_m": 0.1170464076221073,
+        "within_box": false
+      }
+    ],
+    "closed_loop": [
+      {
+        "disturbance_scale": 1.0,
+        "alpha_nom_min": 1.0,
+        "max_abs_e_axis_m": 0.06022107626544593,
+        "box_overshoot": 1.0036846044240988,
+        "lemma1_precondition_holds": true,
+        "lemma1_conclusion_holds": true,
+        "tank_floor_holds": true
+      },
+      {
+        "disturbance_scale": 8.0,
+        "alpha_nom_min": 0.6297304626433936,
+        "max_abs_e_axis_m": 0.10795886126526494,
+        "box_overshoot": 1.7993143544210823,
+        "lemma1_precondition_holds": false,
+        "lemma1_conclusion_holds": true,
+        "tank_floor_holds": true
+      },
+      {
+        "disturbance_scale": 12.0,
+        "alpha_nom_min": 0.7105793144671712,
+        "max_abs_e_axis_m": 0.10309790843977729,
+        "box_overshoot": 1.718298473996288,
+        "lemma1_precondition_holds": false,
+        "lemma1_conclusion_holds": true,
+        "tank_floor_holds": true
+      }
+    ]
+  },
+  "verdict": {
+    "C1_holds": true,
+    "C2_holds": true,
+    "C3_holds": true,
+    "C5_latch_observed": true,
+    "P3_needed": true
+  }
+}

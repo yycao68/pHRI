@@ -94,7 +94,13 @@ other three:
 §8 root-causes all four and reports what can be done about them: findings 1–3
 are one problem, not three — diagnostic 3 forces $K_0$ above the desired
 impedance's own stiffness — and finding 4 is separate and is fixed outright by
-giving the servo authority over the nominal (**adopted**, §8.2).
+giving the servo authority over the nominal (**adopted**, §8.2). §8.5 then
+states the repaired guarantee, **Merged Lemma 1′**, whose precondition is
+merely $|\tau_{\mathrm{base}}| \le \bar\tau$ — a pose property, not a
+design one — and checks it clause by clause. It also prices the fix: where
+$\alpha_{\mathrm{nom}}$ fires it buys a 0.74 % overrun of a *derated* cap by
+spending 71 points of workspace excursion, which re-opens decision 0 on terms
+the simulation cannot settle.
 
 **§9 then removes most of the problem rather than trading it.** All four
 findings were measured at one FR3 pose, and that pose is a bad one: its bias
@@ -367,6 +373,7 @@ the one it did not list.
 | `pir_rootcause_pose_*`, `pir_fixes_pose_*` | §8.4: §8 re-run at the recommended pose |
 | `pir_joint_scan.png/json` | §10.5: the joint pose × $K_0$ scan and its box-allowance sensitivity |
 | `pir_robustness.png/json` | §10.6: decision 3's two formulations across 10 seeds × 2 profiles |
+| `pir_lemma_check.json` | §8.5: Merged Lemma 1′ checked clause by clause |
 
 ---
 
@@ -806,7 +813,106 @@ intermediate $K_0$" shape inverts at this pose (§10.2), and `anisotropic`
 stops being harmful — 47.9 % headroom against `certified`'s 45.7 %, and the
 same 16× safe range, so at this pose it is merely useless rather than costly.
 
-### 8.5 What this does and does not settle
+### 8.5 Merged Lemma 1′: what the fix actually guarantees, and what it costs
+
+§10.6 exposed a gap between the lemma as stated and the controller as shipped.
+Across 20 resampled runs at §10.5's cell, Lemma 1's **precondition** held in 10
+and its **conclusion** held in 20. Both cannot be right for a conditional
+guarantee: one whose condition fails half the time should fail half the time.
+What closes the gap is $\alpha_{\mathrm{nom}}$, which is not in the lemma at
+all. `pir_lemma_check.py` states the repaired lemma and checks every clause on
+4000 adversarially sampled ticks ($|e|$ to 0.35 m, $|v|$ to 1.2 m/s, $|F_r|$ to
+600 N — far outside anything the QP emits).
+
+> **Merged Lemma 1′ (nominal authorization, monotone).**
+>
+> *Hypotheses.* **(P1)** $|\tau_{\mathrm{base},\ell}| \le \bar\tau$ at every
+> tick. **(P2)** $E_0 \ge E_{\min}$. **(P3)** $\alpha_{\mathrm{nom}}$ is
+> monotone non-increasing.
+>
+> *Conclusions.* **(C1)** $|\tau_\ell| \le \bar\tau$ for all $\ell$.
+> **(C2)** $E_\ell \ge E_{\min}$ for all $\ell$. **(C3)** until the first tick
+> at which Lemma 1's original precondition fails,
+> $\alpha_{\mathrm{nom}} = 1$ and the controller is bit-identical to the one
+> without it.
+
+**(P1) is the whole precondition, and it is much weaker than Lemma 1's.**
+Lemma 1 required $|\tau_{\mathrm{base}} + J_v^\top F_{\mathrm{nom}}| \le
+\bar\tau$, which depends on $K_0$, $D_0$, $e$ and $v$ — every design choice and
+the entire trajectory. (P1) depends on none of them: it is a property of the
+pose, and it uses 0.636 of joint 4's cap at `phri2`'s pose and 0.433 at the
+recommended one. That is the real content of decision 0.
+
+| clause | result over 4000 adversarial ticks |
+|---|---|
+| (C1) torque envelope | **0 violations**, worst $\|\tau\|/\bar\tau$ = 1.000000 |
+| (C2) tank floor | **0 violations**, worst $E$ = 0.020000 J = $E_{\min}$ |
+| (C3) inertness before the latch | **0 violations** over 1326 applicable ticks |
+
+**(P3) is load-bearing, not cosmetic.** The ledger debits
+$\tfrac12(\alpha_{\mathrm{nom}} - \alpha_{\mathrm{prev}})\,e^\top K_0 e$ when
+the nominal *re-stiffens*, and nothing bounds that debit against the available
+energy. Monotone, the term is identically zero and (C2) goes through. Drop
+(P3) and the same 4000 ticks give **3997 floor violations, worst
+$E = -12\,700$ J**. The monotone rule is not a tuning choice; it is what makes
+the energy half provable.
+
+#### (C5) — α_nom is a latch, and the first draft of (C3) was wrong
+
+(P3) makes $\alpha_{\mathrm{nom}}$ monotone over the *whole run*, so once it
+fires it never recovers. The first version of this section stated (C3) without
+the "until the first tick", and the checker falsified it on **1326 of 4000
+ticks** — correctly. After the latch fires the controller is no longer inert
+even at ticks where Lemma 1's precondition holds again: all 1326 differ.
+
+That makes the per-contact reset §11 lists as owed a **correctness requirement
+rather than a nicety**: without it, one transient permanently softens the
+nominal for the rest of the run, and (C3) is empty beyond the first firing.
+
+#### (C4) — the cost, and it re-opens decision 0
+
+Where $\alpha_{\mathrm{nom}} < 1$ the rendered nominal is
+$\alpha_{\mathrm{nom}} K_0$, so the storage is
+$H_0 = \tfrac12 v^\top \Lambda v + \tfrac12 \alpha_{\mathrm{nom}} e^\top K_0 e$
+and the $\alpha\to0$ fallback displacement scales as $1/\alpha_{\mathrm{nom}}$.
+Diagnostic 3's guarantee — that the fallback holds the push inside the box —
+is **not** preserved:
+
+| $\alpha_{\mathrm{nom}}$ | effective $K_0$ | fallback $\|e_z\|$ | inside the 60 mm box |
+|---|---|---|---|
+| 1.00 | 380 N/m | 55.8 mm | yes |
+| 0.75 | 285 N/m | 76.4 mm | **no** |
+| 0.50 | 190 N/m | 117.0 mm | **no** |
+
+And the closed-loop exchange rate, against the ablation with
+$\alpha_{\mathrm{nom}}$ disabled, is worse than it looks stated abstractly:
+
+| disturbance | `pir`: max $\|\tau\|/\bar\tau$ | `pir` excursion | ablation: max $\|\tau\|/\bar\tau$ | ablation excursion |
+|---|---|---|---|---|
+| 1× | 1.0000 | 100 % | 1.0000 | 100 % |
+| 8× | **1.0000** | **180 %** | 1.0074 | 109 % |
+| 12× | **1.0000** | **172 %** | 1.0629 | 132 % |
+
+At 8× disturbance, $\alpha_{\mathrm{nom}}$ buys a **0.74 %** torque overrun by
+spending **71 percentage points** of workspace excursion — 108 mm instead of
+65 mm against a 60 mm box. And the overrun it prevents is over the *derated*
+cap: $1.0074 \times 31.5 = 31.7$ N·m, which is **36 % of the FR3's 87 N·m
+hardware limit**.
+
+So the honest one-line reading of decision 0 is:
+
+> $\alpha_{\mathrm{nom}}$ converts a torque-envelope violation into a
+> workspace-bound violation. It preserves (C1) and (C2) at the cost of (C4),
+> and (P3) buys (C2) at the cost of (C5).
+
+**Whether that is the right trade depends on what the derated envelope means**,
+and this document has never said. If $\rho\,\tau_{\max}$ is a thermal or
+duty-cycle budget, a 0.7 % transient overrun is nothing and 43 mm of extra
+excursion is a poor price. If it is a safety-certified limit, the trade is
+right. Decision 0 was adopted on the strength of (C1) and (C2) before (C4) was
+measured; §12 re-opens it with the exchange rate attached.
+
+### 8.6 What this does and does not settle
 
 Findings 1–3 are one problem with a known knob and a priced trade. Finding 4 is
 solved. What remains open is the same thing §7.7 pointed at: even with
@@ -1323,7 +1429,7 @@ it is not the exhibit.
 
 ### 11.0 A pattern in what turned out to be wrong
 
-Seven conclusions in this document were later overturned or narrowed by a
+Nine conclusions in this document were later overturned or narrowed by a
 subsequent experiment, and the pattern is worth stating because it bears on how
 much anything here should be trusted:
 
@@ -1336,9 +1442,12 @@ much anything here should be trusted:
 | the split makes a hard guarantee conditional (§7.7) | ✓ true, but fixable (§8.2) and inert at the good pose (§8.4) |
 | anisotropic gains do not help *and slightly hurt* (§8.3) | ~ the "hurt" is pose-specific; useless but harmless at the good pose (§8.4) |
 | passivity peaks at intermediate $K_0$ (§10.2, first draft) | ✗ inverts at the good pose — committed *while writing this table* |
+| $\alpha_{\mathrm{nom}}$ is "inert while the anchor fits" (§8.2) | ~ only until its latch first fires; §8.5's (C5) falsified the unqualified form on 1326 of 4000 ticks |
+| decision 0 "costs nothing measurable" (§12, as adopted) | ✗ §8.5's (C4): 71 points of excursion for 0.74 % of a derated cap |
 
-Five of seven were properties of **one FR3 configuration**, not of the
-architecture — and in each case the erroneous generalisation was made from a
+Five of nine were properties of **one FR3 configuration**, not of the
+architecture; two more (the last two rows) were claims about the *fix* that its
+own checker falsified — and in each case the erroneous generalisation was made from a
 carefully measured, internally consistent experiment. The measurements were
 right; the scope claimed for them was not. **Nothing in this line should be
 claimed without a pose sweep** — a rule I restated in §10.2 and then broke in
@@ -1406,12 +1515,23 @@ adopted; findings 1–3 turned out to be largely the pose; and §10 has moved th
 open question from the design to the **framing**. Two decisions are settled and
 two are open.
 
-**Decision 0 — adopt `nominal_auth_mono`? SETTLED, adopted.** It quadruples the
-range over which both guarantees survive, is provably inert while the anchor
-fits, and costs nothing measurable; §8.4 later showed it is inert at the
-recommended pose too, which makes it insurance rather than a load-bearing part.
-The one reservation is §11's: its stiffness ratchet is untested beyond a 6 s
-run, so it needs a per-contact reset before hardware.
+**Decision 0 — adopt `nominal_auth_mono`? ADOPTED, but §8.5 re-opens it.** It
+quadruples the range over which both guarantees survive and is provably inert
+until its latch first fires, and §8.4 showed it is inert at the recommended
+pose throughout — insurance rather than a load-bearing part. Two things found
+since it was adopted change the calculus at the operating points where it
+*does* fire:
+
+- **The exchange rate (§8.5, C4).** At 8× disturbance it buys a 0.74 % overrun
+  of the *derated* cap — 31.7 N·m against an 87 N·m hardware limit — by
+  spending 71 percentage points of workspace excursion, 108 mm instead of
+  65 mm against a 60 mm box. Whether that is right depends on what
+  $\rho\,\tau_{\max}$ *means*, which this document has never stated. **That
+  is the question to answer before hardware**, and it is a question about the
+  specification, not about the controller.
+- **The latch (§8.5, C5).** $\alpha_{\mathrm{nom}}$ never recovers within a
+  run, so one transient permanently softens the nominal. The per-contact reset
+  is a correctness requirement, not a nicety.
 
 **Decision 3 — how is the two-axis claim stated? SETTLED by §10.6:
 formulation (a), with (b) demoted to a remark.** Both candidates were resampled
@@ -1514,12 +1634,11 @@ would have been easy to gloss.
       seeds and disturbance profiles~~ — §10.6. It does not survive: 5/20 on
       all certificates, and the 16 % excursion was a mid-range draw of a
       100–163 % spread. Demoted to a remark.
-- [ ] The one thing §10.6 leaves open: the precondition fails in 10/20 runs at
-      the candidate cell while the *conclusion* never does. That gap is
-      $\alpha_{\mathrm{nom}}$ working, and it means "precondition violated" and
-      "envelope violated" have come apart. Merged Lemma 1 should be restated to
-      say what is guaranteed when the precondition fails but
-      $\alpha_{\mathrm{nom}}$ is active — the proof currently has no such case.
+- [x] ~~Restate Merged Lemma 1 to say what is guaranteed when the precondition
+      fails but $\alpha_{\mathrm{nom}}$ is active~~ — §8.5, Merged Lemma 1′.
+      Checked clause by clause on 4000 adversarial ticks. It also produced two
+      results that were not being looked for: (P3) is what makes the energy
+      half provable at all, and (C4)'s exchange rate re-opens decision 0.
 - [x] ~~Implement the merged controller and re-measure rows 1 and 4 in its own
       closed loop~~ — §7.1–7.2. Replay and closed loop agree to 0.1 %.
 - [x] ~~Task 3: re-sweep the authorization-vs-tracking curve ($E_0$) with both
@@ -1539,8 +1658,12 @@ would have been easy to gloss.
       §8.4 names ($\tau_{\mathrm{base}}$ itself), which no local fix defends.
 - [ ] Re-run the Task 1 gate at a pose/push direction that does not load
       joint 4, and check whether the headroom problem is FR3-pose-specific.
-- [ ] Implement and test the per-contact reset `nominal_auth_mono` needs, and
-      characterise the ratchet over runs longer than 6 s.
+- [ ] **Implement and test the per-contact reset** `nominal_auth_mono` needs.
+      §8.5's (C5) upgrades this from a nicety to a correctness requirement:
+      without it (C3)'s inertness is empty beyond the first firing.
+- [ ] **State what the derated envelope means** — thermal/duty-cycle budget or
+      safety-certified limit. §8.5's (C4) makes decision 0's trade turn on it,
+      and it is not answerable from inside the simulation.
 - [ ] **Resolve whether the 0.06 m bound is hard or slack-relaxed.** Back to
       being a Task 1 question only — it decides a 33-cell versus 6-cell region.
       §10.5 briefly made it decisive for the framing too; §10.6 retired that,
@@ -1576,6 +1699,7 @@ python3 pir_fixes.py --pose -1.30 -1.30 1.571 --k0 520.0 --d0 56.13 \
 python3 pir_axis_tension.py                  # seconds; reads results/ (Section 10)
 python3 pir_joint_scan.py                    # ~8 min              (Section 10.5)
 python3 pir_robustness.py                    # ~10 min             (Section 10.6)
+python3 pir_lemma_check.py                   # ~2 min              (Section 8.5)
 python3 -m pytest test_pir_knot_scan.py test_pir_controller.py -q
 ```
 
