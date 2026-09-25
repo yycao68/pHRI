@@ -279,7 +279,7 @@ def run_variant(
         "K0_vector": pir_cfg.k0_vector().tolist(),
         "D0_vector": pir_cfg.d0_vector().tolist(),
         "nominal_authorization": pir_cfg.nominal_authorization,
-        "nominal_reauth_rate": pir_cfg.nominal_reauth_rate,
+        "nominal_reauth": pir_cfg.nominal_reauth,
         "tank_initial": pir_cfg.tank_initial,
         "disturbance_scale": disturbance_scale,
         "seed": seed,

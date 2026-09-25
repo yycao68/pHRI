@@ -1,11 +1,28 @@
 {
-  "lemma": "Merged Lemma 1' (nominal authorization, monotone)",
+  "lemma": "Merged Lemma 1' (nominal authorization, energy-authorized re-stiffening)",
   "hypotheses": {
     "P1": "|tau_base| <= tau_bar at every tick (pose property; no K0, D0, e, v)",
     "P2": "E_0 >= E_min",
-    "P3": "alpha_nom monotone non-increasing (nominal_reauth_rate = 0)"
+    "P3": "alpha_nom falls freely, rises only within E - E_min (nominal_reauth = 'energy_authorized'; 'monotone' is the special case)"
   },
   "clauses": {
+    "mode": "energy_authorized",
+    "n_samples": 4000,
+    "C1_torque_violations": 0,
+    "C1_worst_tau_ratio": 1.0000000000000007,
+    "C2_floor_violations": 0,
+    "C2_worst_tank_J": 0.020000000000000004,
+    "C2_floor_J": 0.02,
+    "C3_checked_ticks": 1326,
+    "C3_inertness_violations_from_fresh_state": 0,
+    "C5_ticks_where_latch_broke_inertness": 1326,
+    "n_ticks_alpha_nom_fired": 4000,
+    "alpha_nom_rose_ticks": 2151,
+    "alpha_nom_recoveries_to_full": 0,
+    "spring_release_nonzero_ticks": 0
+  },
+  "clauses_monotone_ablation": {
+    "mode": "monotone",
     "n_samples": 4000,
     "C1_torque_violations": 0,
     "C1_worst_tau_ratio": 1.0000000000000007,
@@ -16,17 +33,44 @@
     "C3_inertness_violations_from_fresh_state": 0,
     "C5_ticks_where_latch_broke_inertness": 1326,
     "n_ticks_alpha_nom_fired": 4000,
-    "alpha_nom_ever_rose": 0,
+    "alpha_nom_rose_ticks": 0,
+    "alpha_nom_recoveries_to_full": 0,
     "spring_release_nonzero_ticks": 0
   },
   "P3_is_load_bearing": {
-    "monotone (adopted)": {
+    "energy_authorized (adopted)": {
       "floor_violations": 0,
-      "worst_tank_J": 0.020000000000000014
+      "worst_tank_J": 0.020000000000000007
+    },
+    "monotone": {
+      "floor_violations": 0,
+      "worst_tank_J": 0.02000000000000001
     },
     "unrestricted": {
-      "floor_violations": 3997,
-      "worst_tank_J": -12700.827545433822
+      "floor_violations": 3999,
+      "worst_tank_J": -13395.396169081605
+    }
+  },
+  "C5_recovery": {
+    "energy_authorized (adopted)": {
+      "alpha_nom_after_transient": 0.8509365799923073,
+      "tank_after_transient_J": 0.020000000000000073,
+      "one_tick_affordable_below_mm": 1.6039005342717697e-06,
+      "alpha_nom_after_return": 1.0,
+      "ticks_to_full_recovery": 25,
+      "error_at_recovery_mm": 44.346021835857876,
+      "recovered": true,
+      "tank_end_J": 0.3
+    },
+    "monotone": {
+      "alpha_nom_after_transient": 0.8509365799923073,
+      "tank_after_transient_J": 0.020000000000000073,
+      "one_tick_affordable_below_mm": 1.6039005342717697e-06,
+      "alpha_nom_after_return": 0.8509365799923073,
+      "ticks_to_full_recovery": null,
+      "error_at_recovery_mm": null,
+      "recovered": false,
+      "tank_end_J": 0.3
     }
   },
   "C4_cost": {
@@ -53,30 +97,93 @@
     "closed_loop": [
       {
         "disturbance_scale": 1.0,
-        "alpha_nom_min": 1.0,
-        "max_abs_e_axis_m": 0.06022107626544593,
-        "box_overshoot": 1.0036846044240988,
-        "lemma1_precondition_holds": true,
-        "lemma1_conclusion_holds": true,
-        "tank_floor_holds": true
+        "adopted": {
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.06022107626544593,
+          "box_overshoot": 1.0036846044240988,
+          "max_tau_ratio": 0.999999469201629,
+          "lemma1_precondition_holds": true,
+          "lemma1_conclusion_holds": true,
+          "tank_floor_holds": true
+        },
+        "monotone": {
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.06022107626544593,
+          "box_overshoot": 1.0036846044240988,
+          "max_tau_ratio": 0.999999469201629,
+          "lemma1_precondition_holds": true,
+          "lemma1_conclusion_holds": true,
+          "tank_floor_holds": true
+        },
+        "no_nominal_auth": {
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.06022107626544593,
+          "box_overshoot": 1.0036846044240988,
+          "max_tau_ratio": 0.999999469201629,
+          "lemma1_precondition_holds": true,
+          "lemma1_conclusion_holds": true,
+          "tank_floor_holds": true
+        }
       },
       {
         "disturbance_scale": 8.0,
-        "alpha_nom_min": 0.6297304626433936,
-        "max_abs_e_axis_m": 0.10795886126526494,
-        "box_overshoot": 1.7993143544210823,
-        "lemma1_precondition_holds": false,
-        "lemma1_conclusion_holds": true,
-        "tank_floor_holds": true
+        "adopted": {
+          "alpha_nom_min": 0.8872319861560112,
+          "max_abs_e_axis_m": 0.06566442951396934,
+          "box_overshoot": 1.0944071585661557,
+          "max_tau_ratio": 1.0000000000000002,
+          "lemma1_precondition_holds": false,
+          "lemma1_conclusion_holds": true,
+          "tank_floor_holds": true
+        },
+        "monotone": {
+          "alpha_nom_min": 0.6297304626433936,
+          "max_abs_e_axis_m": 0.10795886126526494,
+          "box_overshoot": 1.7993143544210823,
+          "max_tau_ratio": 1.0000000000000002,
+          "lemma1_precondition_holds": false,
+          "lemma1_conclusion_holds": true,
+          "tank_floor_holds": true
+        },
+        "no_nominal_auth": {
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.06564423387094986,
+          "box_overshoot": 1.094070564515831,
+          "max_tau_ratio": 1.0073957056523966,
+          "lemma1_precondition_holds": false,
+          "lemma1_conclusion_holds": false,
+          "tank_floor_holds": true
+        }
       },
       {
         "disturbance_scale": 12.0,
-        "alpha_nom_min": 0.7105793144671712,
-        "max_abs_e_axis_m": 0.10309790843977729,
-        "box_overshoot": 1.718298473996288,
-        "lemma1_precondition_holds": false,
-        "lemma1_conclusion_holds": true,
-        "tank_floor_holds": true
+        "adopted": {
+          "alpha_nom_min": 0.6699767616190744,
+          "max_abs_e_axis_m": 0.08843525126045304,
+          "box_overshoot": 1.4739208543408842,
+          "max_tau_ratio": 1.0000000000000002,
+          "lemma1_precondition_holds": false,
+          "lemma1_conclusion_holds": true,
+          "tank_floor_holds": true
+        },
+        "monotone": {
+          "alpha_nom_min": 0.7105793144671712,
+          "max_abs_e_axis_m": 0.10309790843977729,
+          "box_overshoot": 1.718298473996288,
+          "max_tau_ratio": 1.0000000000000002,
+          "lemma1_precondition_holds": false,
+          "lemma1_conclusion_holds": true,
+          "tank_floor_holds": true
+        },
+        "no_nominal_auth": {
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.07939575114579422,
+          "box_overshoot": 1.3232625190965706,
+          "max_tau_ratio": 1.0628780063512933,
+          "lemma1_precondition_holds": false,
+          "lemma1_conclusion_holds": false,
+          "tank_floor_holds": true
+        }
       }
     ]
   },
@@ -84,7 +191,10 @@
     "C1_holds": true,
     "C2_holds": true,
     "C3_holds": true,
-    "C5_latch_observed": true,
+    "C5_recovery_observed": true,
+    "C5_monotone_never_recovers": true,
+    "C5_latch_ticks_adopted": 1326,
+    "C5_latch_ticks_monotone_ablation": 1326,
     "P3_needed": true
   }
 }

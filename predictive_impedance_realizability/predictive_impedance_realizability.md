@@ -728,11 +728,28 @@ $\alpha_{\mathrm{nom}}$ buys the torque envelope and **loses the tank floor**
 (−1.06 J at 16×): a transient repeatedly re-buys stiffness the port has not
 earned.
 
-Forbidding the rise fixes it. With $\alpha_{\mathrm{nom}}$ **monotone
-non-increasing**, both guarantees hold together out to 16× the source
-disturbance — against 4× for the certified baseline. The cost is a floor that
-does not recover its stiffness within an episode; a deployed system would reset
-it per contact, which this benchmark does not exercise.
+Two rules fix it, and the difference between them turns out to matter more
+than the fix itself. *Forbidding* the rise — $\alpha_{\mathrm{nom}}$ **monotone
+non-increasing** — holds both guarantees out to 16× the source disturbance,
+against 4× for the certified baseline, and is what this document originally
+adopted. But forbidding is heavier than the problem needs, and §8.5's (C5)
+shows why it is the wrong instrument: a monotone $\alpha_{\mathrm{nom}}$ is a
+**latch**, so one transient softens the nominal for the rest of the run.
+
+*Metering* the rise does the same job without the latch. Re-stiffening may
+raise $\alpha_{\mathrm{nom}}$ by at most what the tank can afford at the
+current spring energy,
+
+$$(\alpha_{\mathrm{nom}} - \alpha_{\mathrm{prev}})\cdot \tfrac12 e^\top K_0 e
+\;\le\; E - E_{\min},$$
+
+which is the same idiom as $\alpha_E$ — authorize the injection, do not ban it
+— and is exactly the bound that makes the $\max(0,\cdot)$ clamp inside
+$\alpha_E$ non-binding, so the energy half still goes through (§8.5). Recovery
+is free when $e^\top K_0 e \to 0$, because nothing is stored and nothing is
+injected, and the rule degrades to the monotone one when the tank sits on its
+floor. `nominal_auth_energy` is the adopted default; `nominal_auth_mono` is
+kept as the ablation that shows what the metering buys.
 
 ### 8.3 Candidates, scored on all four findings
 
@@ -741,12 +758,14 @@ it per contact, which this benchmark does not exercise.
 | candidate | fallback | (3) | headroom | residual share | torque OK to | + tank floor to | $E_0$ trade | max $\|e_z\|$ at 12× |
 |---|---|---|---|---|---|---|---|---|
 | `certified` $K_0$=380 | 56 mm | ✓ | 2.4 % | 17.1 % | 4× | 4× | 0.0020 | 79 mm |
-| `soft_nominal` $K_0$=$K_d$ | 110 mm | ✗ | 16.3 % | 46.0 % | 8× | 8× | 0.0070 | — |
-| `anisotropic` | 56 mm | ✓ | 2.2 % | 20.0 % | **2×** | 2× | 0.0003 | — |
-| `nominal_auth` | 56 mm | ✓ | 2.4 % | 17.1 % | **16×** | 6× | 0.0020 | — |
-| **`nominal_auth_mono`** | 56 mm | ✓ | 2.4 % | 17.1 % | **16×** | **16×** | 0.0020 | — |
-| `soft_plus_auth` | 110 mm | ✗ | 16.3 % | 46.0 % | 16× | 8× | 0.0070 | — |
-| **`soft_plus_mono`** | 110 mm | ✗ | **16.3 %** | **46.0 %** | **16×** | **16×** | **0.0070** | **160 mm** |
+| `soft_nominal` $K_0$=$K_d$ | 110 mm | ✗ | 16.3 % | 46.0 % | 8× | 8× | 0.0070 | 115 mm |
+| `anisotropic` | 56 mm | ✓ | 2.2 % | 20.0 % | **2×** | 2× | 0.0003 | 76 mm |
+| `nominal_auth` (free rise) | 56 mm | ✓ | 2.4 % | 17.1 % | **16×** | 6× | 0.0020 | 83 mm |
+| `nominal_auth_mono` | 56 mm | ✓ | 2.4 % | 17.1 % | **16×** | **16×** | 0.0020 | 103 mm |
+| **`nominal_auth_energy`** | 56 mm | ✓ | 2.4 % | 17.1 % | **16×** | **16×** | 0.0020 | **88 mm** |
+| `soft_plus_auth` | 110 mm | ✗ | 16.3 % | 46.0 % | 16× | 8× | 0.0070 | 125 mm |
+| `soft_plus_mono` | 110 mm | ✗ | 16.3 % | 46.0 % | 16× | 16× | 0.0070 | 160 mm |
+| **`soft_plus_energy`** | 110 mm | ✗ | **16.3 %** | **46.0 %** | **16×** | **16×** | **0.0070** | **157 mm** |
 
 ![](results/pir_fixes.png)
 
@@ -755,12 +774,21 @@ recommendation: at nominal load every candidate holds the workspace box
 identically, and only under a 12× disturbance does the soft nominal's real cost
 appear. Without that panel `soft_nominal` looks free.
 
-Three things to take from this.
+Four things to take from this.
 
-**`nominal_auth_mono` is a pure win and should be adopted.** It quadruples the
-range over which *both* guarantees survive, costs nothing on any other metric,
-changes nothing at all while the anchor fits (asserted by test), and keeps
-diagnostic 3. There is no argument against it in these measurements.
+**`nominal_auth_energy` is a pure win and is what is adopted.** It quadruples
+the range over which *both* guarantees survive, costs nothing on any other
+metric, changes nothing at all while the anchor fits (asserted by test), and
+keeps diagnostic 3. There is no argument against it in these measurements.
+
+**It strictly dominates the monotone rule it replaced.** Identical on every
+column above except the last, where the latch shows up as workspace: 88 mm
+against 103 mm at 12×, and 147 mm against 164 mm at 16×, over a baseline of
+79 mm and 86 mm with no $\alpha_{\mathrm{nom}}$ at all. So metering the rise
+gives back **62 % of what the latch cost** at 12×, while holding the torque
+envelope at exactly 1.0000 and the tank at exactly $E_{\min}$ out to 16×. The
+free-rise variant is cheaper still (83 mm) and is not available: it loses the
+tank floor at 8× (−1.06 J at 16×).
 
 **The `anisotropic` refinement — the plan's own deferred "later refinement" —
 does not work here, and slightly hurts.** Headroom falls to 2.2 % and the safe
@@ -799,7 +827,7 @@ never binds at any $K_0$ — the safe disturbance scale is pinned at the top of
 the probe range throughout. The whole monotone-collapse story of §8.1 is a
 property of a tight torque budget, and this pose does not have one.
 
-The fix comparison collapses with it. All seven candidates of §8.3 now score
+The fix comparison collapses with it. All nine candidates of §8.3 now score
 **identically at the ceiling**: both guarantees hold to 16×, no tank deficit,
 and **$\alpha_{\mathrm{nom}}$ never fires for any of them**. Decision 0's fix,
 which quadrupled the safe range at `phri2`'s pose, is entirely inert here.
@@ -822,13 +850,18 @@ guarantee: one whose condition fails half the time should fail half the time.
 What closes the gap is $\alpha_{\mathrm{nom}}$, which is not in the lemma at
 all. `pir_lemma_check.py` states the repaired lemma and checks every clause on
 4000 adversarially sampled ticks ($|e|$ to 0.35 m, $|v|$ to 1.2 m/s, $|F_r|$ to
-600 N — far outside anything the QP emits).
+600 N — far outside anything the QP emits), plus a scripted transient-and-return
+episode for the one clause adversarial sampling cannot reach.
 
-> **Merged Lemma 1′ (nominal authorization, monotone).**
+> **Merged Lemma 1′ (nominal authorization, energy-authorized re-stiffening).**
 >
 > *Hypotheses.* **(P1)** $|\tau_{\mathrm{base},\ell}| \le \bar\tau$ at every
-> tick. **(P2)** $E_0 \ge E_{\min}$. **(P3)** $\alpha_{\mathrm{nom}}$ is
-> monotone non-increasing.
+> tick. **(P2)** $E_0 \ge E_{\min}$. **(P3)** $\alpha_{\mathrm{nom}}$ falls
+> freely and rises only within the tank's budget,
+> $(\alpha_{\mathrm{nom},\ell} - \alpha_{\mathrm{nom},\ell-1})\cdot
+> \tfrac12 e_\ell^\top K_0 e_\ell \le E_{\ell-1} - E_{\min}$. The monotone
+> rule is the special case in which the left side is never positive, so
+> everything below holds for it too.
 >
 > *Conclusions.* **(C1)** $|\tau_\ell| \le \bar\tau$ for all $\ell$.
 > **(C2)** $E_\ell \ge E_{\min}$ for all $\ell$. **(C3)** until the first tick
@@ -847,27 +880,61 @@ recommended one. That is the real content of decision 0.
 |---|---|
 | (C1) torque envelope | **0 violations**, worst $\|\tau\|/\bar\tau$ = 1.000000 |
 | (C2) tank floor | **0 violations**, worst $E$ = 0.020000 J = $E_{\min}$ |
-| (C3) inertness before the latch | **0 violations** over 1326 applicable ticks |
+| (C3) inertness from a fresh state | **0 violations** over 1326 applicable ticks |
 
 **(P3) is load-bearing, not cosmetic.** The ledger debits
 $\tfrac12(\alpha_{\mathrm{nom}} - \alpha_{\mathrm{prev}})\,e^\top K_0 e$ when
-the nominal *re-stiffens*, and nothing bounds that debit against the available
-energy. Monotone, the term is identically zero and (C2) goes through. Drop
-(P3) and the same 4000 ticks give **3997 floor violations, worst
-$E = -12\,700$ J**. The monotone rule is not a tuning choice; it is what makes
-the energy half provable.
+the nominal *re-stiffens*, and without (P3) nothing bounds that debit against
+the available energy. (P3) bounds it by $E - E_{\min}$, which is exactly what
+makes the $\max(0,\cdot)$ clamp on the energy budget inside $\alpha_E$
+non-binding: with the clamp inactive the ledger lands at $E_{\min}$ in the
+worst case rather than below it, whether the residual's port power is positive
+(in which case $\alpha_E$ throttles it to what is left) or not (in which case
+the ledger only gains). Drop (P3) — let $\alpha_{\mathrm{nom}}$ rise freely —
+and the same 4000 ticks give **3999 floor violations, worst
+$E = -13\,395$ J**. Both admissible rules give **0 violations, worst
+$E = E_{\min}$ exactly**. So (P3) is not a tuning choice; it is what makes the
+energy half provable, and the choice *within* (P3) — forbid the rise or meter
+it — is what the next two clauses are about.
 
-#### (C5) — α_nom is a latch, and the first draft of (C3) was wrong
+#### (C5) — the latch, and how it was removed
 
-(P3) makes $\alpha_{\mathrm{nom}}$ monotone over the *whole run*, so once it
-fires it never recovers. The first version of this section stated (C3) without
-the "until the first tick", and the checker falsified it on **1326 of 4000
-ticks** — correctly. After the latch fires the controller is no longer inert
-even at ticks where Lemma 1's precondition holds again: all 1326 differ.
+Under the **monotone** rule $\alpha_{\mathrm{nom}}$ is monotone over the *whole
+run*, so once it fires it never recovers. The first version of this section
+stated (C3) without the "until the first tick", and the checker falsified it on
+**1326 of 4000 ticks** — correctly. After the latch fires the controller is no
+longer inert even at ticks where Lemma 1's precondition holds again: all 1326
+differ.
 
-That makes the per-contact reset §11 lists as owed a **correctness requirement
-rather than a nicety**: without it, one transient permanently softens the
-nominal for the rest of the run, and (C3) is empty beyond the first firing.
+The obvious repair is a per-contact reset, which §11 listed as owed. It is the
+wrong repair. An episode boundary is exactly the kind of thing the servo has no
+reliable way to detect, and a reset that fires on the wrong tick hands back
+stiffness the port has not earned — the failure (P3) exists to prevent.
+*Metering* the rise is the same repair without the boundary, and it is the one
+adopted. Scripted episode — 200 ticks of transient, then a return with $e$
+decaying toward the reference:
+
+| rule | $\alpha_{\mathrm{nom}}$ after the transient | tank | recovery |
+|---|---|---|---|
+| monotone | 0.851 | $E_{\min}$ | **never** |
+| energy-authorized | 0.851 | $E_{\min}$ | **25 ticks**, at $\|e\|$ = 44.3 mm |
+
+The tank sits exactly on its floor when the transient ends, so *nothing* is
+affordable at that instant — the one-tick affordability threshold
+$|e|^\star = \sqrt{2(E - E_{\min})/((1-\alpha_{\mathrm{nom}})K_0)}$ is 0 mm.
+Recovery does not come from a timer; it comes from the arm dissipating energy on
+the way back, and 25 ms of the return buys the whole of it. That is the property
+worth having: **the stiffness is re-earned, not re-granted.**
+
+Two things this does not buy. First, in the adversarial sampler above
+$\alpha_{\mathrm{nom}}$ rises on 2151 of 4000 ticks but never reaches 1, and all
+1326 inertness checks still differ. That is the rule working, not failing: $|e|$
+is held near 0.35 m throughout, $\tfrac12 e^\top K_0 e$ is two orders of
+magnitude larger than the whole tank, and a robot held that far off its
+reference has not earned its stiffness back. Second, recovery is funded by
+dissipation, so a sequence of transients with little motion between them could
+keep $\alpha_{\mathrm{nom}}$ down indefinitely. Nothing here tests that horizon;
+§11 records it as what is still owed.
 
 #### (C4) — the cost, and it re-opens decision 0
 
@@ -884,33 +951,40 @@ is **not** preserved:
 | 0.75 | 285 N/m | 76.4 mm | **no** |
 | 0.50 | 190 N/m | 117.0 mm | **no** |
 
-And the closed-loop exchange rate, against the ablation with
-$\alpha_{\mathrm{nom}}$ disabled, is worse than it looks stated abstractly:
+That much is a property of the *authorization*. The **closed-loop** exchange
+rate, though, was mostly a property of the latch, and separating the two is the
+point of the middle column below (excursion as % of the 60 mm box, max
+$\|\tau\|/\bar\tau$ in brackets):
 
-| disturbance | `pir`: max $\|\tau\|/\bar\tau$ | `pir` excursion | ablation: max $\|\tau\|/\bar\tau$ | ablation excursion |
-|---|---|---|---|---|
-| 1× | 1.0000 | 100 % | 1.0000 | 100 % |
-| 8× | **1.0000** | **180 %** | 1.0074 | 109 % |
-| 12× | **1.0000** | **172 %** | 1.0629 | 132 % |
+| disturbance | adopted (metered) | monotone | no $\alpha_{\mathrm{nom}}$ |
+|---|---|---|---|
+| 1× | 100 % [1.0000] | 100 % [1.0000] | 100 % [1.0000] |
+| 8× | **109 %** [1.0000] | 180 % [1.0000] | 109 % [**1.0074**] |
+| 12× | **147 %** [1.0000] | 172 % [1.0000] | 132 % [**1.0629**] |
 
-At 8× disturbance, $\alpha_{\mathrm{nom}}$ buys a **0.74 %** torque overrun by
-spending **71 percentage points** of workspace excursion — 108 mm instead of
-65 mm against a 60 mm box. And the overrun it prevents is over the *derated*
-cap: $1.0074 \times 31.5 = 31.7$ N·m, which is **36 % of the FR3's 87 N·m
-hardware limit**.
+Read the 8× row across. The monotone rule bought a 0.74 % torque overrun for
+**71 percentage points** of excursion — 108 mm instead of 65 mm against a
+60 mm box — and that is the number the first version of this section reported
+as the price of decision 0. The metered rule buys the same envelope for
+**65.66 mm against the ablation's 65.64 mm**: on this row the fix is free, and
+the 71 points were the ratchet, not the authorization. At 12× a real cost
+remains — 15 points of box for a 6.3 % overrun avoided — but it is a fifth of
+what was reported.
 
-So the honest one-line reading of decision 0 is:
+So the honest one-line reading of decision 0 is now:
 
 > $\alpha_{\mathrm{nom}}$ converts a torque-envelope violation into a
-> workspace-bound violation. It preserves (C1) and (C2) at the cost of (C4),
-> and (P3) buys (C2) at the cost of (C5).
+> workspace-bound violation, and (P3) is what makes the energy half provable.
+> Metering the re-stiffening rather than forbidding it keeps both and returns
+> most of (C4)'s closed-loop cost.
 
-**Whether that is the right trade depends on what the derated envelope means**,
-and this document has never said. If $\rho\,\tau_{\max}$ is a thermal or
-duty-cycle budget, a 0.7 % transient overrun is nothing and 43 mm of extra
-excursion is a poor price. If it is a safety-certified limit, the trade is
-right. Decision 0 was adopted on the strength of (C1) and (C2) before (C4) was
-measured; §12 re-opens it with the exchange rate attached.
+The question this *used* to turn on — what $\rho\,\tau_{\max}$ actually means,
+since a 0.74 % overrun of a thermal budget is nothing while 43 mm of extra
+excursion is a lot — is much less decisive now: at 8× there is no excursion to
+trade away. It still has to be answered before hardware, because the 12× row
+is a real trade and because the overrun the ablation incurs is over the
+*derated* cap ($1.0074 \times 31.5 = 31.7$ N·m, **36 % of the FR3's 87 N·m
+hardware limit**), but it no longer gates decision 0.
 
 ### 8.6 What this does and does not settle
 
@@ -1429,9 +1503,10 @@ it is not the exhibit.
 
 ### 11.0 A pattern in what turned out to be wrong
 
-Nine conclusions in this document were later overturned or narrowed by a
-subsequent experiment, and the pattern is worth stating because it bears on how
-much anything here should be trusted:
+Ten conclusions in this document were later overturned or narrowed by a
+subsequent experiment — including one *correction* that was itself
+over-corrected — and the pattern is worth stating because it bears on how much
+anything here should be trusted:
 
 | conclusion | fate |
 |---|---|
@@ -1442,12 +1517,17 @@ much anything here should be trusted:
 | the split makes a hard guarantee conditional (§7.7) | ✓ true, but fixable (§8.2) and inert at the good pose (§8.4) |
 | anisotropic gains do not help *and slightly hurt* (§8.3) | ~ the "hurt" is pose-specific; useless but harmless at the good pose (§8.4) |
 | passivity peaks at intermediate $K_0$ (§10.2, first draft) | ✗ inverts at the good pose — committed *while writing this table* |
-| $\alpha_{\mathrm{nom}}$ is "inert while the anchor fits" (§8.2) | ~ only until its latch first fires; §8.5's (C5) falsified the unqualified form on 1326 of 4000 ticks |
+| $\alpha_{\mathrm{nom}}$ is "inert while the anchor fits" (§8.2) | ~ under the *monotone* rule, only from a fresh state: its latch broke inertness on 1326 of 4000 ticks (§8.5, C5) |
 | decision 0 "costs nothing measurable" (§12, as adopted) | ✗ §8.5's (C4): 71 points of excursion for 0.74 % of a derated cap |
+| that cost is the price of $\alpha_{\mathrm{nom}}$ (§8.5, C4, first draft) | ✗ it was the price of the **monotone rule**. Metering the re-stiffening against the tank instead returns all 71 points at 8× and most of the rest at 12× |
 
-Five of nine were properties of **one FR3 configuration**, not of the
-architecture; two more (the last two rows) were claims about the *fix* that its
-own checker falsified — and in each case the erroneous generalisation was made from a
+Five of ten were properties of **one FR3 configuration**, not of the
+architecture; three more (the last three rows) were claims about the *fix* that
+its own checker falsified — and the last of those is the sharpest case in the
+table, because it is a correction that went too far: having found a real cost,
+this document attributed it to the fix as a whole rather than to the particular
+rule chosen to implement it, and only measuring a second rule separated them.
+In each case the erroneous generalisation was made from a
 carefully measured, internally consistent experiment. The measurements were
 right; the scope claimed for them was not. **Nothing in this line should be
 claimed without a pose sweep** — a rule I restated in §10.2 and then broke in
@@ -1460,14 +1540,18 @@ diagnostic that cannot be checked against an identity.
   replay estimate and the merged closed loop agree to 0.1 % on both rows, and a
   regression test now pins them together.
 - **~~The anchor's feasibility does not survive a larger scenario.~~** Fixed in
-  §8.2 by `nominal_auth_mono`, which holds both guarantees to 16×. What is
+  §8.2 by `nominal_auth_energy`, which holds both guarantees to 16×. What is
   *not* fixed is the condition underneath it: everything still assumes
   $\tau_{\mathrm{base}}$ alone fits the envelope, which is a property of the
   pose and is not defended anywhere.
-- **The fix's cost is not fully characterised.** `nominal_auth_mono` ratchets
-  the floor's stiffness down and never recovers it within a run. A 6 s
-  benchmark does not show what that does over minutes of interaction, and the
-  per-contact reset a deployed system would need is not implemented or tested.
+- **The fix's cost is not fully characterised over long horizons.**
+  `nominal_auth_energy` recovers the floor's stiffness as the tank can pay for
+  it, which removes the within-run ratchet the monotone rule had (§8.5, C5).
+  But a 6 s benchmark does not show what repeated contact does to the tank
+  over minutes: recovery is funded by the damping the arm actually dissipates,
+  so a sequence of transients with little motion between them could in
+  principle keep $\alpha_{\mathrm{nom}}$ down indefinitely. That regime is not
+  tested here.
 - **The $K_0$ trade is priced on one disturbance profile.** §8.3's workspace
   numbers at 12× come from `impedance_residual`'s own rejectable force scaled
   up, at one seed. That is a stress test, not a distribution.
@@ -1515,23 +1599,31 @@ adopted; findings 1–3 turned out to be largely the pose; and §10 has moved th
 open question from the design to the **framing**. Two decisions are settled and
 two are open.
 
-**Decision 0 — adopt `nominal_auth_mono`? ADOPTED, but §8.5 re-opens it.** It
-quadruples the range over which both guarantees survive and is provably inert
-until its latch first fires, and §8.4 showed it is inert at the recommended
-pose throughout — insurance rather than a load-bearing part. Two things found
-since it was adopted change the calculus at the operating points where it
-*does* fire:
+**Decision 0 — adopt nominal authorization? ADOPTED, re-opened by §8.5, and
+now closed again with a different rule.** The authorization quadruples the
+range over which both guarantees survive, and §8.4 showed it is inert at the
+recommended pose throughout — insurance rather than a load-bearing part. What
+changed twice is *how the re-stiffening is restrained*:
 
-- **The exchange rate (§8.5, C4).** At 8× disturbance it buys a 0.74 % overrun
-  of the *derated* cap — 31.7 N·m against an 87 N·m hardware limit — by
-  spending 71 percentage points of workspace excursion, 108 mm instead of
-  65 mm against a 60 mm box. Whether that is right depends on what
-  $\rho\,\tau_{\max}$ *means*, which this document has never stated. **That
-  is the question to answer before hardware**, and it is a question about the
-  specification, not about the controller.
-- **The latch (§8.5, C5).** $\alpha_{\mathrm{nom}}$ never recovers within a
-  run, so one transient permanently softens the nominal. The per-contact reset
-  is a correctness requirement, not a nicety.
+- **`nominal_auth_mono`, adopted first.** Forbidding the rise buys (C2)
+  outright, but §8.5's (C5) showed $\alpha_{\mathrm{nom}}$ is then a **latch**:
+  it never recovers within a run, so one transient permanently softens the
+  nominal, and §8.5's (C4) measured the bill — 71 percentage points of
+  workspace excursion at 8× for a 0.74 % overrun of the derated cap.
+- **`nominal_auth_energy`, adopted now.** Metering the rise against the tank
+  instead of forbidding it — $\alpha_{\mathrm{nom}}$ may rise by at most what
+  $E - E_{\min}$ buys at the current spring energy — keeps (C1) and (C2)
+  exactly (0 violations on 4000 adversarial ticks, worst $E = E_{\min}$),
+  holds both guarantees to 16×, and **returns all 71 of those points at 8×**
+  (65.66 mm against the ablation's 65.64 mm) and most of the rest at 12×. It
+  strictly dominates the monotone rule on every column of §8.3.
+
+So the trade that re-opened this decision has largely evaporated, and with it
+the urgency of the specification question. **What $\rho\,\tau_{\max}$ means —
+thermal budget or safety-certified limit — still has to be stated before
+hardware**, because the 12× row is a real trade and because it is a question
+about the specification rather than the controller. It no longer gates
+decision 0.
 
 **Decision 3 — how is the two-axis claim stated? SETTLED by §10.6:
 formulation (a), with (b) demoted to a remark.** Both candidates were resampled
@@ -1604,15 +1696,16 @@ would have been easy to gloss.
 
 ### Owed before any claim
 
-- [x] ~~Decision 0: adopt `nominal_auth_mono`~~ — adopted; it is the
-      controller's default, with `pir_no_nominal_auth` kept as the ablation.
+- [x] ~~Decision 0: adopt nominal authorization~~ — adopted as
+      `nominal_auth_energy`, the controller's default, with
+      `pir_no_nominal_auth` and `nominal_auth_mono` kept as the ablations.
 - [x] ~~Decision 2: which envelope~~ — §9. Derated-joint-4, at the §9.3 pose.
 - [ ] **Human:** decision 3 (the framing, §10.4) — now the highest-stakes one.
 - [ ] **Human:** decision 1, which §9.3 suggests is moot unless the application
       pins the pose.
 - [x] ~~Root-cause the three Section 7 findings~~ — §8.1. One constraint,
       monotone in $K_0$.
-- [x] ~~Fix the precondition failure~~ — §8.2, `nominal_auth_mono`. Both
+- [x] ~~Fix the precondition failure~~ — §8.2, `nominal_auth_energy`. Both
       guarantees to 16×.
 - [x] ~~Try anisotropic $(K_0, D_0)$~~ — §8.3. It does not help here and
       slightly hurts; the displacement is 8:1 push-axis dominated.
@@ -1638,7 +1731,9 @@ would have been easy to gloss.
       fails but $\alpha_{\mathrm{nom}}$ is active~~ — §8.5, Merged Lemma 1′.
       Checked clause by clause on 4000 adversarial ticks. It also produced two
       results that were not being looked for: (P3) is what makes the energy
-      half provable at all, and (C4)'s exchange rate re-opens decision 0.
+      half provable at all, and (C4)'s exchange rate first re-opened decision 0
+      and then, once a second rule was measured, turned out to be the latch's
+      bill rather than the fix's.
 - [x] ~~Implement the merged controller and re-measure rows 1 and 4 in its own
       closed loop~~ — §7.1–7.2. Replay and closed loop agree to 0.1 %.
 - [x] ~~Task 3: re-sweep the authorization-vs-tracking curve ($E_0$) with both
@@ -1652,15 +1747,19 @@ would have been easy to gloss.
       time** (§7.7), not as a design-time check.
 - [x] ~~Decide what the controller does when the precondition fails~~ — §8.2.
       Folding the nominal into the authorization loop works, and the passivity
-      cost it first appeared to carry is removed by making
-      $\alpha_{\mathrm{nom}}$ monotone. The escalation route back into
+      cost it first appeared to carry is removed by authorizing the
+      re-stiffening against the tank rather than forbidding it. The escalation route back into
       `certified-realizability` is still the answer for the residual condition
       §8.4 names ($\tau_{\mathrm{base}}$ itself), which no local fix defends.
 - [ ] Re-run the Task 1 gate at a pose/push direction that does not load
       joint 4, and check whether the headroom problem is FR3-pose-specific.
-- [ ] **Implement and test the per-contact reset** `nominal_auth_mono` needs.
-      §8.5's (C5) upgrades this from a nicety to a correctness requirement:
-      without it (C3)'s inertness is empty beyond the first firing.
+- [x] ~~**Implement and test the per-contact reset** `nominal_auth_mono`
+      needs~~ — §8.2, §8.5. Solved without a reset, and better: metering the
+      re-stiffening against the tank (`nominal_auth_energy`) removes the latch
+      *and* returns most of (C4)'s cost, where a per-contact reset would have
+      needed an episode boundary the controller has no way to detect. What is
+      still owed is the long-horizon behaviour: nothing here characterises the
+      ratchet over minutes of repeated contact.
 - [ ] **State what the derated envelope means** — thermal/duty-cycle budget or
       safety-certified limit. §8.5's (C4) makes decision 0's trade turn on it,
       and it is not answerable from inside the simulation.

@@ -250,11 +250,11 @@ def test_nominal_authorization_is_inert_when_the_anchor_fits(plant):
 def test_restiffening_charges_the_tank_and_softening_does_not(plant):
     """Only one direction of a time-varying spring gain is an injection."""
     _, _, J_v, Lam_inv, tau_base = plant
-    # The rate is pinned to inf: the adopted default forbids alpha_nom from
-    # rising at all, which is precisely what removes the charge this test is
-    # about.  Testing the charge means testing the unrestricted rule.
+    # The mode is pinned to "free": the adopted rule meters the rise against
+    # the tank, which is precisely what bounds the charge this test is about.
+    # Testing that the charge exists means testing the unrestricted rule.
     cfg = PIRConfig(k0=K0, d0=D0, nominal_authorization=True,
-                    nominal_reauth_rate=float("inf"))
+                    nominal_reauth="free")
     cap = pc.torque_envelope("derated_joint4")
     e, v = np.array([0.0, 0.0, 0.30]), np.zeros(3)
     common = dict(tau_base=tau_base, J_v=J_v, Lam_inv=Lam_inv, e=e, v=v,
@@ -267,12 +267,12 @@ def test_restiffening_charges_the_tank_and_softening_does_not(plant):
 
 
 def test_monotone_alpha_nom_never_rises():
-    """rate = 0 is what makes both guarantees hold together, and is what
-    decision 0 adopted as the default -- so this runs plain ``pir``."""
-    assert PIRConfig().nominal_authorization is True
-    assert PIRConfig().nominal_reauth_rate == 0.0
+    """The monotone ablation must still do what it says: never rise, and hold
+    both guarantees.  It is no longer the default (see the test below), but
+    Section 8.5's (P3) argument is stated through it."""
     out = run_variant("pir", K0, D0, "derated_joint4",
-                      scenario="merged", disturbance_scale=12.0)
+                      scenario="merged", disturbance_scale=12.0,
+                      overrides={"nominal_reauth": "monotone"})
     log, s = out["log"], out["summary"]
     assert np.all(np.diff(log["alpha_nom"]) <= 1e-12), "alpha_nom rose"
     assert s["lemma1_conclusion_holds"], "torque envelope lost"
@@ -280,16 +280,37 @@ def test_monotone_alpha_nom_never_rises():
     assert s["alpha_nom_min"] < 1.0, "test scenario never exercised the fix"
 
 
+def test_energy_authorized_reauth_recovers_without_losing_either_guarantee():
+    """The adopted rule (decision 0, as repaired by Section 8.5's (C5)):
+    alpha_nom recovers after a transient, and both guarantees survive it.
+
+    If this ever fails while the monotone test above passes, the metering is
+    buying recovery with the tank floor and the trade has gone the wrong way.
+    """
+    assert PIRConfig().nominal_authorization is True
+    assert PIRConfig().nominal_reauth == "energy_authorized"
+    out = run_variant("pir", K0, D0, "derated_joint4",
+                      scenario="merged", disturbance_scale=12.0)
+    log, s = out["log"], out["summary"]
+    assert s["lemma1_conclusion_holds"], "torque envelope lost"
+    assert s["tank_floor_holds"], "tank floor lost"
+    assert s["alpha_nom_min"] < 1.0, "test scenario never exercised the fix"
+    # The latch is gone: alpha_nom comes back up, and ends above its minimum.
+    assert np.max(np.diff(log["alpha_nom"])) > 1e-9, "alpha_nom never recovered"
+    assert log["alpha_nom"][-1] > s["alpha_nom_min"] + 1e-9
+
+
 def test_unrestricted_reauthorization_loses_the_tank_floor():
     """The contrast the monotone rule is there to fix. If this stops failing,
     the comparison in pir_fixes.py is vacuous.
 
-    The rate is pinned to inf explicitly rather than relying on the default,
-    so this keeps testing the pre-decision-0 rule after the default changed.
+    The mode is pinned to "free" explicitly rather than relying on the
+    default, so this keeps testing the pre-decision-0 rule after the default
+    changed.
     """
     s = run_variant("pir", K0, D0, "derated_joint4", scenario="merged",
                     disturbance_scale=12.0,
-                    overrides={"nominal_reauth_rate": float("inf")})["summary"]
+                    overrides={"nominal_reauth": "free"})["summary"]
     assert s["lemma1_conclusion_holds"]
     assert not s["tank_floor_holds"]
 
@@ -347,13 +368,17 @@ def test_lemma1_prime_C1_C2_hold_on_adversarial_ticks(plant):
     rng = np.random.default_rng(7)
     tank, prev = cfg.tank_initial, 1.0
     for _ in range(400):
+        e = rng.uniform(-0.35, 0.35, 3)
         step = pir_servo_step(cfg, tau_base, J_v, Lam_inv,
-                              rng.uniform(-0.35, 0.35, 3), rng.uniform(-1.2, 1.2, 3),
+                              e, rng.uniform(-1.2, 1.2, 3),
                               rng.uniform(-600.0, 600.0, 3),
                               tank=tank, h=1e-3, cap=cap, previous_alpha_nom=prev)
         assert step.tau_ratio <= 1.0 + 1e-9, "(C1) torque envelope"
         assert step.tank >= cfg.tank_minimum - 1e-12, "(C2) tank floor"
-        assert step.alpha_nom <= prev + 1e-12, "(P3) alpha_nom must not rise"
+        # (P3) bounds the RISE by what the tank can buy; it does not forbid it.
+        spring = 0.5 * float(e @ (np.full(3, K0) * e))
+        assert (step.alpha_nom - prev) * spring <= (tank - cfg.tank_minimum) + 1e-9, \
+            "(P3) alpha_nom rose beyond the tank's budget"
         tank, prev = step.tank, step.alpha_nom
 
 
@@ -362,7 +387,7 @@ def test_lemma1_prime_P3_is_what_makes_C2_provable(plant):
     become cosmetic and Section 8.5's argument needs revisiting."""
     _, _, J_v, Lam_inv, tau_base = plant
     cap = pc.torque_envelope("derated_joint4")
-    cfg = PIRConfig(k0=K0, d0=D0, nominal_reauth_rate=float("inf"))
+    cfg = PIRConfig(k0=K0, d0=D0, nominal_reauth="free")
     rng = np.random.default_rng(7)
     tank, prev = cfg.tank_initial, 1.0
     breached = False
@@ -376,16 +401,28 @@ def test_lemma1_prime_P3_is_what_makes_C2_provable(plant):
     assert breached, "unrestricted alpha_nom must be able to overdraw the tank"
 
 
-def test_lemma1_prime_C4_cost_is_real(plant):
-    """(C4): alpha_nom buys the envelope by spending workspace. Pin the
-    direction and rough magnitude of the exchange, since Section 8.5 re-opens
-    decision 0 on it."""
-    on = run_variant("pir", K0, D0, "derated_joint4", scenario="merged",
-                     disturbance_scale=8.0)["summary"]
+def test_lemma1_prime_C4_cost_is_the_latch_not_the_authorization(plant):
+    """(C4): alpha_nom buys the torque envelope by spending workspace -- but
+    almost all of what that looked like it cost was the LATCH, not the
+    authorization.
+
+    At 8x the adopted rule holds the envelope at essentially the ablation's own
+    excursion, while the monotone rule it replaced spends ~70 points of box for
+    the same envelope. Pin both halves: if the first ever regresses, decision 0
+    is back to being a trade rather than a win; if the second stops holding,
+    Section 8.5's account of where the cost came from is wrong.
+    """
+    common = dict(scenario="merged", disturbance_scale=8.0)
+    on = run_variant("pir", K0, D0, "derated_joint4", **common)["summary"]
+    mono = run_variant("pir", K0, D0, "derated_joint4",
+                       overrides={"nominal_reauth": "monotone"},
+                       **common)["summary"]
     off = run_variant("pir_no_nominal_auth", K0, D0, "derated_joint4",
-                      scenario="merged", disturbance_scale=8.0)["summary"]
+                      **common)["summary"]
+    # Both rules hold the envelope; the ablation does not, but only barely.
     assert on["lemma1_conclusion_max_tau_ratio"] <= 1.0 + 1e-9
-    assert off["lemma1_conclusion_max_tau_ratio"] > 1.0
-    # The fix trades a small torque overrun for a large excursion.
-    assert off["lemma1_conclusion_max_tau_ratio"] < 1.02
-    assert on["max_abs_e_axis_m"] > off["max_abs_e_axis_m"] * 1.4
+    assert mono["lemma1_conclusion_max_tau_ratio"] <= 1.0 + 1e-9
+    assert 1.0 < off["lemma1_conclusion_max_tau_ratio"] < 1.02
+    # The monotone rule pays for it in workspace; the adopted rule does not.
+    assert mono["max_abs_e_axis_m"] > off["max_abs_e_axis_m"] * 1.4
+    assert on["max_abs_e_axis_m"] < off["max_abs_e_axis_m"] * 1.1

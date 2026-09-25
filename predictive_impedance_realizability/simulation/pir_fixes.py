@@ -28,10 +28,18 @@ script evaluates what can be done about it.  Candidates:
                      Re-stiffening is the direction that charges the tank, so
                      forbidding it removes the charge entirely -- at the cost
                      of a floor that never recovers its stiffness within an
-                     episode, which a deployed system would have to reset per
-                     contact.
+                     episode.  Adopted first, then superseded: Section 8.5's
+                     (C5) showed the ratchet is a correctness problem, not an
+                     inconvenience.
+``nominal_auth_energy``  the same, with the RISE metered against the tank
+                     instead of forbidden: alpha_nom may recover by at most
+                     what (E - E_min) buys at the current spring energy.  This
+                     is the adopted default; it should match
+                     ``nominal_auth_mono`` on both guarantees and beat it on
+                     recovery.
 ``soft_plus_auth``   soft_nominal and nominal_auth together.
 ``soft_plus_mono``   soft_nominal and nominal_auth_mono together.
+``soft_plus_energy`` soft_nominal and nominal_auth_energy together.
 
 Each is scored on the three symptoms plus the constraint that caused them::
 
@@ -67,12 +75,13 @@ D_D = 28.0  # ImpedanceReference3D.damping
 PROBE_SCALES = (1.0, 2.0, 4.0, 6.0, 8.0, 12.0, 16.0)
 
 #: name -> (variant, k0, d0, overrides)
-#: Every candidate pins nominal_authorization and nominal_reauth_rate
-#: explicitly, so this comparison stays meaningful independently of what the
-#: adopted default happens to be.
+#: Every candidate pins nominal_authorization and nominal_reauth explicitly,
+#: so this comparison stays meaningful independently of what the adopted
+#: default happens to be.
 _OFF = {"nominal_authorization": False}
-_ON = {"nominal_authorization": True, "nominal_reauth_rate": float("inf")}
-_MONO = {"nominal_authorization": True, "nominal_reauth_rate": 0.0}
+_ON = {"nominal_authorization": True, "nominal_reauth": "free"}
+_MONO = {"nominal_authorization": True, "nominal_reauth": "monotone"}
+_ENERGY = {"nominal_authorization": True, "nominal_reauth": "energy_authorized"}
 
 def candidates(k0: float = 380.0, d0: float = 29.07) -> dict[str, tuple]:
     """The comparison, parameterised by the pose's own certified operating point.
@@ -86,8 +95,10 @@ def candidates(k0: float = 380.0, d0: float = 29.07) -> dict[str, tuple]:
         "anisotropic": ("pir", (60.0, 60.0, k0), (8.0, 8.0, d0), _OFF),
         "nominal_auth": ("pir", k0, d0, _ON),
         "nominal_auth_mono": ("pir", k0, d0, _MONO),
+        "nominal_auth_energy": ("pir", k0, d0, _ENERGY),
         "soft_plus_auth": ("pir", K_D, D_D, _ON),
         "soft_plus_mono": ("pir", K_D, D_D, _MONO),
+        "soft_plus_energy": ("pir", K_D, D_D, _ENERGY),
     }
 
 
@@ -146,7 +157,7 @@ def _evaluate(args: tuple) -> dict:
         "K0": base["K0_vector"],
         "D0": base["D0_vector"],
         "nominal_authorization": base["nominal_authorization"],
-        "nominal_reauth_rate": base["nominal_reauth_rate"],
+        "nominal_reauth": base["nominal_reauth"],
         "diag3_fallback_e_ss_m": fallback["e_ss_axis"],
         "diag3_passes": bool(fallback["e_ss_axis"] <= pc.WORKSPACE_BOUND_M),
         "anchor_ratio": base["diag1_anchor_ratio_closed_loop"],

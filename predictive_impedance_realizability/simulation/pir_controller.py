@@ -136,24 +136,42 @@ class PIRConfig:
     #: the spring energy it releases.  Whether the floor still holds under that
     #: accounting is measured, not assumed (see pir_fixes.py).
     #:
-    #: ADOPTED (decision 0).  Together with ``nominal_reauth_rate = 0`` below
+    #: ADOPTED (decision 0).  Together with the ``nominal_reauth`` rule below
     #: this holds BOTH the torque envelope and the tank floor out to 16x the
     #: source disturbance, against 4x without it, and is provably inert while
     #: the anchor fits.  ``pir_fixes.py`` scores it against the alternatives;
     #: ``pir_no_nominal_auth`` is the ablation that shows why it is on.
     nominal_authorization: bool = True
 
-    #: Ceiling on how fast alpha_nom may RISE, in units of alpha per second.
-    #: Re-stiffening is the direction that charges the tank (see the servo), so
-    #: an unlimited rise lets a transient repeatedly re-buy stiffness the port
-    #: has not earned.  ``inf`` leaves the rise unrestricted; ``0.0`` makes
-    #: alpha_nom monotone non-increasing, which removes the charge entirely at
-    #: the cost of never recovering the floor's stiffness after a transient.
+    #: How alpha_nom is allowed to RISE.  Re-stiffening is the direction that
+    #: injects energy (see the servo), so the three modes are three answers to
+    #: "who pays for recovering the nominal stiffness after a transient":
     #:
-    #: ADOPTED at 0.0 (decision 0).  A deployed system needs to reset the
-    #: ratchet per contact episode; this benchmark is short enough that it
-    #: does not, and Section 9 of the draft records that as owed.
-    nominal_reauth_rate: float = 0.0
+    #:   ``"free"``      nobody -- alpha_nom tracks its target every tick.  The
+    #:                   pre-decision-0 rule.  Section 8.5 shows this loses
+    #:                   (C2): the tank floor is breached at 12x.
+    #:   ``"monotone"``  nobody, because it never rises.  (P3) of Merged
+    #:                   Lemma 1'.  Buys (C2) unconditionally, but the price is
+    #:                   (C4): alpha_nom latches at its historic minimum, so one
+    #:                   transient softens the nominal for the rest of the run
+    #:                   and (C3) is empty after the first firing.
+    #:   ``"energy_authorized"``  the tank does, in the same idiom as alpha_E.
+    #:                   alpha_nom may rise by at most what (E - E_min) can buy
+    #:                   at the current spring energy, so the injection is
+    #:                   metered rather than forbidden.  Recovery is free when
+    #:                   e^T K0 e -> 0 (nothing is stored, so nothing is
+    #:                   injected) and the mode degrades to ``"monotone"`` when
+    #:                   the tank sits on its floor.
+    #:
+    #: ADOPTED at ``"energy_authorized"``: it keeps (C1) and (C2) -- the budget
+    #: bound is exactly what makes the alpha_E clamp in step 4 non-binding --
+    #: while removing the latch that made (C3) vacuous.  Section 8.5's two
+    #: ablations remain reachable as ``"free"`` and ``"monotone"``.
+    #:
+    #: With ``energy_authorization = False`` there is no tank to authorize
+    #: against, so ``"energy_authorized"`` behaves as ``"free"``; that keeps the
+    #: ``pir_no_tank`` ablation measuring the tank and nothing else.
+    nominal_reauth: str = "energy_authorized"
 
     mpc: FR3MPCConfig = field(default_factory=FR3MPCConfig)
 
@@ -484,6 +502,48 @@ class PIRRealizationMPC:
 # ---------------------------------------------------------------------------
 
 
+def _authorize_reauth(
+    cfg: "PIRConfig",
+    alpha_target: float,
+    previous_alpha_nom: float,
+    e: np.ndarray,
+    k0v: np.ndarray,
+    tank: float,
+) -> float:
+    """Decide how much of a RISE in alpha_nom the port may have this tick.
+
+    Softening is always granted: it releases stored energy, which helps.  A
+    rise injects ((1/2) d(alpha)/dt e^T K0 e) into the port, and the three
+    ``nominal_reauth`` modes differ only in who pays for it (see PIRConfig).
+
+    The ``energy_authorized`` bound is chosen so that the spring charge levied
+    in step 6 can never by itself push the tank below E_min: with
+
+        (alpha_nom - alpha_prev) * (1/2) e^T K0 e  <=  E - E_min,
+
+    the ``max(0, ...)`` clamp on ``available`` in step 4 is non-binding, and
+    the step-6 ledger lands at E_min in the worst case rather than under it.
+    That is what keeps (C2) without (P3).
+    """
+    if alpha_target <= previous_alpha_nom:
+        return float(alpha_target)
+    mode = cfg.nominal_reauth
+    if mode == "free" or not cfg.energy_authorization:
+        return float(alpha_target)
+    if mode == "monotone":
+        return float(previous_alpha_nom)
+    if mode != "energy_authorized":
+        raise ValueError(f"unknown nominal_reauth mode {mode!r}")
+    spring = 0.5 * float(e @ (k0v * e))
+    budget = max(0.0, tank - cfg.tank_minimum)
+    if spring <= 1e-15:
+        # Nothing is stored in the nominal spring, so re-stiffening injects
+        # nothing and needs no authority.  This is the case the monotone rule
+        # got wrong: it refused a recovery that was free.
+        return float(alpha_target)
+    return float(min(alpha_target, previous_alpha_nom + budget / spring))
+
+
 def pir_servo_step(
     cfg: PIRConfig,
     tau_base: np.ndarray,
@@ -515,12 +575,11 @@ def pir_servo_step(
     # 2b. Optionally give the servo authority over the nominal too, so that an
     # infeasible anchor is something it can act on rather than merely report.
     if cfg.nominal_authorization:
-        alpha_nom = 1.0
+        alpha_target = 1.0
         if not anchor_feasible:
-            alpha_nom, _ = torque_scale(tau_base, J_v.T @ f_nom_full, cap)
-        if np.isfinite(cfg.nominal_reauth_rate):
-            alpha_nom = min(alpha_nom,
-                            previous_alpha_nom + cfg.nominal_reauth_rate * h)
+            alpha_target, _ = torque_scale(tau_base, J_v.T @ f_nom_full, cap)
+        alpha_nom = _authorize_reauth(cfg, alpha_target, previous_alpha_nom,
+                                      e, k0v, tank)
     else:
         alpha_nom = 1.0
     f_nom = alpha_nom * f_nom_full

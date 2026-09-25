@@ -31,7 +31,7 @@
         56.13
       ],
       "nominal_authorization": false,
-      "nominal_reauth_rate": 0.0,
+      "nominal_reauth": "energy_authorized",
       "diag3_fallback_e_ss_m": 0.03238746553948786,
       "diag3_passes": true,
       "anchor_ratio": 0.5430436079657951,
@@ -131,7 +131,7 @@
         28.0
       ],
       "nominal_authorization": false,
-      "nominal_reauth_rate": 0.0,
+      "nominal_reauth": "energy_authorized",
       "diag3_fallback_e_ss_m": 0.08527397879467939,
       "diag3_passes": false,
       "anchor_ratio": 0.4682253689027544,
@@ -231,7 +231,7 @@
         56.13
       ],
       "nominal_authorization": false,
-      "nominal_reauth_rate": 0.0,
+      "nominal_reauth": "energy_authorized",
       "diag3_fallback_e_ss_m": 0.03238746553948786,
       "diag3_passes": true,
       "anchor_ratio": 0.5209978160988561,
@@ -331,7 +331,7 @@
         56.13
       ],
       "nominal_authorization": true,
-      "nominal_reauth_rate": Infinity,
+      "nominal_reauth": "free",
       "diag3_fallback_e_ss_m": 0.03238746553948786,
       "diag3_passes": true,
       "anchor_ratio": 0.5430436079657951,
@@ -431,7 +431,107 @@
         56.13
       ],
       "nominal_authorization": true,
-      "nominal_reauth_rate": 0.0,
+      "nominal_reauth": "monotone",
+      "diag3_fallback_e_ss_m": 0.03238746553948786,
+      "diag3_passes": true,
+      "anchor_ratio": 0.5430436079657951,
+      "anchor_headroom": 0.4569563920342049,
+      "residual_share_of_command": 0.5395102419614922,
+      "rms_realization_residual": 2.8207675501310727,
+      "max_abs_e_axis_m": 0.051462618581754715,
+      "largest_scale_torque_ok": 16.0,
+      "largest_scale_both_ok": 16.0,
+      "e0_trade_rms_spread": 0.21075224612383048,
+      "worst_tank_deficit_J": 0.0,
+      "alpha_nom_min_over_probe": 1.0,
+      "probe": [
+        {
+          "scale": 1.0,
+          "max_tau_ratio": 0.5321727104490203,
+          "torque_envelope_holds": true,
+          "tank_min": 0.02,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.8207675501310727,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.051462618581754715
+        },
+        {
+          "scale": 2.0,
+          "max_tau_ratio": 0.5324577980405003,
+          "torque_envelope_holds": true,
+          "tank_min": 0.020000000000000004,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.776551587370726,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.052114216230201627
+        },
+        {
+          "scale": 4.0,
+          "max_tau_ratio": 0.5344070517433466,
+          "torque_envelope_holds": true,
+          "tank_min": 0.02,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.631712372755622,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.054353150793433724
+        },
+        {
+          "scale": 6.0,
+          "max_tau_ratio": 0.5327255547664728,
+          "torque_envelope_holds": true,
+          "tank_min": 0.020000000000000004,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.417223806423252,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.056960548193807026
+        },
+        {
+          "scale": 8.0,
+          "max_tau_ratio": 0.5325619679539403,
+          "torque_envelope_holds": true,
+          "tank_min": 0.020000000000000004,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.2232301757824913,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.058900970833762334
+        },
+        {
+          "scale": 12.0,
+          "max_tau_ratio": 0.5703949116390133,
+          "torque_envelope_holds": true,
+          "tank_min": 0.025340838253245766,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.305756887455788,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.05890726160849313
+        },
+        {
+          "scale": 16.0,
+          "max_tau_ratio": 0.6158334579327999,
+          "torque_envelope_holds": true,
+          "tank_min": 0.0338094307684129,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.5278506610497886,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.05916416821873993
+        }
+      ]
+    },
+    {
+      "name": "nominal_auth_energy",
+      "variant": "pir",
+      "K0": [
+        520.0,
+        520.0,
+        520.0
+      ],
+      "D0": [
+        56.13,
+        56.13,
+        56.13
+      ],
+      "nominal_authorization": true,
+      "nominal_reauth": "energy_authorized",
       "diag3_fallback_e_ss_m": 0.03238746553948786,
       "diag3_passes": true,
       "anchor_ratio": 0.5430436079657951,
@@ -531,7 +631,7 @@
         28.0
       ],
       "nominal_authorization": true,
-      "nominal_reauth_rate": Infinity,
+      "nominal_reauth": "free",
       "diag3_fallback_e_ss_m": 0.08527397879467939,
       "diag3_passes": false,
       "anchor_ratio": 0.4682253689027544,
@@ -631,7 +731,107 @@
         28.0
       ],
       "nominal_authorization": true,
-      "nominal_reauth_rate": 0.0,
+      "nominal_reauth": "monotone",
+      "diag3_fallback_e_ss_m": 0.08527397879467939,
+      "diag3_passes": false,
+      "anchor_ratio": 0.4682253689027544,
+      "anchor_headroom": 0.5317746310972455,
+      "residual_share_of_command": 0.36144285546432303,
+      "rms_realization_residual": 2.0363843581860883,
+      "max_abs_e_axis_m": 0.05926650988421345,
+      "largest_scale_torque_ok": 16.0,
+      "largest_scale_both_ok": 16.0,
+      "e0_trade_rms_spread": 0.01935468544673924,
+      "worst_tank_deficit_J": 0.0,
+      "alpha_nom_min_over_probe": 1.0,
+      "probe": [
+        {
+          "scale": 1.0,
+          "max_tau_ratio": 0.5046633733181979,
+          "torque_envelope_holds": true,
+          "tank_min": 0.020000000000000524,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.0363843581860883,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.05926650988421345
+        },
+        {
+          "scale": 2.0,
+          "max_tau_ratio": 0.49694158788136117,
+          "torque_envelope_holds": true,
+          "tank_min": 0.020000000000000906,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.0431447119660198,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.0592716605736352
+        },
+        {
+          "scale": 4.0,
+          "max_tau_ratio": 0.510237173809076,
+          "torque_envelope_holds": true,
+          "tank_min": 0.03300112165102179,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.0633806355388615,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.059266068762407365
+        },
+        {
+          "scale": 6.0,
+          "max_tau_ratio": 0.5230413932631516,
+          "torque_envelope_holds": true,
+          "tank_min": 0.04549874720942745,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.0957255831587362,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.059257844759779466
+        },
+        {
+          "scale": 8.0,
+          "max_tau_ratio": 0.5350965824571561,
+          "torque_envelope_holds": true,
+          "tank_min": 0.05744375746273674,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.1399600448407603,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.05925067346192048
+        },
+        {
+          "scale": 12.0,
+          "max_tau_ratio": 0.5696251275521458,
+          "torque_envelope_holds": true,
+          "tank_min": 0.07618241829238398,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.269605790444549,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.05921617701862136
+        },
+        {
+          "scale": 16.0,
+          "max_tau_ratio": 0.6134131119517868,
+          "torque_envelope_holds": true,
+          "tank_min": 0.08,
+          "tank_floor_holds": true,
+          "rms_realization_residual": 2.4541131668004343,
+          "alpha_nom_min": 1.0,
+          "max_abs_e_axis_m": 0.05924778765258487
+        }
+      ]
+    },
+    {
+      "name": "soft_plus_energy",
+      "variant": "pir",
+      "K0": [
+        200.0,
+        200.0,
+        200.0
+      ],
+      "D0": [
+        28.0,
+        28.0,
+        28.0
+      ],
+      "nominal_authorization": true,
+      "nominal_reauth": "energy_authorized",
       "diag3_fallback_e_ss_m": 0.08527397879467939,
       "diag3_passes": false,
       "anchor_ratio": 0.4682253689027544,
