@@ -980,11 +980,12 @@ So the honest one-line reading of decision 0 is now:
 
 The question this *used* to turn on — what $\rho\,\tau_{\max}$ actually means,
 since a 0.74 % overrun of a thermal budget is nothing while 43 mm of extra
-excursion is a lot — is much less decisive now: at 8× there is no excursion to
-trade away. It still has to be answered before hardware, because the 12× row
-is a real trade and because the overrun the ablation incurs is over the
-*derated* cap ($1.0074 \times 31.5 = 31.7$ N·m, **36 % of the FR3's 87 N·m
-hardware limit**), but it no longer gates decision 0.
+excursion is a lot — is answered in §12.0, and the answer is "neither thermal
+nor safety-certified": both envelopes are labelled by their own sources as
+deliberately artificial stress budgets, with the FR3's absolute limits kept as a
+separate backstop. So the overrun the ablation incurs is over a chosen budget,
+at $1.0074 \times 31.5 = 31.7$ N·m — **36 % of the FR3's 87 N·m hardware
+limit**. It is not a safety event, and decision 0 never depended on it.
 
 ### 8.6 What this does and does not settle
 
@@ -1411,12 +1412,19 @@ rather than an actuator limit — this is the dual-axis demonstration the paper
 needs, and §10.1's "no such point" becomes "exactly one, and it is the obvious
 one".
 
-**This promotes a question that was already on the owed list to a decisive
-one.** §12 has carried "resolve whether the 0.06 m bound is hard or
-slack-relaxed" since the Task 1 gate, where it decided a 33-cell versus 6-cell
-region. It now also decides whether PIR's central claim has a supporting
-experiment. That convergence is not a coincidence — both are asking the same
-thing, whether the workspace box is a specification or a preference.
+**This promoted a question that was already on the owed list to a decisive
+one, and §12.0 answers it.** §12 had carried "resolve whether the 0.06 m bound
+is hard or slack-relaxed" since the Task 1 gate, where it decided a 33-cell
+versus 6-cell region; here it also decides whether this cell counts as an
+excursion or a violation. Both are asking the same thing — whether the box is a
+specification or a preference — and the source settles it: the box is
+slack-relaxed *by necessity*, because a hard box has no recursive-feasibility
+guarantee in this architecture and was empirically confirmed to make the QP
+infeasible.
+
+So this cell is admissible, and it still does not carry the claim. §12.0 spells
+out why: the box reading removes one of the two objections to (b), and the
+other — 5 of 20 under resampling — is the one that decided it.
 
 #### What it does not buy
 
@@ -1556,11 +1564,11 @@ diagnostic that cannot be checked against an identity.
   numbers at 12× come from `impedance_residual`'s own rejectable force scaled
   up, at one seed. That is a stress test, not a distribution.
 - **The fallback leaves the workspace box in transient.** 62.2 mm peak against
-  a 60 mm bound. `phri2`'s box is slack-relaxed rather than hard, so this is
-  not a constraint violation in its formulation — but it means the
-  $\alpha\to 0$ guarantee is "settles inside the box", not "stays inside it".
-  If the bound is to be read as hard, the region is 6 cells, not 33, and the
-  recommended cell is outside it.
+  a 60 mm bound. §12.0 settles that `phri2`'s box is slack-relaxed by
+  necessity, so this is not a constraint violation in its formulation, and the
+  33-cell region stands. What remains true and worth keeping is the weaker
+  statement: the $\alpha\to 0$ guarantee is "**settles** inside the box", not
+  "stays inside it", and nothing here bounds the transient.
 - **One pose, one push direction, isotropic gains.** The whole gate is
   evaluated at `phri2`'s nominal hold pose under a $-z$ push, with
   $K_0 = k I$, $D_0 = d I$. Joint 4 is the binding joint in every single cell,
@@ -1596,8 +1604,128 @@ four-term residual closes exactly. What is left is not a coding decision.
 
 §8, §9 and §10 have each changed what is being decided. Finding 4 is fixed and
 adopted; findings 1–3 turned out to be largely the pose; and §10 has moved the
-open question from the design to the **framing**. Two decisions are settled and
-two are open.
+open question from the design to the **framing**. §12.0 then closes the two
+items that had been parked as unanswerable from inside the simulation — both
+turned out to be answerable by reading the sources, and neither answer was the
+one the question implied. Decisions 0, 2 and 3 are settled; decision 1 is the
+human's and is probably moot; what is left open is theory, not design.
+
+### 12.0 The two specification questions, answered from the source
+
+Two items sat on the owed list as things "not answerable from inside the
+simulation": what the derated torque envelope *means*, and whether the 0.06 m
+workspace bound is hard or slack-relaxed. Both are answerable — not by running
+anything, but by reading what the source repositories say about the numbers
+this document inherited from them. Neither answer is the one the question
+implied.
+
+#### The derated envelope is neither thermal nor safety-certified
+
+Both envelopes this document uses are labelled by their own sources as
+artificial. On $\rho = 0.28$
+(`impedance/impedance_residual.md` §5.1):
+
+> The 28 % envelope represents a deliberately derated continuous budget, chosen
+> before the accepted run to keep the nominal torque feasible while preserving
+> headroom pressure for the residual; **it is not a manufacturer continuous-duty
+> specification**, and the absolute FR3 limits remain the MuJoCo safety backstop
+> regardless.
+
+And on the derated-joint-4 envelope that decision 2 selected
+(`imp_reference/paper.md` §6.4):
+
+> joint 4's available budget deliberately derated from its nominal 87 Nm to
+> 31.5 Nm. **This is an artificial actuator-budget stress test, not a claim
+> about the FR3's physical rating.**
+
+So the question "thermal budget or safety-certified limit?" has a third answer:
+**neither**. $\rho\,\tau_{\max}$ is a stress budget chosen to make the torque
+constraint bind, with the real limit enforced separately underneath it. Three
+consequences.
+
+First, **§8.5's exchange rate is settled, not merely quantified.** The 0.74 %
+overrun the ablation incurs is an overrun of an artificial budget, at 36 % of
+the hardware limit. It is not a safety event, and it never was one. Decision 0
+therefore does not turn on a specification this document was waiting for.
+
+Second, and less comfortably, **the feasibility axis is measured entirely
+against a budget its own source calls a stress test.** That does not invalidate
+it — the architecture behaves the same way against any envelope tighter than
+the hardware, and genuinely tight envelopes exist (thermal derating, and the
+reduced-power modes a safety-rated pHRI deployment runs in). But it does mean
+the *numbers* — 33 cells, 2.4 % headroom, $\rho = 0.28$ — are properties of a
+chosen stress budget and not of the FR3, and the paper must say so where it
+reports them.
+
+Third, it sharpens what §8.4 already found. At the recommended pose the torque
+axis never binds at any $K_0$. Combined with the above: the feasibility axis
+binds only at a pose chosen to load joint 4, against an envelope chosen to be
+tight. Both halves of that are deliberate, and both should be stated as
+deliberate.
+
+#### The workspace box is slack-relaxed, and cannot be made hard here
+
+The box is soft in the implementation this document reuses, and the source says
+why. From `imp_reference/simulation/fr3_interaction_dynamics_mpc.py` (the
+condensing routine, on the Cartesian position/speed rows):
+
+> Cartesian workspace / speed box — **SOFT (slack-relaxed). Hard box constraints
+> on predicted state have no recursive-feasibility guarantee** (paper.md
+> Prop. 3): once the real, nonlinear MuJoCo trajectory drifts from this
+> frozen-Jacobian prediction enough to sit right at an active bound, the very
+> next solve can become genuinely infeasible (confirmed empirically — tightening
+> or loosening the bound value alone did not remove it, nor did loosening the
+> torque limit, isolating the box constraints as the cause).
+
+The penalty is $w_s = 10^8$, set after $10^4$ "let the QP trade away the box far
+too readily (observed slack of several meters)", and the source paper reports
+the resulting boundary held "to within approximately 0.1–0.2 mm".
+
+So the answer is not "hard" or "soft by choice". **The box cannot be hard in
+this architecture** — making it hard was tried and breaks the QP, for exactly
+the reason §11 lists as still unproven (no recursive-feasibility guarantee).
+Anyone who wants a hard box has to supply that proof first; it is the same
+missing theorem in a different costume.
+
+One further quotation settles the part of this that actually bit. The source's
+*desired behaviour* violates the bound and the source is untroubled by it
+(`imp_reference/paper.md` §6.3):
+
+> The impedance reference has an unconstrained static displacement
+> $F_h/K_d = 20/200 = 0.10$ m, **which by itself already exceeds the 0.06 m
+> bound.** … Predictive realization instead departs from the desired behavioral
+> acceleration while the bound is active, holding displacement to 0.0601 m.
+
+In `phri2` the box constrains the **realized trajectory**, softly, and the
+behaviour layer is explicitly allowed to want something outside it. Diagnostic
+3 asks something different and stronger: that the **passive fallback alone**
+hold the push inside the same number, which forces $K_0 \ge |F_h|/0.06 =
+333$ N/m and is the single constraint §8.1 traced all three findings to.
+
+That is a design choice this document is free to make — a bound on where the
+arm ends up if the authorization collapses is a reasonable thing to want — but
+it is **not inherited**, and this document has been citing it as though it
+were. Three corrections follow:
+
+- **Task 1's 33 cells stand; the 6-cell reading is withdrawn.** Gating on the
+  fallback's transient *peak* rather than its settled displacement tightens an
+  already-stricter-than-source criterion against a box that is soft by
+  necessity. The published region is the settled-displacement one.
+- **`soft_nominal` ($K_0 = K_d = 200$) reads the premise correctly.** §8.3 put
+  this as "rejects diagnostic 3's premise rather than its arithmetic" and
+  hedged; it is now quotable. $K_d = 200$ is what the source itself runs, at a
+  static displacement of 0.10 m, and it meets the bound through the predictive
+  layer rather than the impedance. §8.3's other objection to it — 110 mm of
+  fallback displacement and 160 mm of excursion under load — is a real
+  engineering objection and is unaffected.
+- **§10.6's candidate is admissible, and it changes nothing.** The one
+  dual-axis, well-behaved cell sits 16 % over the box, which under the correct
+  reading is a slack excursion rather than a violation. So one of the two
+  objections to framing (b) is removed. The other — that it survives
+  resampling in only 5 of 20 runs — is the one that actually decided decision 3,
+  and it stands. **(b) stays demoted.** Recording this is the point of §11.0:
+  an answer that goes the way you hoped is exactly when to check whether it
+  changes the conclusion, and here it does not.
 
 **Decision 0 — adopt nominal authorization? ADOPTED, re-opened by §8.5, and
 now closed again with a different rule.** The authorization quadruples the
@@ -1618,12 +1746,13 @@ changed twice is *how the re-stiffening is restrained*:
   (65.66 mm against the ablation's 65.64 mm) and most of the rest at 12×. It
   strictly dominates the monotone rule on every column of §8.3.
 
-So the trade that re-opened this decision has largely evaporated, and with it
-the urgency of the specification question. **What $\rho\,\tau_{\max}$ means —
-thermal budget or safety-certified limit — still has to be stated before
-hardware**, because the 12× row is a real trade and because it is a question
-about the specification rather than the controller. It no longer gates
-decision 0.
+So the trade that re-opened this decision has largely evaporated, and §12.0
+disposes of the specification question underneath it: $\rho\,\tau_{\max}$ is
+neither a thermal budget nor a safety-certified limit but a deliberately
+artificial stress budget, so the overrun the ablation incurs is not a safety
+event. Decision 0 is closed. What survives is a **disclosure** obligation, not
+a decision: the feasibility axis's numbers are properties of a chosen budget
+and must be reported as such.
 
 **Decision 3 — how is the two-axis claim stated? SETTLED by §10.6:
 formulation (a), with (b) demoted to a remark.** Both candidates were resampled
@@ -1700,7 +1829,10 @@ would have been easy to gloss.
       `nominal_auth_energy`, the controller's default, with
       `pir_no_nominal_auth` and `nominal_auth_mono` kept as the ablations.
 - [x] ~~Decision 2: which envelope~~ — §9. Derated-joint-4, at the §9.3 pose.
-- [ ] **Human:** decision 3 (the framing, §10.4) — now the highest-stakes one.
+- [x] ~~Decision 3: the framing (§10.4)~~ — resolved to (a) by §10.6's
+      resampling and unchanged by §12.0's box reading, which removed the other
+      objection to (b) without rescuing it. **Human ratification still wanted**:
+      this is the paper's central claim.
 - [ ] **Human:** decision 1, which §9.3 suggests is moot unless the application
       pins the pose.
 - [x] ~~Root-cause the three Section 7 findings~~ — §8.1. One constraint,
@@ -1760,13 +1892,19 @@ would have been easy to gloss.
       needed an episode boundary the controller has no way to detect. What is
       still owed is the long-horizon behaviour: nothing here characterises the
       ratchet over minutes of repeated contact.
-- [ ] **State what the derated envelope means** — thermal/duty-cycle budget or
-      safety-certified limit. §8.5's (C4) makes decision 0's trade turn on it,
-      and it is not answerable from inside the simulation.
-- [ ] **Resolve whether the 0.06 m bound is hard or slack-relaxed.** Back to
-      being a Task 1 question only — it decides a 33-cell versus 6-cell region.
-      §10.5 briefly made it decisive for the framing too; §10.6 retired that,
-      because the exhibit it would have licensed does not survive resampling.
+- [x] ~~**State what the derated envelope means**~~ — §12.0. Neither
+      thermal/duty-cycle nor safety-certified: both sources label their
+      envelope a deliberately artificial stress budget, with the FR3's absolute
+      limits kept as a separate backstop. Decision 0 does not turn on it. What
+      it *does* oblige is a disclosure — the feasibility axis's numbers are
+      properties of a chosen budget, not of the FR3, and must be reported that
+      way.
+- [x] ~~**Resolve whether the 0.06 m bound is hard or slack-relaxed**~~ —
+      §12.0. Slack-relaxed, and not by preference: a hard box has no
+      recursive-feasibility guarantee here and was confirmed empirically to
+      make the QP infeasible. Task 1's 33 cells stand and the 6-cell reading is
+      withdrawn. Diagnostic 3 is a stronger requirement than the source's own,
+      which this document had been citing as inherited; that is now stated.
 - [ ] Explicitly disclaim the force-misclassification pillar in whatever is
       written. §7.1's channel split makes the assumption visible; it does not
       discharge it.

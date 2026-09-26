@@ -89,7 +89,25 @@ RHO = 0.28  # verify_fr3_two_rate_benchmark.Config.torque_margin
 
 
 def torque_envelope(name: str) -> np.ndarray:
-    """Return the per-joint torque cap (N.m) for a named stress case."""
+    """Return the per-joint torque cap (N.m) for a named stress case.
+
+    PROVENANCE (Section 12.0 of the draft).  Neither envelope is a thermal
+    rating or a safety certificate; both sources say so in as many words, and
+    every number the feasibility axis reports is a property of a budget chosen
+    to make the torque constraint bind.
+
+      rho_0.28         impedance_residual.md Sec. 5.1: "a deliberately derated
+                       continuous budget ... it is not a manufacturer
+                       continuous-duty specification, and the absolute FR3
+                       limits remain the MuJoCo safety backstop regardless."
+      derated_joint4   imp_reference/paper.md Sec. 6.4: joint 4 derated from
+                       87 N.m to 31.5 N.m -- "an artificial actuator-budget
+                       stress test, not a claim about the FR3's physical
+                       rating."
+
+    So an overrun of these caps is an overrun of a stress budget, not a safety
+    event; the hardware limit is TAU_LIMIT and is enforced underneath.
+    """
     if name == "rho_0.28":
         return RHO * TAU_LIMIT
     if name == "derated_joint4":
@@ -108,6 +126,21 @@ PUSH_AXIS = np.array([0.0, 0.0, -1.0])
 PUSH_AXIS_INDEX = 2  # the z row, i.e. phri2's |e_z| bound
 
 #: Workspace bound: FR3MPCConfig.position_limit.
+#:
+#: PROVENANCE (Section 12.0 of the draft).  In phri2 this bound is
+#: SLACK-RELAXED, and not by preference: fr3_interaction_dynamics_mpc.py's
+#: condensing routine records that hard box constraints on the predicted state
+#: "have no recursive-feasibility guarantee" and were confirmed empirically to
+#: make the QP genuinely infeasible, so the rows carry slack columns at
+#: w_s = 1e8.  It constrains the REALIZED trajectory, softly; the behaviour
+#: layer is explicitly allowed to want something outside it (phri2's own
+#: K_d = 200 has a 0.10 m static displacement against this 0.06 m bound).
+#:
+#: Diagnostic 3 reuses the NUMBER for a different and stronger requirement --
+#: that the alpha -> 0 passive fallback alone hold the push inside it, forcing
+#: K0 >= |F_h| / 0.06 = 333 N/m.  That is this document's own design choice,
+#: not something inherited, and Section 8.1 traces all three Section 7 findings
+#: back to it.
 WORKSPACE_BOUND_M = FR3MPCConfig().position_limit
 
 #: phri2's own trajectory length for the FR3 study.
