@@ -72,9 +72,12 @@ Three findings change what the merge can claim, and all three are load-bearing:
    both constraints.
 3. **The $\alpha\to 0$ fallback transiently leaves the workspace box.** At the
    recommended cell the settled displacement is 55.8 mm against the 60 mm
-   bound, but the transient peaks at **62.2 mm**. Gate on peak instead of
-   settled displacement and the region drops from 33 cells to 6 — and the
-   recommended cell is not among them.
+   bound, but the transient peaks at **62.2 mm**. *(Originally this finding
+   continued: gate on peak rather than settled displacement and the region
+   drops from 33 cells to 6. **§12.0 withdraws that reading** — the box is
+   slack-relaxed by necessity in the QP this document reuses, so the 33-cell
+   region stands. What survives is the weaker statement: the $\alpha\to0$
+   guarantee is "settles inside the box", not "stays inside it".)*
 
 The merged controller has since been implemented and run in closed loop (§7).
 That settles the gate's main caveat and adds a fourth finding that outranks the
@@ -97,10 +100,15 @@ impedance's own stiffness — and finding 4 is separate and is fixed outright by
 giving the servo authority over the nominal (**adopted**, §8.2). §8.5 then
 states the repaired guarantee, **Merged Lemma 1′**, whose precondition is
 merely $|\tau_{\mathrm{base}}| \le \bar\tau$ — a pose property, not a
-design one — and checks it clause by clause. It also prices the fix: where
-$\alpha_{\mathrm{nom}}$ fires it buys a 0.74 % overrun of a *derated* cap by
-spending 71 points of workspace excursion, which re-opens decision 0 on terms
-the simulation cannot settle.
+design one — and checks it clause by clause. It also prices the fix — and the price turned out to be the *rule*, not the
+fix. Forbidding $\alpha_{\mathrm{nom}}$ to rise made it a latch that spent 71
+points of workspace excursion for a 0.74 % overrun of a *derated* cap;
+**metering the rise against the tank instead** (§8.2, adopted) keeps both
+guarantees and returns all 71 points at 8×. §8.6 then proves what can be proved
+about recursive feasibility — a sound feasibility certificate, which turns out
+to be the Task 1 gate's own row 1b, and an invariant terminal set that is
+nonempty exactly when the precondition holds strictly. Appendix A collects the
+merged statements at submittable granularity.
 
 **§9 then removes most of the problem rather than trading it.** All four
 findings were measured at one FR3 pose, and that pose is a bad one: its bias
@@ -126,7 +134,29 @@ in only **5 of 20** runs, always failing on Lemma 1's precondition. The flip,
 by contrast, is **20/20**. So the claim the evidence supports is the flip, and
 the dual-axis regime is a remark rather than an exhibit.
 
-§12 states what is left for a human.
+**§11 then does two things that narrow the claim.** §11.0 stops disclaiming the
+force-misclassification pillar and measures it: label a fraction of the human's
+force as disturbance and *every* certificate still holds, the four-term closure
+still closes to machine precision — against the wrong target — and the reported
+realization residual **falls by a factor of 19 while the true behavioural error
+more than doubles**. Misclassification does not merely evade the certificates;
+it registers as an improvement on the primary number §7–§10 report. §11.2 then
+applies this document's own rule and sweeps every remaining claim across the
+pose family: sixteen claims, split exactly in half, with a clean pattern —
+**the guarantees are pose-invariant, the hypotheses are not.** The torque
+envelope and the tank floor hold at every pose at every load; the precondition,
+the headroom and §8.6's certificate all fail at `phri2`'s end and recover by
+$\lambda \approx 0.4$.
+
+So the honest form of the claim is narrower than it first looks: **PIR
+certifies that the *declared* behaviour was realized within stated bounds, at
+poses where a run-time hypothesis it reports but does not defend happens to
+hold.** Whether the declaration matches what the human is doing is upstream of
+everything here.
+
+§12 states what is left for a human — which, after §12.0 answered the two
+specification questions from the sources, is decision 1 and ratifying
+decision 3.
 
 ---
 
@@ -2118,13 +2148,20 @@ would have been easy to gloss.
 - [x] ~~Re-run Tasks 2 and 3 at the §9.3 pose~~ — §9.4. Both axes are now
       exercised by `phri2`'s own benchmark, and §7.5's "flatter" conclusion is
       corrected: the trade is 7.7 %, as the synthesis note predicted.
-- [ ] Re-run §8's root-cause and fix comparison at the recommended pose too.
-      They are diagnoses of a problem the pose largely removes, so they are
-      still correct as history, but the numbers a paper quotes should be the
-      recommended pose's.
-- [ ] Search poses properly rather than on a $q_2, q_4, q_6$ grid screened by
-      one scenario, and check whether the recommended pose is one a real task
-      would accept.
+- [x] ~~Re-run §8's root-cause and fix comparison at the recommended pose
+      too~~ — §8.4, from `pir_rootcause_pose_q2m13_q4m13.json` and
+      `pir_fixes_pose_q2m13_q4m13.json`. All nine candidates score identically
+      at the ceiling there and $\alpha_{\mathrm{nom}}$ never fires, which is
+      the finding: §8 diagnoses a problem the pose largely removes. The numbers
+      a paper quotes should still be the recommended pose's.
+- [ ] **Search poses properly** rather than on a $q_2, q_4, q_6$ grid screened
+      by one scenario, and check whether the recommended pose is one a real
+      task would accept. §11.2 narrows this but does not discharge it: it
+      sweeps *claims* along one interpolation line between two known poses,
+      which answers "which claims are pose-invariant" without answering "is
+      this the right pose". §11.2's own finding that headroom peaks at
+      $\lambda = 0.8$ rather than at the recommended $\lambda = 1$ is direct
+      evidence that the line was never searched, only traversed.
 - [x] ~~Joint pose × $K_0$ scan looking for a well-behaved dual-axis operating
       point~~ — §10.5. 96 cells; one candidate, conditional on the box reading.
 - [x] ~~Promote §10.5's candidate to a proper case study — repeat it across
