@@ -1,0 +1,85 @@
+{
+  "lemma_A": {
+    "n_draws": 20000,
+    "n_rows_with_zero_residual": 35111,
+    "closed_form_vs_implementation_worst_gap": 0.0,
+    "n_disagreements": 0,
+    "n_infeasible_at_alpha_tau": 0,
+    "n_not_maximal": 0
+  },
+  "lemma_B": {
+    "n_draws": 20000,
+    "n_interior_violations": 0,
+    "n_composed_violations": 0,
+    "worst_composed_tau_ratio": 0.9999996058695664
+  },
+  "proposition_1_energy": [
+    {
+      "pose": "phri2",
+      "disturbance_scale": 1.0,
+      "extracted_J": -0.19093745203467255,
+      "budget_plus_dissipated_J": 0.7289559274331479,
+      "slack_J": 0.9198933794678203,
+      "holds": true,
+      "tank_floor_holds": true,
+      "max_tau_ratio": 0.999999469201629
+    },
+    {
+      "pose": "phri2",
+      "disturbance_scale": 4.0,
+      "extracted_J": 0.053689893921941734,
+      "budget_plus_dissipated_J": 0.8697901812122948,
+      "slack_J": 0.8161002872903531,
+      "holds": true,
+      "tank_floor_holds": true,
+      "max_tau_ratio": 1.0000000000000002
+    },
+    {
+      "pose": "phri2",
+      "disturbance_scale": 12.0,
+      "extracted_J": -0.43061483046124516,
+      "budget_plus_dissipated_J": 2.5040655306944566,
+      "slack_J": 2.934680361155702,
+      "holds": true,
+      "tank_floor_holds": true,
+      "max_tau_ratio": 1.0000000000000002
+    },
+    {
+      "pose": "recommended",
+      "disturbance_scale": 1.0,
+      "extracted_J": 0.4371366534492983,
+      "budget_plus_dissipated_J": 0.9151361901043709,
+      "slack_J": 0.47799953665507255,
+      "holds": true,
+      "tank_floor_holds": true,
+      "max_tau_ratio": 0.5321727104490203
+    },
+    {
+      "pose": "recommended",
+      "disturbance_scale": 4.0,
+      "extracted_J": 0.3865771627905309,
+      "budget_plus_dissipated_J": 1.0353422002752506,
+      "slack_J": 0.6487650374847197,
+      "holds": true,
+      "tank_floor_holds": true,
+      "max_tau_ratio": 0.5344070517433466
+    },
+    {
+      "pose": "recommended",
+      "disturbance_scale": 12.0,
+      "extracted_J": -0.15849143514007413,
+      "budget_plus_dissipated_J": 1.1784726684262425,
+      "slack_J": 1.3369641035663167,
+      "holds": true,
+      "tank_floor_holds": true,
+      "max_tau_ratio": 0.5703949116390133
+    }
+  ],
+  "standing_hypothesis": "(P1) |tau_base| <= tau_bar is a property of the pose and the trajectory, re-evaluated every tick and undefended by the controller; it appears as Merged Lemma 1's precondition, as the nonemptiness of Section 8.6's terminal set, and as the feasibility of the QP's own fallback",
+  "verdict": {
+    "A_closed_form_matches": true,
+    "A_alpha_tau_is_maximal": true,
+    "B_composition_safe": true,
+    "P1_energy_bound_holds": true
+  }
+}

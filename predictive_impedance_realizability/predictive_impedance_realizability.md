@@ -1988,12 +1988,17 @@ would have been easy to gloss.
 - [x] ~~Task 3: re-sweep the authorization-vs-tracking curve ($E_0$) with both
       tightenings active~~ — §7.4–7.5. The trade is **flatter**, not steeper,
       and §7.5 says why that is a bad sign rather than a good one.
-- [ ] **Task 2, the proof:** write merged Lemma 1 (per-joint $\alpha_\tau$
+- [x] ~~**Task 2, the proof:** write merged Lemma 1 (per-joint $\alpha_\tau$
       closed form, $\alpha_\tau\!\cdot\!\alpha_E$ on-segment lemma) and merged
-      Proposition 1 at submittable granularity. The implementation supplies the
-      operating point and confirms both halves empirically; the write-up must
-      state the precondition as a **standing hypothesis that can fail at run
-      time** (§7.7), not as a design-time check.
+      Proposition 1 at submittable granularity~~ — **Appendix A**, with
+      `pir_theory_check.py` checking each statement. Lemma A's content turns
+      out to be that the admissible set is an *interval anchored at zero*,
+      which is what makes the two authorizations composable without a joint
+      feasibility argument (Lemma B). (P1) is stated as the standing run-time
+      hypothesis §7.7 demanded, and Appendix A.4 tabulates the three separate
+      roles it plays. **Still owed**: a statement covering the model-mismatch
+      step — Lemmas A and B are exact algebra at one tick, but §8.6's recursion
+      is about the frozen model and re-freezing is not covered.
 - [x] ~~Decide what the controller does when the precondition fails~~ — §8.2.
       Folding the nominal into the authorization loop works, and the passivity
       cost it first appeared to carry is removed by authorizing the
@@ -2061,6 +2066,7 @@ python3 pir_joint_scan.py                    # ~8 min              (Section 10.5
 python3 pir_robustness.py                    # ~10 min             (Section 10.6)
 python3 pir_lemma_check.py                   # ~2 min              (Section 8.5)
 python3 pir_recursive_feasibility.py         # ~8 min              (Section 8.6)
+python3 pir_theory_check.py                  # ~3 min              (Appendix A)
 python3 -m pytest test_pir_knot_scan.py test_pir_controller.py -q
 ```
 
@@ -2068,3 +2074,160 @@ MuJoCo mesh assets are gitignored repo-wide and must be fetched from MuJoCo
 Menagerie into `../simulation/models/franka_fr3/assets/`. Pinned dependency
 versions are in `../impedance/simulation/requirements.txt`; `mujoco==3.10.0`
 matters, since 3.13 renamed `MjData.qM` and `fr3_mujoco.py` reads it.
+
+---
+
+## Appendix A. Task 2: the merged statements
+
+The synthesis note's Task 2 asks for merged Lemma 1 — the per-joint
+$\alpha_\tau$ closed form and the $\alpha_\tau\!\cdot\!\alpha_E$ on-segment
+lemma — and merged Proposition 1, at submittable granularity, with the
+precondition stated as a **standing run-time hypothesis** rather than a
+design-time check.
+
+The pieces were built in the order the experiments demanded them, so they are
+scattered: Merged Lemma 1′ is in §8.5, Propositions 2 and 3 in §8.6, the
+four-term identity in §7.3. This appendix collects the ones that are statements
+about the **algebra** rather than about one FR3 configuration, which is the
+part that transfers. `pir_theory_check.py` checks each; the numbers quoted are
+from it.
+
+### A.1 Lemma A — the closed form, and why it is an interval
+
+> **Lemma A.** Let $a$ be the anchor, $r = J_v^\top F_r$, and $\bar\tau$ the
+> per-joint envelope. If $|a_l| \le \bar\tau_l$ for every $l$, then
+> $$\mathcal{A}(a,r) := \{\alpha \in [0,1] : |a + \alpha r| \le \bar\tau\}
+> = [0,\ \alpha_\tau],\qquad
+> \alpha_\tau = \min\Big(1,\ \min_{l\,:\,r_l \neq 0}
+> \frac{\bar\tau_l - \operatorname{sgn}(r_l)\,a_l}{|r_l|}\Big).$$
+
+*Proof.* Joint $l$ constrains $\alpha$ by $-\bar\tau_l \le a_l + \alpha r_l
+\le \bar\tau_l$. For $r_l > 0$ the upper side binds, giving $\alpha \le
+(\bar\tau_l - a_l)/r_l$; for $r_l < 0$ the lower side binds, giving $\alpha \le
+(-\bar\tau_l - a_l)/r_l = (\bar\tau_l + a_l)/|r_l|$. Both are
+$(\bar\tau_l - \operatorname{sgn}(r_l)a_l)/|r_l|$. Rows with $r_l = 0$ reduce to
+$|a_l| \le \bar\tau_l$, the hypothesis. Each row's admissible set is an
+interval containing $0$ — again by the hypothesis — so the intersection with
+$[0,1]$ is $[0,\alpha_\tau]$. $\square$
+
+The content is not the formula, which is elementary; it is that
+**$\mathcal{A}$ is an interval anchored at zero**. That is the only property
+Lemma B needs, and it is what makes two independent authorizations composable
+without a joint feasibility argument.
+
+The hypothesis is Merged Lemma 1's precondition. **When it fails,
+$\mathcal{A}$ is empty** — not small, empty — and no scaling of the residual
+repairs it, because every $\alpha$ leaves $a_l$ where it is. That is §7.7's
+finding stated as algebra, and it is the reason $\alpha_{\mathrm{nom}}$ has to
+exist: only moving the anchor itself can restore feasibility.
+
+Checked on 20 000 random draws against the imported `torque_scale` (rows with
+$r_l = 0$ deliberately included): **0 disagreements, worst gap 0.0**;
+$\alpha_\tau$ admissible in every draw; and **0 failures of maximality** —
+nudging past $\alpha_\tau$ always leaves the box, so the bound is tight rather
+than merely sufficient.
+
+### A.2 Lemma B — composition on the segment
+
+> **Lemma B.** Under Lemma A's hypothesis, every $\beta \in [0,\alpha_\tau]$
+> satisfies $|a + \beta r| \le \bar\tau$. In particular
+> $\alpha_E\alpha_\tau$ is admissible for any $\alpha_E \in [0,1]$, so
+> composing the two scalings — in either order — preserves the torque
+> conclusion.
+
+*Proof.* Immediate from Lemma A: $\mathcal{A} = [0,\alpha_\tau]$ and
+$\alpha_E\alpha_\tau$ lies in it. $\square$
+
+This is the entire content of "the two authorizations do not fight", and it is
+worth saying why it is so cheap. The energy layer may only *shrink* the
+residual, and shrinking moves the command along the segment from
+$a + \alpha_\tau r$ back toward the anchor $a$, which is interior. Had
+$\alpha_E$ been allowed to grow the residual, or had the two layers scaled
+different quantities, no such argument would be available and the composition
+would need a joint feasibility proof.
+
+Checked on 20 000 draws: 0 violations at interior $\beta$, 0 violations of the
+composed scale, **worst composed $|\tau|/\bar\tau = 1.000000$** — saturating
+the envelope exactly, never through it, which is the same signature §7.3
+reports in closed loop.
+
+### A.3 Merged Proposition 1
+
+> **Merged Proposition 1.** Under **(P1)** $|\tau_{\mathrm{base}}| \le
+> \bar\tau$, **(P2)** $E_0 \ge E_{\min}$ and **(P3)** the energy-authorized
+> re-stiffening rule of §8.5:
+>
+> **(i) Torque.** $|\tau_\ell| \le \bar\tau$ at every tick.
+>
+> **(ii) Energy.** Over any interval, the energy the residual extracts at the
+> port is bounded by the initial budget plus the damping actually applied:
+> $$\sum_\ell h\,F_{\mathrm{applied},\ell}^\top v_\ell \;\le\;
+> (E_0 - E_{\min}) + \sum_\ell h\,\alpha_{\mathrm{nom},\ell}\,
+> v_\ell^\top D_0 v_\ell.$$
+>
+> **(iii) Realization.** The realized behaviour differs from the desired one by
+> exactly the four-term residual,
+> $a_{\mathrm{modelled}} - a_{\mathrm{id}} = r_{\mathrm{reg}} +
+> r_{\mathrm{con}} + r_{\mathrm{mod}} + r_{\mathrm{auth}}$.
+
+(i) is Lemma B plus $\alpha_{\mathrm{nom}}$, which supplies the anchor
+feasibility Lemma A assumes whenever $\tau_{\mathrm{base}}$ alone fits. (ii) is
+the storage-function form of §8.5's (C2), stated so that it does not depend on
+the tank's upper cap — capping discards credit, which only strengthens the
+bound. (iii) is an identity, not a fit; §7.3 measures its closure at
+$4.4\times10^{-16}$, and it has caught two real bugs.
+
+(ii) is checked as an *accumulation* on closed loops rather than on sampled
+ticks, because a per-tick check cannot fail the way a long run can:
+
+| pose | disturbance | extracted | budget + dissipated | slack |
+|---|---|---|---|---|
+| `phri2` | 1× | −0.19 J | 0.73 J | 0.92 J |
+| `phri2` | 4× | 0.05 J | 0.87 J | 0.82 J |
+| `phri2` | 12× | −0.43 J | 2.50 J | 2.93 J |
+| recommended | 1× | 0.44 J | 0.92 J | 0.48 J |
+| recommended | 4× | 0.39 J | 1.04 J | 0.65 J |
+| recommended | 12× | −0.16 J | 1.18 J | 1.34 J |
+
+Two things to read from the slack column. A negative extraction means the
+residual *fed* the port over the run, which is why (ii) is stated as a bound on
+the net rather than as a per-tick sign condition. And the slack **grows** with
+disturbance rather than shrinking — the damping term on the right scales with
+$\|v\|^2$, so a harder push funds more authority than it spends. The bound is
+therefore loose exactly where one would expect it to bind, and (ii) on its own
+is **not** what keeps the tank off its floor. That is (C2)'s per-tick argument
+in §8.5, which the $\alpha_E$ clamp enforces tick by tick; (ii) is the
+interval-level consequence, and the two should not be confused for one another.
+
+### A.4 The precondition is a standing hypothesis, and it is load-bearing three times
+
+Everything above is conditional on **(P1)**, and the write-up has to say so in
+a way that survives being skimmed. (P1) is a property of the pose and the
+trajectory. **Nothing in the controller defends it.** It is re-evaluated at
+every tick and it can fail at run time — §10.6 found it holding in 10 of 20
+resampled runs at one cell, while the *conclusion* held in all 20, which is the
+gap that forced Merged Lemma 1′ in the first place.
+
+It is not one hypothesis used once. It appears in three distinct roles:
+
+| where | what it buys | what its failure costs |
+|---|---|---|
+| Merged Lemma 1′'s precondition | $\mathcal{A} \neq \emptyset$, so $\alpha_\tau$ exists | no scaling of $F_r$ can hold the envelope (§7.7) |
+| §8.6's terminal set | $c^\star > 0$, so $X_f$ is nonempty | Proposition 3 has no terminal set at all |
+| §8.6's feasibility certificate | the QP's own $F_r = 0$ fallback is admissible | the certified fallback is not available |
+
+A paper that states (P1) once, early, as a design-time check would be
+misrepresenting all three. The honest framing is the one §12.0 arrived at from
+the other direction: **this is a document about what can be certified and
+when**, and the certificate's hypothesis is a run-time property that the
+architecture reports rather than guarantees. §8.4 measured where it sits — 0.636
+of the cap at `phri2`'s pose, 0.433 at the recommended one — and §8.6 measured
+what happens when it slips: at `phri2`'s pose under 12× disturbance, 4.3 % of
+solves are genuinely infeasible.
+
+**What Task 2 still does not have.** A statement covering the model-mismatch
+step. Lemmas A and B are exact algebra at one tick and transfer unchanged;
+Merged Proposition 1 (i)–(ii) hold per tick and accumulate; but Proposition 3's
+recursion is about the QP's frozen model, and re-freezing at the next solve is
+not covered by anything here. That is the one genuinely open theoretical item,
+and §11 records it as such.

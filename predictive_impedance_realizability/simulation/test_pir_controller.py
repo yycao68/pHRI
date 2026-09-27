@@ -478,3 +478,59 @@ def test_terminal_set_is_nonempty_exactly_when_P1_is_strict():
     tight = rf.terminal_set(A_cl, B, B_accel, d, f, tau_base, jt_g0, tight_cap)
     assert tight["P1_at_equilibrium_worst_ratio"] > 1.0
     assert tight["c_star"] == 0.0 and not tight["nonempty"]
+
+
+# --- Task 2, Lemmas A and B (Appendix A) --------------------------------
+
+
+def test_alpha_tau_closed_form_matches_the_imported_implementation():
+    """Lemma A. The closed form is written from the statement; the controller
+    calls phri2's own torque_scale. If these ever disagree, one of the two is
+    not the lemma Appendix A proves."""
+    import pir_theory_check as th
+
+    cap = pc.torque_envelope("derated_joint4")
+    rng = np.random.default_rng(11)
+    for _ in range(2000):
+        a = rng.uniform(-1.0, 1.0, cap.size) * cap
+        r = rng.uniform(-400.0, 400.0, cap.size)
+        r[rng.random(cap.size) < 0.25] = 0.0  # the rows the formula skips
+        mine = th.alpha_tau_closed_form(a, r, cap)
+        theirs, ok = pk.torque_scale(a, r, cap)
+        assert ok
+        assert abs(mine - theirs) < 1e-9
+
+
+def test_alpha_tau_is_the_right_endpoint_of_the_admissible_interval():
+    """Lemma A's real content: the admissible set is [0, alpha_tau], so
+    alpha_tau is both feasible and maximal."""
+    import pir_theory_check as th
+
+    cap = pc.torque_envelope("derated_joint4")
+    rng = np.random.default_rng(12)
+    saw_binding = False
+    for _ in range(2000):
+        a = rng.uniform(-1.0, 1.0, cap.size) * cap
+        r = rng.uniform(-400.0, 400.0, cap.size)
+        alpha = th.alpha_tau_closed_form(a, r, cap)
+        assert np.all(np.abs(a + alpha * r) <= cap + 1e-9), "alpha_tau infeasible"
+        if alpha < 1.0 - 1e-12:
+            saw_binding = True
+            nudge = alpha + 1e-3 * float(np.max(cap) / np.max(np.abs(r)))
+            assert np.any(np.abs(a + nudge * r) > cap + 1e-12), "not maximal"
+    assert saw_binding, "draw range never made the envelope bind"
+
+
+def test_composing_the_two_scalings_cannot_leave_the_envelope():
+    """Lemma B. Any further shrink of an admissible residual stays admissible,
+    which is why the energy layer needs no joint feasibility argument."""
+    import pir_theory_check as th
+
+    cap = pc.torque_envelope("derated_joint4")
+    rng = np.random.default_rng(13)
+    for _ in range(2000):
+        a = rng.uniform(-1.0, 1.0, cap.size) * cap
+        r = rng.uniform(-400.0, 400.0, cap.size)
+        alpha = th.alpha_tau_closed_form(a, r, cap)
+        composed = rng.uniform(0.0, 1.0) * alpha
+        assert np.all(np.abs(a + composed * r) <= cap + 1e-9)
