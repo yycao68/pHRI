@@ -1,0 +1,112 @@
+# Task: hold a fixed position while the SIMULATOR attaches a constant,
+# sustained disturbance force starting at t=5s (like a payload suddenly
+# grasped, or a constant unmodelled load) -- watch d_hat settle to a new
+# steady value that matches the injected force, and the tracking error
+# recover to (close to) zero rather than staying offset forever. This is the
+# offset-free tracking property active disturbance rejection is built to
+# provide: a PID controller with no integral action would settle at a
+# PERMANENT non-zero error under a constant disturbance like this; this
+# controller does not, because the observer keeps estimating the disturbance
+# and the control law keeps cancelling it (see docs/01_concepts.md's worked
+# example of what happens WITHOUT this mechanism).
+#
+# Different controller gains from hold.yaml/push.yaml, deliberately: a
+# SUSTAINED force needs more authority to recover from than push's brief
+# pulses, so this config uses a longer horizon and a lower r. With
+# hold.yaml's softer gains the recovery still happens, it is just slow enough
+# to be hard to read off the plot. Gains are task-dependent, not universal --
+# see docs/02_tuning_guide.md.
+#
+# q_pos/q_vel (2026-09-27): retuned like hold.yaml/push.yaml -- q_vel=0
+# (decouples stiffness from damping) and q_pos solved (via
+# tools/solve_task_space_gain.py) for the SAME target |L|=0.45 all four
+# configs now share, which happens to be almost exactly this config's own
+# PRE-retune level (|L|=0.434, unincident in sim) -- so this file changes the
+# least of the four. u_max converted from an unconverted force-domain
+# leftover (300 N, Finding 3 in original_implementation.md) to a genuine
+# acceleration-domain bound.
+
+controller:
+  dt: 0.01
+  horizon: 50
+  q_pos: 30116.2
+  q_vel: 0.0
+  r: 0.4
+  # 40 (a first estimate) was found to bind persistently on this config's
+  # own sustained-force transient, breaking the offset-free property (error
+  # plateaued at ~14mm instead of decaying to 0 -- the QP couldn't apply
+  # enough correction once d_hat grew past what 40 allowed). Measured natural
+  # peak with this bound removed: ~51 m/s^2; 100 keeps ~2x margin.
+  u_max: [100.0, 100.0, 100.0]
+  observer_q_d: 3.0
+  observer_r_y: 0.0004
+  observer_d_hat_max: 300.0
+
+# ---------------------------------------------------------------------------
+# Task-space PID gains, used by run_pid.py ONLY. run_hardware.py ignores this
+# block entirely, and run_pid.py ignores the `controller:` block above, so one
+# config file drives both controllers on the same task without either of them
+# reading the other's numbers.
+#
+# F = -(kp*e + ki*integral(e) + kd*edot), in newtons, with e in metres. Note
+# that these are NOT comparable to q_pos/q_vel/r above: those are cost weights
+# an LQR solve turns into a gain, these are the gain itself. See
+# docs/02_tuning_guide.md for how to put the two on the same footing.
+#
+# i_max caps the integral BEFORE ki multiplies it, so it bounds the steady-state
+# authority the integral term can ever build up. On an arm with real stiction
+# that cap is the parameter that decides whether a constant disturbance is ever
+# worked off at all -- if ki*i_max cannot exceed the force needed to break the
+# joints loose, the arm simply stops short and stays there, however long it runs.
+# f_max is the output saturation, a safety bound on the commanded force.
+pid:
+  # A SUSTAINED force is the case the integral term exists for, so this is
+  # the config to run if you want to see what a PID can and cannot do about
+  # a constant disturbance. Both ki and i_max are raised well above the
+  # other tasks for that reason: with hold.yaml's i_max the integral would
+  # saturate before it had built up enough force to recover.
+  dt: 0.01
+  kp: 160.0
+  ki: 10.0
+  kd: 3.0
+  i_max: 0.8
+  f_max: [10.0, 10.0]
+
+trajectory: {type: hold, ramp_s: 2.0}
+
+robot:
+  servo_ids: [12, 13, 14]
+  torque_constant_Nm_per_A: 1.78
+  current_limit_ticks: 200
+  joint_sign: [-1, -1, -1]
+  joint_offset_rad: [-1.3165, -0.1946, -1.4757]
+  gravity_scale: 1.0
+  # Reflected rotor/gearbox inertia -- see hold.yaml's comment for the full
+  # reasoning (137 deg -> 2.87 deg open-loop joint-3 RMSE at this value).
+  dyn_armature_kg_m2: 0.01
+  tau_max_Nm: [3.5, 3.0, 2.0]
+  joint_min_rad: [-1.50, -4.37, -2.16]
+  joint_max_rad: [1.32, -0.95, 1.57]
+  joint_barrier_gain: 4.0
+  joint_barrier_margin_rad: 0.15
+  startup_ramp_s: 2.0
+  sim_joint_damping: [0.03, 0.02, 0.015]
+  sim_home_q_rad: [0.6, -2.3493, -1.86]     # same well-conditioned pose as push.yaml/circle.yaml
+  posture_q_rad: [0.6, -2.3493, -1.86]
+  posture_kp: 0.02
+  posture_kd: 0.005
+  lambda_damping: 0.01
+  move_to_start_kp: 0.10
+  move_to_start_ki: 0.02
+  move_to_start_kd: 0.01
+  move_to_start_pos_eps_rad: 0.3
+  move_to_start_vel_eps_rad_s: 0.5
+  move_to_start_settle_time_s: 1.0
+
+# A single sustained -1N force in z, starting at t=5s and never turned off
+# (no t_end -- unlike push.yaml's pulses) -- e.g. approximating a payload
+# grasped at t=5s and held for the rest of the run.
+disturbance:
+  payload:
+  - t_start: 5.0
+    force_N: [0.0, 0.0, -1.0]

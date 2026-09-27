@@ -1,0 +1,13 @@
+numpy
+PyYAML
+matplotlib
+
+# Only needed for --backend dynamixel (real hardware). Sim runs
+# (--backend sim, the default) do not need this at all.
+dynamixel-sdk
+
+# Only needed for --use-jit (Numba-JIT-compiles the RNEA/FISTA hot paths;
+# see implementation_fix.md's "would C++ help" section for the measured
+# ~65x/~5x speedups, and README.md for how to enable it). Off by default;
+# every runner works without this installed.
+numba

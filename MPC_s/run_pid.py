@@ -1,0 +1,427 @@
+#!/usr/bin/env python3
+"""Torque-controlled task-space tracking on a 3-DOF (waist-removed)
+OpenManipulator-X, driven by a classical task-space PID. This is the BASELINE
+that run_hardware.py's MPC + disturbance observer is meant to be compared
+against; see docs/01_concepts.md, section 5, for why the comparison is the
+interesting part.
+
+Control law (operational-space, Current Control Mode):
+    x_ee = FK(q),  J = Jacobian(q),  ee_vel = J dq
+    e      = x_ee - p_d,  edot = ee_vel - dp_d
+    F_task = -(Kp e + Ki integral(e) + Kd edot)          # operational-space force
+    tau    = J^T F_task + N tau_post + gravity_scale*g(q) + C(q,dq)  # joint torque
+    Goal_Current = tau / K_t                             # per XM430 servo
+
+This file is deliberately a near-copy of run_hardware.py. The kinematics, the
+gravity and Coriolis model, the operational-space mass matrix Lambda(q), the
+dynamically-consistent null-space projector N, the startup ramp, the
+joint-limit barrier, the torque clip and the backend are all identical, and
+the two runners share no code at runtime. The ONE thing that differs is the
+feedback law that turns tracking error into a task-space force. If a run of
+this script and a run of run_hardware.py on the same config behave
+differently, that difference is attributable to the control law and to
+nothing else.
+
+Two asymmetries are worth stating plainly, because they are properties of the
+two laws rather than of this implementation:
+
+  1. The MPC path multiplies its command by Lambda(q), which turns a residual
+     acceleration into a force and so compensates for how the arm's effective
+     task-space inertia changes with configuration. A PID's gains are fixed
+     in force units, so the effective closed-loop stiffness it achieves
+     varies with the posture. Comparing the two at "the same gain" therefore
+     needs care -- see docs/02_tuning_guide.md.
+  2. The MPC path feeds the reference acceleration ddp_d forward. This one
+     does not: a textbook PID sees only error. On a slow reference that
+     matters little; on a fast one it is a real handicap, and an honest
+     comparison should say which regime it is reporting.
+
+SAFETY: start with the arm supported and a low current_limit_ticks; torque
+is disabled on any exit (including Ctrl+C and exceptions). Use --backend sim
+to validate a config before ever touching real hardware -- see
+docs/03_hardware_safety.md before running --backend dynamixel for the
+first time.
+
+Usage:
+  python run_pid.py --backend sim --config configs/hold.yaml --duration 10
+  python run_pid.py --backend sim --config configs/payload.yaml --duration 20 --output results/sim_payload_pid.csv
+  python run_pid.py --backend sim --config configs/circle.yaml --duration 60 --live-plot
+  python run_pid.py --backend dynamixel --port COM3 --baud 1000000 --config configs/hold.yaml --duration 20 --output results/hw_hold_pid.csv
+"""
+from __future__ import annotations
+
+import argparse
+import csv
+import sys
+import time
+from pathlib import Path
+
+import numpy as np
+import yaml
+
+if sys.platform == "win32":
+    # Windows defaults to a ~15.6 ms system timer resolution, which makes
+    # time.sleep() round up any short sleep to a multiple of that -- this alone
+    # can cap the achievable loop rate well below 100 Hz (dt=0.01) regardless of
+    # how fast the actual computation is. Raising the resolution to 1 ms fixes
+    # this; it's restored on exit. No-op on non-Windows.
+    import ctypes
+    _winmm = ctypes.WinDLL("winmm")
+    _winmm.timeBeginPeriod(1)
+    import atexit
+    atexit.register(lambda: _winmm.timeEndPeriod(1))
+
+ROOT = Path(__file__).resolve().parent
+sys.path.insert(0, str(ROOT / "lib"))
+
+from pid_controller import PIDConfig, TaskSpacePID  # noqa: E402
+from trajectory import CartesianTrajectory  # noqa: E402
+from move_to_start import move_to_start  # noqa: E402
+from kinematics import OpenManipulatorKinematics  # noqa: E402
+from dynamics import OpenManipulatorDynamics  # noqa: E402
+from dynamixel_backend import assert_startup_pose_plausible, create_backend  # noqa: E402
+
+
+def load_yaml(path: Path) -> dict:
+    with open(path, encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+    if not isinstance(data, dict):
+        raise ValueError(f"{path} must contain a YAML mapping")
+    return data
+
+
+def pid_config(config: dict) -> PIDConfig:
+    """Read the `pid:` block. `dt` falls back to `controller.dt` so that a
+    single config file drives both runners at the same rate -- running the two
+    controllers at different rates would confound the comparison."""
+    p = config.get("pid", {})
+    return PIDConfig(
+        dt=float(p.get("dt", config.get("controller", {}).get("dt", 0.01))),
+        kp=float(p.get("kp", 20.0)), ki=float(p.get("ki", 0.0)), kd=float(p.get("kd", 6.0)),
+        i_max=float(p.get("i_max", 0.02)),
+        f_max=np.asarray(p.get("f_max", [8.0, 8.0]), dtype=float),
+    )
+
+
+def build_kinematics(config: dict) -> OpenManipulatorKinematics:
+    k = config.get("kinematics", {})
+    kin = OpenManipulatorKinematics()
+    if "links" in k:
+        kin.links.update(k["links"])
+    if "link_masses" in k:
+        kin.link_masses = list(k["link_masses"])
+    return kin
+
+
+def _init_live_plot(kin: OpenManipulatorKinematics, traj: CartesianTrajectory, traj_cfg: dict,
+                     p0: np.ndarray) -> dict:
+    """Interactive matplotlib window showing the arm (as connected links in
+    the x-z plane), the end-effector path traced so far, and the target."""
+    import matplotlib.pyplot as plt
+
+    plt.ion()
+    fig, ax = plt.subplots(figsize=(6, 6))
+    ax.set_aspect("equal")
+    ax.set_xlabel("x [m]"); ax.set_ylabel("z [m]")
+    ax.set_title("3-DOF arm -- live view (x-z plane)")
+
+    if traj_cfg.get("type") == "circle":
+        period = float(traj_cfg.get("circle_period_s", 12.0))
+        ts = np.linspace(0.0, period, 200)
+        ref = np.array([traj.sample(tt)[0] for tt in ts])
+        ax.plot(ref[:, 0], ref[:, 2], "--", color="0.6", lw=1, label="target circle")
+
+    (arm_line,) = ax.plot([], [], "o-", color="tab:blue", lw=3, ms=6, label="arm")
+    (trace_line,) = ax.plot([], [], "-", color="tab:orange", lw=1, alpha=0.8, label="ee path")
+    (target_pt,) = ax.plot([], [], "x", color="tab:red", ms=9, mew=2, label="target")
+    txt = ax.text(0.02, 0.98, "", transform=ax.transAxes, va="top", fontsize=9, family="monospace")
+    ax.legend(loc="lower right", fontsize=8)
+
+    reach = sum(np.linalg.norm(kin.links[k]) for k in ("d0e_base", "d01", "d12", "d1e"))
+    ax.set_xlim(p0[0] - reach * 0.7, p0[0] + reach * 0.7)
+    ax.set_ylim(p0[2] - reach * 0.7, p0[2] + reach * 0.7)
+
+    fig.canvas.draw()
+    plt.pause(0.001)
+    return {"fig": fig, "arm": arm_line, "trace": trace_line, "target": target_pt,
+            "txt": txt, "trace_x": [], "trace_z": []}
+
+
+def _update_live_plot(live: dict, kin: OpenManipulatorKinematics, q: np.ndarray, p_d: np.ndarray,
+                       t: float, err_mm: float, hz: float) -> None:
+    import matplotlib.pyplot as plt
+
+    pts = [np.zeros(3)] + kin.frames(q)  # base origin + [j1, j2, j3, ee]
+    xs = [p[0] for p in pts]; zs = [p[2] for p in pts]
+    live["arm"].set_data(xs, zs)
+    live["trace_x"].append(xs[-1]); live["trace_z"].append(zs[-1])
+    live["trace"].set_data(live["trace_x"], live["trace_z"])
+    live["target"].set_data([p_d[0]], [p_d[2]])
+    live["txt"].set_text(f"t={t:6.2f}s  err={err_mm:6.2f}mm  {hz:5.1f}Hz")
+    live["fig"].canvas.draw_idle()
+    live["fig"].canvas.flush_events()
+    plt.pause(0.001)
+
+
+def run(args: argparse.Namespace) -> Path | None:
+    config = load_yaml(args.config)
+    kin = build_kinematics(config)
+    dyn = OpenManipulatorDynamics(use_jit=args.use_jit)
+    n = kin.n  # 3 for the waist-removed arm
+    backend = create_backend(args.backend, config, kin, args)
+
+    cfg = pid_config(config)
+    # This arm's 3 joints all rotate about the same (horizontal) axis, so the
+    # end-effector's y coordinate never changes -- the real task space is the
+    # 2D x-z plane, not full 3D (using 3D would make Lambda(q) structurally
+    # singular in the y direction).
+    cfg.dim = 2
+    pid = TaskSpacePID(cfg)
+
+    if args.use_jit:
+        t_warm = dyn.warmup()
+        print(f"[jit] Numba warm-up compile done in {t_warm:.2f}s (one-time cost, before the "
+              f"real-time loop below)")
+
+    robot = config.get("robot", {})
+    g_scale = float(robot.get("gravity_scale", 1.0))
+    # Optional reflected-rotor/gearbox inertia term, ADDED ON TOP of dyn.mass_matrix(q)'s
+    # link-only inertia -- see docs/01_concepts.md for how this was identified from real
+    # hardware data. Default 0.0: no effect unless a config explicitly sets it (and, for
+    # --backend sim, must match SimArmBackend's own copy of this same key so the plant
+    # the controller is tested against has the inertia the controller believes it has).
+    armature = float(robot.get("dyn_armature_kg_m2", 0.0))
+    tau_max = np.asarray(robot.get("tau_max_Nm", [3.5, 3.0, 2.0]), dtype=float)
+    jmin = np.asarray(robot.get("joint_min_rad", [-1.8, -1.6, -1.8]), dtype=float)
+    jmax = np.asarray(robot.get("joint_max_rad", [1.6, 1.4, 1.8]), dtype=float)
+    barrier_k = float(robot.get("joint_barrier_gain", 4.0))
+    barrier_margin = float(robot.get("joint_barrier_margin_rad", 0.15))
+    startup_ramp = float(robot.get("startup_ramp_s", 2.0))
+    q_nom = np.asarray(robot.get("posture_q_rad", robot.get("sim_home_q_rad", [-0.6, 0.3, 0.3])), dtype=float)
+    post_kp = float(robot.get("posture_kp", 0.6))
+    post_kd = float(robot.get("posture_kd", 0.12))
+    lam_damp = float(robot.get("lambda_damping", 2e-3))
+
+    traj = None
+    expected_p0 = kin.fk(q_nom)
+    q_target_for_move = q_nom
+
+    if args.backend == "dynamixel":
+        # Peek at the pose with torque still OFF (read_state() doesn't need enable()
+        # first), so a wildly-wrong starting pose can be refused before ever energizing
+        # the arm. move_to_start (below) handles the "normal" amount of mismatch from
+        # placing the arm by hand automatically -- this check only needs to catch
+        # genuinely alarming cases (wrong config loaded, arm in an unexpected pose).
+        io_check = backend.read_state()
+        assert_startup_pose_plausible(
+            io_check.q, jmin, jmax,
+            tol_rad=float(robot.get("startup_pose_max_overshoot_rad", 0.5)))
+        p0_check = kin.fk(io_check.q)
+        mismatch_m = float(np.linalg.norm((p0_check - expected_p0)[[0, 2]]))
+        threshold_m = float(robot.get("start_pose_mismatch_max_m", 0.4))
+        if mismatch_m > threshold_m and not args.force_start:
+            raise RuntimeError(
+                f"actual starting pose (q={np.round(io_check.q, 4)} -> ee={np.round(p0_check, 4)}) is "
+                f"{mismatch_m * 1000:.0f}mm away from configs's posture_q_rad pose (ee={np.round(expected_p0, 4)}). "
+                f"This is well beyond what move_to_start is meant to correct automatically and may indicate "
+                f"a wrong config or the arm being in a genuinely unexpected configuration -- verify by hand, "
+                f"or pass --force-start to proceed anyway.")
+
+    backend.enable()
+    # fh/live/sample declared before the try block so the finally block (and any code
+    # after the loop) can safely reference them even if an exception happens early --
+    # including during move_to_start, BEFORE the main control loop even starts.
+    fh = None; writer = None; live = None; sample = 0
+    J_xz_prev = None  # for Jdot_xz (task-space Coriolis/centrifugal term)
+    try:
+        # Slow, smooth joint-space move from wherever the arm currently is to
+        # posture_q_rad, BEFORE the real controller starts -- see lib/move_to_start.py's
+        # module docstring for why this exists. --move-to-start-timeout-s <=0 skips it.
+        if args.move_to_start_timeout_s > 0:
+            move_pos_eps = float(robot.get("move_to_start_pos_eps_rad", 0.1))
+            move_vel_eps = float(robot.get("move_to_start_vel_eps_rad_s", 0.05))
+            move_settle_s = float(robot.get("move_to_start_settle_time_s", 2.0))
+            move_kp = float(robot.get("move_to_start_kp", 0.1))
+            move_ki = float(robot.get("move_to_start_ki", 0.05))
+            move_kd = float(robot.get("move_to_start_kd", 0.03))
+            move_to_start(backend, dyn, q_target_for_move, dt=cfg.dt,
+                           tau_max=tau_max, kp=move_kp, ki=move_ki, kd=move_kd,
+                           gravity_scale=g_scale, timeout_s=args.move_to_start_timeout_s,
+                           pos_eps=move_pos_eps, vel_eps=move_vel_eps, settle_time_s=move_settle_s,
+                           jmin=jmin, jmax=jmax, barrier_k=barrier_k, barrier_margin=barrier_margin)
+            # --backend sim's disturbance.push/payload timing (t_start/t_end) is meant to be
+            # relative to when the REAL trajectory tracking starts, but SimArmBackend's
+            # internal clock has already been advanced by move_to_start's own read_state()
+            # calls above -- reset it so a disturbance scheduled for e.g. t_start=4.0
+            # fires 4s into the real run, not 4s minus however long move_to_start took.
+            if hasattr(backend, "reset_time"):
+                backend.reset_time()
+
+        io = backend.read_state()
+        p0 = kin.fk(io.q)
+        traj = CartesianTrajectory(config.get("trajectory", {}), p0, 0.0)
+        pid.reset()
+
+        if args.output:
+            args.output.parent.mkdir(parents=True, exist_ok=True)
+            fh = open(args.output, "w", newline="")
+
+        if args.live_plot:
+            if args.backend == "dynamixel":
+                print("[omx-pid] WARNING: --live-plot on real hardware adds rendering jitter "
+                      "to the control loop; consider --backend sim for visualization instead.")
+            live = _init_live_plot(kin, traj, config.get("trajectory", {}), p0)
+        plot_every = max(1, int(round(0.04 / cfg.dt)))  # throttle redraws to ~25 fps regardless of dt
+
+        dur_str = f"{args.duration}s" if args.duration is not None else "unlimited (Ctrl+C to stop)"
+        print(f"[omx-pid] backend={args.backend} ee0={np.round(p0, 4)} dt={cfg.dt} duration={dur_str}")
+        start = time.monotonic(); next_tick = start; t = 0.0
+        prev_wall = start
+        last_print = start
+        while True:
+            wall = time.monotonic()
+            # t is simulated/trajectory time under --backend sim (sample*dt), not
+            # wall-clock -- the duration check must use it, or --duration silently means
+            # "N real seconds" instead of "N seconds of trajectory time" whenever this
+            # machine's own per-tick compute can't keep up with the configured dt.
+            t = wall - start if args.backend == "dynamixel" else sample * cfg.dt
+            if args.duration is not None and t >= args.duration:
+                break
+            period_ms = 1000.0 * (wall - prev_wall)   # true wall-clock loop period
+            prev_wall = wall
+            c0 = time.monotonic()
+
+            io = backend.read_state()
+            ee = kin.fk(io.q)
+            J = kin.jacobian(io.q)
+            ee_vel = J @ io.dq
+
+            xz = [0, 2]  # only x,z: the y-direction Jacobian is structurally zero (see cfg.dim comment above)
+            J_xz = J[xz, :]          # 2x3
+            # Jdot_xz via backward finite difference on J_xz itself (consistent with
+            # kinematics.py's own jacobian() already being numerical). Zero on the very
+            # first tick (no previous sample yet); harmless since dq~=0 at t=0 anyway.
+            Jdot_xz = (J_xz - J_xz_prev) / cfg.dt if J_xz_prev is not None else np.zeros_like(J_xz)
+            J_xz_prev = J_xz.copy()
+            ee_xz = ee[xz]
+            ee_vel_xz = ee_vel[xz]
+
+            # ddp_d is deliberately unused: a textbook PID has no reference-
+            # acceleration feedforward. See this module's docstring, point 2.
+            p_d, dp_d, ddp_d = traj.sample(t)
+            y_err = ee_xz - p_d[xz]
+            vel_err = ee_vel_xz - dp_d[xz]
+            err_mm = 1000.0 * float(np.linalg.norm(y_err))
+
+            # Operational-space realization (2D, x-z plane) with null-space posture control:
+            #   F = Lambda(q)(xdd_d + u) + gravity;  N = I - J^T (Lambda J M^-1)
+            ramp = min(1.0, t / max(startup_ramp, 1e-6))  # linear gain ramp-up over the first
+            # startup_ramp_s seconds, so a large initial error doesn't produce a large
+            # instantaneous torque command the moment the loop starts.
+            Mq = dyn.mass_matrix(io.q) + armature * np.eye(n)
+            Minv = np.linalg.inv(Mq)
+            Lam = np.linalg.inv(J_xz @ Minv @ J_xz.T + lam_damp * np.eye(2))
+            N = np.eye(n) - J_xz.T @ (Lam @ J_xz @ Minv)        # dyn-consistent null-space
+            post_err = io.q - q_nom
+            tau_post = -post_kp * post_err - post_kd * io.dq
+            # Task-space Coriolis/centrifugal decoupling term mu = Lam(Jxz Minv C(q,dq)dq -
+            # Jdot_xz dq), matching Cao & Tang's classical operational-space impedance law
+            # (tau = C(q,dq)dq + G(q) + Jv^T(Lambda*pdd_d + mu + Kp*e + Kd*edot)) -- distinct
+            # from the joint-space C(q,dq)dq term below (this one accounts for how the
+            # task-space mapping itself changes with q/dq). Computed ONCE and reused below
+            # (this used to be two separate RNEA calls for the identical quantity).
+            cor = dyn.coriolis(io.q, io.dq)
+            mu_xz = Lam @ (J_xz @ Minv @ cor - Jdot_xz @ io.dq)
+            tau_base = N @ tau_post + g_scale * dyn.gravity(io.q) + cor + J_xz.T @ mu_xz
+
+            # The whole of the difference from run_hardware.py is this one line.
+            # Everything above and below it is the same code.
+            F_task = ramp * pid.step(y_err, vel_err)
+            tau_task = J_xz.T @ F_task
+            tau = tau_task + tau_base
+
+            # joint-limit barrier (a soft repulsive term near the joint limits, not a hard
+            # constraint): pushes away from the limits, growing linearly once a joint is
+            # within barrier_margin_rad of jmin/jmax.
+            over_hi = np.maximum(0.0, io.q - (jmax - barrier_margin))
+            over_lo = np.maximum(0.0, (jmin + barrier_margin) - io.q)
+            tau = tau - barrier_k * over_hi + barrier_k * over_lo
+            tau = np.clip(tau, -tau_max, tau_max)
+            backend.send_torque(tau)
+
+            compute_ms = 1000.0 * (time.monotonic() - c0)
+            if live is not None and sample % plot_every == 0:
+                _update_live_plot(live, kin, io.q, p_d, t, err_mm, 1000.0 / max(period_ms, 1e-6))
+            if fh is not None:
+                # F_task is 2D (x,z); pad to 3 elements (0 in the unused y slot) so
+                # every CSV keeps the same, tool-compatible column layout. There are
+                # no u/d_hat/innovation/y_hat columns here, because this controller has
+                # no observer -- tools/plot_traj.py detects their absence and simply
+                # skips the observer figures.
+                F3 = np.array([F_task[0], 0.0, F_task[1]])
+                # The gains go into every row, not just into the config file. A config
+                # gets edited; a logged run should still say what it was run with.
+                row = {"sample": sample, "t": t, "mode": config.get("trajectory", {}).get("type", "?"),
+                       "err_mm": err_mm, "compute_ms": compute_ms, "period_ms": period_ms,
+                       "pid_kp": cfg.kp, "pid_ki": cfg.ki, "pid_kd": cfg.kd, "pid_i_max": cfg.i_max,
+                       "dyn_armature_kg_m2": armature}
+                for name, vec in (("ee", ee), ("p_d", p_d), ("ee_vel", ee_vel),
+                                  ("F", F3), ("q", io.q), ("tau", tau),
+                                  ("cur", io.current_A)):
+                    for i, v in enumerate(np.asarray(vec).reshape(-1)):
+                        row[f"{name}_{i}"] = float(v)
+                if writer is None:
+                    writer = csv.DictWriter(fh, fieldnames=list(row.keys())); writer.writeheader()
+                writer.writerow(row)
+
+            sample += 1; next_tick += cfg.dt
+            now = time.monotonic()
+            if now - last_print >= 0.5:
+                hz_inst = 1000.0 / max(period_ms, 1e-6)
+                print(f"\r[omx-pid] t={t:6.2f}s  err={err_mm:7.2f}mm  "
+                      f"tau={np.round(tau, 2)}  ~{hz_inst:5.1f}Hz  n={sample:6d}   ",
+                      end="", flush=True)
+                last_print = now
+            time.sleep(max(0.0, next_tick - time.monotonic()))
+    except KeyboardInterrupt:
+        pass
+    finally:
+        backend.disable()
+        if fh is not None:
+            fh.close()
+        print(f"\n[omx-pid] torque disabled; {sample} samples")
+    if live is not None:
+        import matplotlib.pyplot as plt
+        print("[omx-pid] close the plot window to exit")
+        plt.ioff(); plt.show()
+    return args.output
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    ap.add_argument("--config", type=Path, default=ROOT / "configs" / "hold.yaml")
+    ap.add_argument("--backend", choices=["sim", "dynamixel"], default="sim")
+    ap.add_argument("--duration", type=float, default=None)
+    ap.add_argument("--output", type=Path, default=None)
+    ap.add_argument("--port", default=None)
+    ap.add_argument("--baud", type=int, default=1000000)
+    ap.add_argument("--live-plot", action="store_true",
+                     help="show a live matplotlib view of the arm links + ee trace while running")
+    ap.add_argument("--force-start", action="store_true",
+                     help="skip the starting-pose-vs-posture_q_rad safety check on --backend dynamixel")
+    ap.add_argument("--move-to-start-timeout-s", type=float, default=20.0,
+                     help="safety cap (seconds) on the joint-space homing move (a separate, simple "
+                          "joint-space PID, not the task-space controller under test) from wherever the "
+                          "arm currently is to posture_q_rad: runs until it "
+                          "actually settles there, however long that takes, then starts the real trajectory "
+                          "tracking. <=0 disables this and starts tracking immediately from the current pose.")
+    ap.add_argument("--use-jit", action="store_true",
+                     help="Numba-JIT-compile the RNEA hot path (lib/dynamics.py) instead of plain numpy "
+                          "-- measured ~65x speedup, see implementation_fix.md's \"would C++ help\" "
+                          "section. Requires `pip install numba` (optional, off by default). Pays a "
+                          "one-time JIT compile cost (~1-3s) at startup, before the real-time loop.")
+    run(ap.parse_args())
+
+
+if __name__ == "__main__":
+    main()

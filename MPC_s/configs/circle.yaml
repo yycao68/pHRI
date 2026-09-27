@@ -1,0 +1,102 @@
+# Task: track a continuously moving reference -- a 40mm-radius circle in the
+# x-z plane, one revolution every 60s. Unlike hold/push/payload, the
+# reference itself is always changing, so this exercises the controller's
+# actual TRACKING bandwidth, not just its disturbance-rejection authority at
+# a fixed point.
+#
+# Much stiffer gains than hold.yaml/push.yaml. A hold-task tuning applied to
+# a continuously moving reference gives a soft, laggy circle: the error does
+# not sit at a fixed offset, it drifts along with the trajectory, because the
+# loop bandwidth is too low to follow the reference's own velocity. Raising
+# q_pos buys that bandwidth back. Gains are genuinely task-dependent:
+# don't assume a good hold-task tuning is also a good circle-task tuning, or
+# vice versa (see docs/02_tuning_guide.md).
+#
+# q_pos/q_vel (2026-09-27): retuned like the other three configs -- q_vel=0
+# (decouples stiffness from damping) and q_pos solved (via
+# tools/solve_task_space_gain.py) for the SAME target |L|=0.45 all four
+# configs now share (this config's own pre-retune level was already close,
+# |L|=0.573 -- slightly ABOVE this target, so this is a small step back in
+# raw stiffness, not a jump; see implementation_fix.md for why a uniform
+# target across configs was chosen over matching this file's own prior
+# value). u_max converted from an unconverted force-domain leftover (300 N,
+# Finding 3 in original_implementation.md) to a genuine acceleration-domain
+# bound.
+
+controller:
+  dt: 0.01
+  horizon: 25
+  q_pos: 75290.6
+  q_vel: 0.0
+  r: 1.0
+  # Same bound as the other three configs (see payload.yaml's comment for
+  # the measurement this is based on); circle's own natural peak here is
+  # small (~0.5 m/s^2) so this has generous headroom, kept uniform across
+  # all four configs rather than separately re-tuned.
+  u_max: [100.0, 100.0, 100.0]
+  observer_q_d: 1.0
+  observer_r_y: 0.0004
+  observer_d_hat_max: 300.0
+
+# ---------------------------------------------------------------------------
+# Task-space PID gains, used by run_pid.py ONLY. run_hardware.py ignores this
+# block entirely, and run_pid.py ignores the `controller:` block above, so one
+# config file drives both controllers on the same task without either of them
+# reading the other's numbers.
+#
+# F = -(kp*e + ki*integral(e) + kd*edot), in newtons, with e in metres. Note
+# that these are NOT comparable to q_pos/q_vel/r above: those are cost weights
+# an LQR solve turns into a gain, these are the gain itself. See
+# docs/02_tuning_guide.md for how to put the two on the same footing.
+#
+# i_max caps the integral BEFORE ki multiplies it, so it bounds the steady-state
+# authority the integral term can ever build up. On an arm with real stiction
+# that cap is the parameter that decides whether a constant disturbance is ever
+# worked off at all -- if ki*i_max cannot exceed the force needed to break the
+# joints loose, the arm simply stops short and stays there, however long it runs.
+# f_max is the output saturation, a safety bound on the commanded force.
+pid:
+  # Stiffer than the hold tasks, for the same reason the MPC gains above are:
+  # a reference that never stops moving needs loop bandwidth, not just
+  # steady-state authority.
+  dt: 0.01
+  kp: 110.0
+  ki: 3.5
+  kd: 0.5
+  i_max: 0.03
+  f_max: [10.0, 10.0]
+
+trajectory: {type: circle, ramp_s: 3.0, circle_radius_m: 0.04, circle_period_s: 60.0,
+  circle_plane: xz}
+
+robot:
+  servo_ids: [12, 13, 14]
+  torque_constant_Nm_per_A: 1.78
+  current_limit_ticks: 300
+  joint_sign: [-1, -1, -1]
+  joint_offset_rad: [-1.3165, -0.1946, -1.4757]
+  gravity_scale: 1.0
+  # Reflected rotor/gearbox inertia -- see hold.yaml's comment for the full
+  # reasoning (137 deg -> 2.87 deg open-loop joint-3 RMSE at this value).
+  dyn_armature_kg_m2: 0.01
+  tau_max_Nm: [3.5, 3.0, 2.0]
+  joint_min_rad: [-1.50, -4.37, -2.16]
+  joint_max_rad: [1.32, -0.95, 1.57]
+  joint_barrier_gain: 4.0
+  joint_barrier_margin_rad: 0.15
+  startup_ramp_s: 3.0
+  sim_joint_damping: [0.03, 0.02, 0.015]
+  # Well-conditioned pose (x-z Jacobian's smaller singular value ~0.15) --
+  # verified with tools/check_circle_workspace.py before ever running this on
+  # hardware. Same pose as push.yaml/payload.yaml.
+  sim_home_q_rad: [0.6, -2.3493, -1.86]
+  posture_q_rad: [0.6, -2.3493, -1.86]
+  posture_kp: 0.10
+  posture_kd: 0.01
+  lambda_damping: 0.01
+  move_to_start_kp: 0.50
+  move_to_start_ki: 0.05
+  move_to_start_kd: 0.03
+  move_to_start_pos_eps_rad: 0.3
+  move_to_start_vel_eps_rad_s: 1.0
+  move_to_start_settle_time_s: 1.0

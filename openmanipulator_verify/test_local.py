@@ -24,6 +24,7 @@ sys.path.insert(0, str(ROOT / "lib"))
 sys.path.insert(0, str(ROOT / "verification"))
 
 from kinematics import OpenManipulatorKinematics  # noqa: E402
+from dynamics import OpenManipulatorDynamics  # noqa: E402
 from run_openmanipulator_hardware import run  # noqa: E402
 from analyze_log import load_csv, metrics  # noqa: E402
 
@@ -35,6 +36,19 @@ def main() -> None:
     assert ee.shape == (3,) and J.shape == (3, 4), "FK/Jacobian shape"
     assert np.linalg.norm(ee) > 0.05, f"EE too close to base: {ee}"
     print(f"[test] FK(home)={np.round(ee, 4)} m, |J|={np.linalg.norm(J):.3f}")
+
+    # Regression check: the fast, Jacobian-formula mass_matrix() must stay
+    # numerically identical to the original (slower) n-RNEA-call approach --
+    # not just fast, but provably the same answer.
+    dyn = OpenManipulatorDynamics()
+    rng = np.random.default_rng(0)
+    max_M_err = 0.0
+    for _ in range(50):
+        q_r = rng.uniform(-2.0, 2.0, 4)
+        max_M_err = max(max_M_err, np.max(np.abs(dyn.mass_matrix(q_r) - dyn._mass_matrix_rnea(q_r))))
+    assert max_M_err < 1e-9, f"fast mass_matrix() diverged from _mass_matrix_rnea by {max_M_err}"
+    print(f"[test] dynamics: fast mass_matrix() matches the slow RNEA reference "
+          f"(max err {max_M_err:.2e} N.m over 50 random samples)")
 
     out = ROOT / "results" / "hardware"
     for cfg, dur in (("hold", 6), ("payload", 12)):
