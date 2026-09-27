@@ -116,6 +116,7 @@ def run_variant(
     tank_initial: float | None = None,
     disturbance_scale: float = 1.0,
     overrides: dict | None = None,
+    qp_probe=None,
     pose: np.ndarray | None = None,
     push_axis: np.ndarray | None = None,
     seed: int = DISTURBANCE_SEED,
@@ -200,11 +201,20 @@ def run_variant(
 
         if i % mpc_every == 0:
             qp_ticks += 1
+            f_forecast = np.tile(force, (cfg.horizon, 1))
+            b_forecast = np.tile(behaviour_force, (cfg.horizon, 1))
+            # Hook for pir_recursive_feasibility.py, which needs the QP as it
+            # is about to be solved (mpc.control mutates previous_residual, so
+            # the probe has to run first).  None in every other caller.
+            if qp_probe is not None:
+                qp_probe(mpc=mpc, dyn=dyn, state=state, p_nominal=p_nominal,
+                         R_d=R_d, force_forecast=f_forecast,
+                         behaviour_forecast=b_forecast, step=i, time=t)
             try:
                 out = mpc.control(
                     dyn, state, p_nominal, R_d,
-                    force_forecast=np.tile(force, (cfg.horizon, 1)),
-                    behaviour_forecast=np.tile(behaviour_force, (cfg.horizon, 1)),
+                    force_forecast=f_forecast,
+                    behaviour_forecast=b_forecast,
                 )
                 f_r_held = out["residual_command"]
                 last = {"r_reg": out["r_reg"], "r_con_qp": out["r_con_qp"]}

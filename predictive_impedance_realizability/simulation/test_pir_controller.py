@@ -426,3 +426,55 @@ def test_lemma1_prime_C4_cost_is_the_latch_not_the_authorization(plant):
     # The monotone rule pays for it in workspace; the adopted rule does not.
     assert mono["max_abs_e_axis_m"] > off["max_abs_e_axis_m"] * 1.4
     assert on["max_abs_e_axis_m"] < off["max_abs_e_axis_m"] * 1.1
+
+
+# --- Propositions 2 and 3 (Section 8.6) ---------------------------------
+
+
+def test_feasibility_certificate_is_sound_on_the_assembled_qp(plant):
+    """Proposition 2 is a SUFFICIENT condition, so the one thing it may never
+    do is call a QP feasible that the solver rejects. Check the certificate
+    against the rows the controller actually assembles, not against a
+    re-derivation of them."""
+    import pir_recursive_feasibility as rf
+
+    dyn, state, _, _, _ = plant
+    cfg = PIRConfig(k0=K0, d0=D0, envelope="derated_joint4")
+    mpc = PIRRealizationMPC(pc.ImpedanceReference3D(), cfg)
+    force = np.array([0.0, 0.0, -pc.PUSH_MAGNITUDE_N])
+    forecast = np.tile(force, (mpc.cfg.horizon, 1))
+    rec = rf.check_certificate(
+        mpc, dyn, state, state.ee_pos.copy(), state.ee_rot.copy(),
+        forecast, forecast, cfg, np.zeros(3))
+    assert rec["F1_rate_admits_zero"], "zero must be reachable from zero"
+    assert rec["certificate_sound"], "certificate claimed a feasible QP OSQP rejects"
+    if rec["F2_holds"]:
+        assert rec["candidate_feasible"], "(F1)+(F2) must imply the candidate"
+        assert rec["solver_feasible"]
+
+
+def test_terminal_set_is_nonempty_exactly_when_P1_is_strict():
+    """Proposition 3's c* is positive iff the anchor has headroom at the
+    fallback equilibrium. Pin that equivalence on a synthetic plant, so it is
+    checked as algebra rather than inherited from one FR3 pose."""
+    import pir_recursive_feasibility as rf
+
+    A_cl = np.diag([0.9, 0.9, 0.9, 0.8, 0.8, 0.8])
+    B = np.vstack([0.01 * np.eye(3), 0.1 * np.eye(3)])
+    B_accel = np.zeros((6, 3))
+    jt_g0 = np.zeros((2, 6))
+    jt_g0[0, 0] = 100.0
+    jt_g0[1, 3] = 50.0
+    d, f = np.zeros(3), np.array([1.0, 0.0, 0.0])
+    tau_base = np.array([1.0, 1.0])
+
+    generous = rf.terminal_set(A_cl, B, B_accel, d, f, tau_base, jt_g0,
+                               np.array([50.0, 50.0]))
+    assert generous["schur"] and generous["nonempty"]
+    assert generous["P1_at_equilibrium_worst_ratio"] < 1.0
+
+    # Squeeze the cap onto the equilibrium anchor: headroom goes, c* goes.
+    tight_cap = np.array([abs(generous["_x_eq"][0] * 100.0 - 1.0) * 0.5, 50.0])
+    tight = rf.terminal_set(A_cl, B, B_accel, d, f, tau_base, jt_g0, tight_cap)
+    assert tight["P1_at_equilibrium_worst_ratio"] > 1.0
+    assert tight["c_star"] == 0.0 and not tight["nonempty"]

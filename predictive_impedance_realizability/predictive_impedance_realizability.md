@@ -987,7 +987,119 @@ separate backstop. So the overrun the ablation incurs is over a chosen budget,
 at $1.0074 \times 31.5 = 31.7$ N·m — **36 % of the FR3's 87 N·m hardware
 limit**. It is not a safety event, and decision 0 never depended on it.
 
-### 8.6 What this does and does not settle
+### 8.6 Propositions 2 and 3: recursive feasibility, scoped
+
+§12.0 showed the missing recursive-feasibility theorem is load-bearing in two
+places at once — it decides whether the workspace box can be hard, *and*
+whether the controller can promise a solve at the next tick. It is worth
+finding out how much of it is actually missing. `pir_recursive_feasibility.py`
+states what can be proved about the merged QP and checks every clause against
+the rows the controller assembles, rather than against a re-derivation of them.
+
+Reading the assembly, only three row groups are hard: the per-step torque rows,
+the residual magnitude box, and the residual rate rows. The workspace and speed
+rows carry free slack columns and cannot obstruct feasibility. That makes the
+zero-residual sequence a candidate certificate.
+
+> **Proposition 2 (feasibility certificate).** Let $x^{\mathrm{free}}$ be the
+> $\alpha\to0$ rollout $x_{k+1} = A_{cl}x_k + Bf_k + B_a d$ with
+> $A_{cl} = A - BG_0$, and let $\Delta_F$ be one step of the residual rate box
+> (40 N here). If **(F1)** $|F_{r,\mathrm{prev}}|_\infty \le \Delta_F$ and **(F2)**
+> $|\tau_{\mathrm{base}} - J_v^\top G_0 x^{\mathrm{free}}_k|_\infty \le
+> \bar\tau$ at every constrained step, then $F_r \equiv 0$ with the slacks set
+> to $x^{\mathrm{free}}$'s box violations is a feasible point, so the QP is
+> feasible.
+
+**(F2) is not a new object — it is the Task 1 gate's diagnostic row 1b,
+verbatim.** Row 1b was added in §4.3 for what looked like a different reason
+("require the precondition to hold on the fallback itself") and cut the
+apparent region from 70 cells to 33. It turns out to be the QP's feasibility
+certificate, which explains the factor of two: half those cells could not
+certify their own fallback.
+
+(F1) is the half worth dwelling on. When the held residual exceeds one rate
+step, zero is not reachable in one tick, and the certificate has to be the
+rate-limited **ramp** to zero (certificate B below). That is not bookkeeping:
+§7's documented fallback on an infeasible solve — "$F_r = 0$ is exactly the
+$\alpha\to0$ passive nominal the gate certified" — sets the held residual to
+zero *at the servo*, which the QP's own rate row would not have permitted in
+one step. The ramp is the reachable version of that fallback.
+
+> **Proposition 3 (recursive feasibility, frozen model).** Let $P$ solve
+> $A_{cl}^\top P A_{cl} - P = -I$ and let $a_j$ be the $j$-th row of
+> $J_v^\top G_0$. With $x_{eq} = (I - A_{cl})^{-1}(Bf + B_a d)$,
+> $$X_f = \{x : (x-x_{eq})^\top P (x-x_{eq}) \le c^\star\},\quad
+> c^\star = \min_j\Big[\tfrac{\bar\tau_j - |\tau_{\mathrm{base},j} -
+> a_j^\top x_{eq}|}{\sqrt{a_j^\top P^{-1} a_j}}\Big]^2$$
+> is invariant under the $\alpha\to0$ rollout and contained in the torque
+> polytope. If the frozen model is carried across two solves and the horizon
+> terminal state lies in $X_f$, the previous solution shifted and padded with
+> $F_r = 0$ is feasible at the next tick.
+
+Two things read straight off $c^\star$. It is positive **iff (P1) holds
+strictly at the fallback equilibrium** — Merged Lemma 1′'s hypothesis doing a
+second job — and $x_{eq}$ *is* diagnostic 3's fallback displacement, reached
+from the other direction. Three diagnostics introduced separately turn out to
+be three parts of one argument: diagnostic 3 says where the terminal set is
+centred, row 1b says the path there is torque-feasible, and $X_f$ is the
+invariant set around it.
+
+Checked over 1800 QP ticks — six closed loops, each tick's QP rebuilt, the
+candidate tested against its rows and the same QP solved alongside so the
+certificate can be paired with the solver's own verdict:
+
+| pose | dist. | (F1) | (F2) | either cert. | solver feasible | terminal in $X_f$ | $c^\star_{\min}$ | hard box solves |
+|---|---|---|---|---|---|---|---|---|
+| `phri2` | 1× | 100 % | 98.7 % | 98.7 % | 100 % | 98.7 % | 0.032 | 100 % |
+| `phri2` | 4× | 94.3 % | 95.7 % | 92.3 % | 98.7 % | 89.3 % | **0** | 92 % |
+| `phri2` | 12× | 75.3 % | 76.0 % | 71.7 % | 95.7 % | 74.0 % | **0** | 72 % |
+| **recommended** | 1× | 100 % | 100 % | **100 %** | 100 % | **100 %** | 1.344 | 100 % |
+| **recommended** | 4× | 100 % | 100 % | **100 %** | 100 % | **100 %** | 1.196 | 100 % |
+| **recommended** | 12× | 100 % | 100 % | **100 %** | 100 % | **100 %** | 0.804 | 100 % |
+
+**The certificate is sound: 0 unsound ticks out of 1800.** It never called a QP
+feasible that OSQP rejected, which is the one thing a sufficient condition may
+not do and the check that would have caught a candidate construction drifting
+from the assembly.
+
+**It is conservative, and that is the honest reading.** At `phri2`'s pose under
+12× it fails on 28.3 % of ticks while the solver fails on 4.3 %. A failed
+certificate means "this argument does not apply here", not "infeasible".
+
+**At the recommended pose every column is 100 %, at every disturbance out to
+12×.** The certificate holds at every tick, the terminal set is comfortably
+nonempty ($c^\star = 0.8$–1.5 against $10^{-2}$ at `phri2`'s pose), the horizon
+terminal state is always already inside it, and no solve is infeasible. So
+**Proposition 3 applies as stated there, and the terminal constraint that would
+make it self-enforcing could be added for free** — it never binds. At `phri2`'s
+pose it would bind on 1 tick in 4 under load, so adding it there would change
+the controller rather than document it.
+
+**And a hard box would work at the recommended pose.** Pinning the slacks to
+zero and re-solving (25 probed ticks per run — the re-solve is the expensive
+part), the QP stays feasible at every probed tick at every disturbance — while
+at `phri2`'s pose it drops to 72 % at 12×. §12.0 took "hard
+boxes break this QP" from the source's own comment; reproduced here, it is
+**pose-specific too**, and it only bites under load, which is why a
+nominal-load benchmark would never have found it. That does not license making
+the box hard — the source's recursive-feasibility objection is about
+worst-case guarantees, not about one trajectory staying lucky — but it does
+narrow the claim.
+
+Two numbers confirm the construction rather than the controller:
+$\rho(A_{cl}) = 0.967$ at `phri2`'s pose and $0.926$ at the recommended one, so
+$A_{cl}$ is Schur and the Lyapunov step is legitimate; and $x_{eq}$ lands at
+55.0 mm against diagnostic 3's independently computed 55.8 mm.
+
+**What this does not prove.** Proposition 3 is about the QP's own frozen model.
+$\tau_{\mathrm{base}}$, $J_v$ and $\Lambda^{-1}$ are re-frozen at every solve
+from the true nonlinear state, so the next QP does not start where this one
+predicted — the gap §7.1's four-term residual measures. Nothing here closes it.
+What changes is its size: the missing step is now "the re-frozen model lands in
+$X_f$", not "feasibility, somehow". And as with everything else in §8, the
+part that looks like a theory problem is largely a property of one pose.
+
+### 8.7 What this does and does not settle
 
 Findings 1–3 are one problem with a known knob and a priced trade. Finding 4 is
 solved. What remains open is the same thing §7.7 pointed at: even with
@@ -1577,9 +1689,14 @@ diagnostic that cannot be checked against an identity.
   axis, softer elsewhere — is the obvious first lever if the region needs
   widening, and the note explicitly defers it. A different pose could move the
   verdict in either direction.
-- **Recursive feasibility is untouched**, in both source papers and here. The
-  combined torque-envelope + energy-floor + workspace-slack feasibility
-  question is harder jointly than separately and cannot be self-certified.
+- **Recursive feasibility is proved only for the frozen model.** §8.6's
+  Propositions 2 and 3 give a sound feasibility certificate (0 unsound ticks
+  in 1800) and an invariant terminal set, and at the recommended pose both
+  hold at 100 % of ticks out to 12× disturbance. Neither closes the gap that
+  matters: $\tau_{\mathrm{base}}$, $J_v$ and $\Lambda^{-1}$ are re-frozen every
+  solve from the nonlinear state, so recursion still assumes the re-frozen
+  model lands in $X_f$. The certificate is also conservative — 28.3 % of ticks
+  fail it at `phri2`'s pose under 12× where only 4.3 % of solves actually fail.
 - **The force-misclassification pillar is untouched.** The tank meters
   $F_r^\top v$; if $F_h$ leaks into $\hat d$, or $F_e$ is folded into the
   disturbance, the power sign is wrong and every certificate here stays green
@@ -1905,6 +2022,12 @@ would have been easy to gloss.
       make the QP infeasible. Task 1's 33 cells stand and the 6-cell reading is
       withdrawn. Diagnostic 3 is a stronger requirement than the source's own,
       which this document had been citing as inherited; that is now stated.
+- [x] ~~Prove what can be proved about recursive feasibility~~ — §8.6.
+      Proposition 2 (the certificate, which turns out to be diagnostic row 1b)
+      and Proposition 3 (the terminal ellipsoid, nonempty iff (P1) is strict at
+      the fallback equilibrium). **Still owed**: the model-mismatch step. The
+      frozen-model result does not survive re-freezing, and closing that is the
+      same problem Task 2 has to state honestly.
 - [ ] Explicitly disclaim the force-misclassification pillar in whatever is
       written. §7.1's channel split makes the assumption visible; it does not
       discharge it.
@@ -1937,6 +2060,7 @@ python3 pir_axis_tension.py                  # seconds; reads results/ (Section 
 python3 pir_joint_scan.py                    # ~8 min              (Section 10.5)
 python3 pir_robustness.py                    # ~10 min             (Section 10.6)
 python3 pir_lemma_check.py                   # ~2 min              (Section 8.5)
+python3 pir_recursive_feasibility.py         # ~8 min              (Section 8.6)
 python3 -m pytest test_pir_knot_scan.py test_pir_controller.py -q
 ```
 

@@ -147,6 +147,17 @@ WORKSPACE_BOUND_M = FR3MPCConfig().position_limit
 DURATION_S = 6.0
 
 
+def pose_from_q246(q2: float, q4: float, q6: float) -> np.ndarray:
+    """Q_NEUTRAL with joints 2, 4 and 6 replaced.
+
+    Section 9's pose family moves only these three, so every study that takes
+    a --pose flag builds the same 7-vector this way.
+    """
+    pose = Q_NEUTRAL.copy()
+    pose[1], pose[3], pose[5] = q2, q4, q6
+    return pose
+
+
 def nominal_pose(pose: np.ndarray | None = None) -> np.ndarray:
     """The interaction pose, defaulting to phri2's own Q_NEUTRAL."""
     return Q_NEUTRAL.copy() if pose is None else np.asarray(pose, dtype=float).copy()

@@ -270,10 +270,7 @@ def main() -> None:
     parser.add_argument("--tag", default="")
     args = parser.parse_args()
 
-    pose = None
-    if args.pose is not None:
-        pose = pc.Q_NEUTRAL.copy()
-        pose[1], pose[3], pose[5] = args.pose
+    pose = None if args.pose is None else pc.pose_from_q246(*args.pose)
     suffix = f"_{args.tag}" if args.tag else ""
 
     args.outdir.mkdir(parents=True, exist_ok=True)
