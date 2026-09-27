@@ -12,7 +12,7 @@ tension between PIR's two axes (§10) each changed the previous answer.*
 > and several conclusions were later overturned by a subsequent experiment.
 > Rather than silently rewriting them, superseded sections carry a **Corrected
 > by §x** banner at the top and the correction is made where the newer evidence
-> is. §11.0 tabulates every such reversal, because the *pattern* in them — five
+> is. §11.1 tabulates every such reversal, because the *pattern* in them — five
 > of seven were properties of one FR3 configuration — is itself one of the
 > findings. If you want only the current state: §1, then §10, then §12.
 
@@ -1381,7 +1381,7 @@ The $K_0$ sweep at `phri2`'s pose shows exactly that:
 
 **I first wrote that up as a structural law — passivity peaks at intermediate
 $K_0$, feasibility binds monotonically — and the re-run at the recommended pose
-(§8.4) contradicts it**, which is the same over-generalisation §11.0 catalogues,
+(§8.4) contradicts it**, which is the same over-generalisation §11.1 catalogues,
 committed while writing the section that catalogues it. At the recommended pose
 the headroom never falls below 46 % at *any* $K_0$, the feasibility axis never
 binds at any $K_0$, and the $E_0$ trade *rises* with $K_0$ (0.021 up to
@@ -1621,7 +1621,83 @@ it is not the exhibit.
 
 ## 11. What this does not show
 
-### 11.0 A pattern in what turned out to be wrong
+### 11.0 The force-misclassification pillar, measured
+
+This sat on the owed list as "explicitly disclaim it". A disclaimer that says
+*this could fail* is worth much less than one that says **how, and by how
+much**, so `pir_misclassification.py` sweeps it instead, using
+`impedance_residual`'s own knob: a fraction $\lambda$ of the intentional force
+$F_h$ is labelled disturbance, so the behaviour layer stops responding to it
+while the plant still feels all of it. **Only the label moves** — the total
+force on the plant is identical at every $\lambda$, so every difference is
+attributable to the labelling alone.
+
+![](results/pir_misclassification.png)
+
+**Figure 12 — the pillar.** Panels 2 and 3 are the result: the residual the
+controller *reports* falls while the error against the behaviour actually
+asked for rises. The two poses almost coincide, which is worth noting on its
+own after §11.1's table — this is the one finding here that is **not** a
+property of one FR3 configuration.
+
+| $\lambda$ | certificates | closure | reported residual | **true** error | unaccounted energy |
+|---|---|---|---|---|---|
+| 0 % | all hold | $4.4\times10^{-16}$ | 2.510 | 2.510 | 0.000 J |
+| 10 % | all hold | $4.4\times10^{-16}$ | 1.915 | 2.510 | 0.107 J |
+| 25 % | all hold | $2.2\times10^{-16}$ | 1.029 | 2.517 | 0.268 J |
+| 50 % | all hold | $2.1\times10^{-17}$ | **0.131** | 2.985 | 0.465 J |
+| 75 % | all hold | $5.6\times10^{-17}$ | 0.223 | 4.342 | 0.368 J |
+| 100 % | all hold | $1.1\times10^{-16}$ | 0.365 | **5.701** | 0.050 J |
+
+(at `phri2`'s pose; the recommended pose differs by under 10 % on every row.)
+
+Three separate failures, and they are worth separating because only the first
+is what "the estimator is wrong" usually means.
+
+**The certificates do not notice, and could not.** Merged Lemma 1 bounds
+torque, the tank bounds the residual's port power, §8.6's propositions bound
+feasibility. None of them is a statement about whether the label is right, so a
+mislabelled force violates none of them. Every row above is green.
+
+**The best diagnostic in this document is structurally blind to it.** The
+four-term closure caught two real bugs (§8.2, §9.4) precisely because it is an
+identity rather than a fit. But it is evaluated against $a_{\mathrm{id}}$
+computed from the *behaviour channel* — so when the label is wrong it closes to
+machine precision **against the wrong target**. An identity certifies
+consistency with what you told it to aim at, and nothing more. That is the
+sharpest single statement available about the pillar.
+
+**The headline metric moves the wrong way.** This is the part I did not
+anticipate. The reported realization residual *falls* — 2.510 to 0.131, a
+factor of 19 — while the true behavioural error *rises*. The mechanism is plain
+once seen: with the push relabelled, the QP's job becomes cancelling it, and
+the leaked $a_{\mathrm{id}}$ is easy to realize. So misclassification does not
+merely evade detection; **it registers as an improvement on the primary number
+this document reports throughout §7–§10.** There is no experiment in those
+sections that would distinguish "the realization got better" from "the
+labelling got worse".
+
+Two cautions on reading the table. The unaccounted-energy column is the energy
+exchanged through the *misclassified portion of $F_h$ specifically*; it is not
+a claim that the ledger otherwise accounts for human power. It does not, and
+was never meant to — `impedance_residual`'s tank is about the residual's port
+power by design. And that column is **not monotone**: it peaks at $\lambda =
+0.5$ and collapses to 0.050 J at $\lambda = 1$, because a robot that ignores
+the push entirely behaves like a position controller — maximum behavioural
+error, minimum motion, minimum energy exchange. So it is not a detector either.
+The only monotone column is the one that requires knowing the true labels,
+which is exactly what is unavailable at run time.
+
+**What follows for the write-up.** Not a caveat at the end. Every realization
+residual reported in §7–§10 is a number that misclassification pushes
+*downward*, and the paper has to say so where those numbers appear, not in a
+limitations paragraph a reader reaches after believing them. **No green cell in
+this document implies anything about this pillar**, and the architecture's
+honest claim is narrower than it first looks: PIR certifies that the *declared*
+behaviour was realized within stated bounds. Whether the declaration matches
+what the human is doing is upstream of everything here.
+
+### 11.1 A pattern in what turned out to be wrong
 
 Ten conclusions in this document were later overturned or narrowed by a
 subsequent experiment — including one *correction* that was itself
@@ -1697,11 +1773,12 @@ diagnostic that cannot be checked against an identity.
   solve from the nonlinear state, so recursion still assumes the re-frozen
   model lands in $X_f$. The certificate is also conservative — 28.3 % of ticks
   fail it at `phri2`'s pose under 12× where only 4.3 % of solves actually fail.
-- **The force-misclassification pillar is untouched.** The tank meters
-  $F_r^\top v$; if $F_h$ leaks into $\hat d$, or $F_e$ is folded into the
-  disturbance, the power sign is wrong and every certificate here stays green
-  while the arm pushes a mislabelled wall. **No green cell in this document
-  implies anything about that pillar.**
+- **The force-misclassification pillar is not defended — now measured, §11.0.**
+  Every certificate holds at every leakage from 0 to 100 %, the closure identity
+  stays at machine precision against the wrong target, and the reported residual
+  *falls* by a factor of 19 while the true behavioural error more than doubles.
+  **No green cell in this document implies anything about that pillar**, and the
+  headline metric actively rewards getting the labels wrong.
 - **Double tightening is not measured.** `phri2`'s horizon-wide torque
   tightening and `impedance_residual`'s tank tightening compound in series.
   That curve is Task 3 and is expected to get steeper after the merge.
@@ -1840,7 +1917,7 @@ were. Three corrections follow:
   reading is a slack excursion rather than a violation. So one of the two
   objections to framing (b) is removed. The other — that it survives
   resampling in only 5 of 20 runs — is the one that actually decided decision 3,
-  and it stands. **(b) stays demoted.** Recording this is the point of §11.0:
+  and it stands. **(b) stays demoted.** Recording this is the point of §11.1:
   an answer that goes the way you hoped is exactly when to check whether it
   changes the conclusion, and here it does not.
 
@@ -2033,9 +2110,12 @@ would have been easy to gloss.
       the fallback equilibrium). **Still owed**: the model-mismatch step. The
       frozen-model result does not survive re-freezing, and closing that is the
       same problem Task 2 has to state honestly.
-- [ ] Explicitly disclaim the force-misclassification pillar in whatever is
-      written. §7.1's channel split makes the assumption visible; it does not
-      discharge it.
+- [x] ~~Explicitly disclaim the force-misclassification pillar in whatever is
+      written~~ — §11.0, and measured rather than disclaimed. §7.1's channel
+      split made the assumption visible; the sweep shows what it costs. **Still
+      owed**: the disclaimer has to travel with the residual numbers in §7–§10,
+      not sit in a limitations section, because misclassification pushes exactly
+      those numbers the flattering way.
 
 ---
 
@@ -2067,6 +2147,7 @@ python3 pir_robustness.py                    # ~10 min             (Section 10.6
 python3 pir_lemma_check.py                   # ~2 min              (Section 8.5)
 python3 pir_recursive_feasibility.py         # ~8 min              (Section 8.6)
 python3 pir_theory_check.py                  # ~3 min              (Appendix A)
+python3 pir_misclassification.py             # ~8 min              (Section 11.0)
 python3 -m pytest test_pir_knot_scan.py test_pir_controller.py -q
 ```
 

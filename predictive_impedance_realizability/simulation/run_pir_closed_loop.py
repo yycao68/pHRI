@@ -88,21 +88,30 @@ DISTURBANCE_SEED = 0
 def external_force(t: float, scenario: str, phases: np.ndarray,
                    disturbance_scale: float = 1.0,
                    push_axis: np.ndarray | None = None,
-                   pulse_scale: float | None = None) -> tuple[np.ndarray, np.ndarray]:
+                   pulse_scale: float | None = None,
+                   leakage: float = 0.0) -> tuple[np.ndarray, np.ndarray]:
     """Return (total external force, the part the behaviour layer is about).
 
     The push is what the impedance behaviour is defined against; the
     oscillatory part is a disturbance.  Both are applied to the plant, and the
     QP forecasts their sum by zero-order hold -- phri2 freezes the human force,
     impedance_residual freezes ``disturbance_hat``, and this does both at once.
+
+    ``leakage`` is the force-misclassification knob, and it is the same one
+    impedance_residual uses (``disturbance_hat = ... + leakage * f_int_hat``):
+    a fraction of the INTENTIONAL force is labelled disturbance, so the
+    behaviour layer stops responding to it while the plant still feels all of
+    it.  The plant's total is untouched -- only the label moves.  See
+    ``pir_misclassification.py``; 0.0 everywhere else.
     """
     axis = pc.PUSH_AXIS if push_axis is None else np.asarray(push_axis, float)
     push = pc.human_force_at(t, axis=tuple(axis))
+    behaviour = (1.0 - leakage) * push
     if scenario == "push":
-        return push, push
+        return push, behaviour
     if scenario == "merged":
         return push + rejectable_force(t, phases, disturbance_scale,
-                                       pulse_scale=pulse_scale), push
+                                       pulse_scale=pulse_scale), behaviour
     raise ValueError(scenario)
 
 
@@ -121,6 +130,7 @@ def run_variant(
     push_axis: np.ndarray | None = None,
     seed: int = DISTURBANCE_SEED,
     pulse_scale: float | None = None,
+    leakage: float = 0.0,
 ) -> dict:
     if variant not in ALL_VARIANTS:
         raise ValueError(variant)
@@ -188,7 +198,7 @@ def run_variant(
         t = env.time
         force, behaviour_force = external_force(t, scenario, phases,
                                                disturbance_scale, push_axis,
-                                               pulse_scale)
+                                               pulse_scale, leakage=leakage)
         dyn, state = env.get_dynamics_and_state(
             f_ext_override=np.concatenate([force, np.zeros(3)])
         )
@@ -292,6 +302,7 @@ def run_variant(
         "nominal_reauth": pir_cfg.nominal_reauth,
         "tank_initial": pir_cfg.tank_initial,
         "disturbance_scale": disturbance_scale,
+        "leakage": leakage,
         "seed": seed,
         "pulse_scale": disturbance_scale if pulse_scale is None else pulse_scale,
         "K0": k0 if variant != "phri2" else None,
