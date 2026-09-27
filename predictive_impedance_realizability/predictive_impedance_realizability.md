@@ -1784,6 +1784,84 @@ diagnostic that cannot be checked against an identity.
   That curve is Task 3 and is expected to get steeper after the merge.
 - Simulation only, translational only, affine memoryless behaviour class.
 
+### 11.2 Applying the rule: which claims survive a pose sweep
+
+§11.1's rule — *nothing in this line should be claimed without a pose sweep* —
+was stated and then broken in the next paragraph. Rather than restate it a
+third time, `pir_pose_sweep.py` applies it: take the claims this document still
+makes, evaluate each at every pose in §10.5's family, and report which are
+pose-invariant.
+
+**One variable.** The gain rule is held fixed — $K_0 = 380$ with $D_0$ from each
+pose's own task inertia — so only the pose moves. That is deliberately *not*
+the recommended operating point, whose $K_0 = 520$ was chosen for its pose by
+§9.3; sweeping both at once would conflate "the pose changed" with "the design
+changed", which is how five of §11.1's nine reversals happened.
+
+| $\lambda$ | 0.0 | 0.2 | 0.4 | 0.6 | 0.8 | 1.0 |
+|---|---|---|---|---|---|---|
+| diagnostic 3 fallback | 55.8 mm | 53.2 | 50.7 | 48.6 | 46.5 | 45.3 |
+| anchor headroom, 1× | **2.4 %** | 7.9 % | 22.8 % | 45.9 % | **64.2 %** | 49.5 % |
+| anchor headroom, 12× | **−13.5 %** | 0.3 % | 21.3 % | 43.1 % | 51.4 % | 40.5 % |
+| Prop 2 certificate, 12× | 71.7 % | 89.0 % | 99.0 % | 100 % | 100 % | 100 % |
+| Prop 3 terminal set, 12× | 90.0 % | 96.3 % | 100 % | 100 % | 100 % | 100 % |
+| hard box solves, 12× | 60.0 % | 93.3 % | 100 % | 100 % | 100 % | 100 % |
+| infeasible solves, 12× | **12** | 0 | 0 | 0 | 0 | 0 |
+
+Sixteen claims, and the split is exactly half:
+
+| pose-invariant (8) | pose-dependent (8) |
+|---|---|
+| Lemma 1 **conclusion**, 1× and 12× | Lemma 1 **precondition**, 12× |
+| tank floor, 12× | anchor headroom positive, 12× |
+| diagnostic 3: fallback inside the box | anchor headroom above 10 %, 1× |
+| $\alpha_{\mathrm{nom}}$ inert at 1× | $\alpha_{\mathrm{nom}}$ inert at 12× |
+| Lemma 1 precondition, 1× | Prop 2 certificate at every tick, 12× |
+| anchor headroom positive, 1× | Prop 3 terminal set nonempty, 12× |
+| §11.0's misclassification blindness | a hard box would still solve, 12× |
+| | no infeasible solve, 12× |
+
+**The split is not arbitrary, and it has a one-line summary: the guarantees are
+pose-invariant, the hypotheses are not.** Every claim that moves is a statement
+about the **feasibility axis** — the precondition, the headroom, the
+certificate, the terminal set — and every one of them fails at the `phri2` end
+and recovers by $\lambda \approx 0.4$. Nothing about the *conclusions* moves:
+the torque envelope and the tank floor hold at every pose at every load tested.
+That is Appendix A.4's structural point — (P1) is a standing run-time
+hypothesis, not a design-time fact — demonstrated across a family rather than
+argued.
+
+Three things this changes in how the rest should be read.
+
+**The pose dependence is really a pose × load interaction.** Every failing cell
+is at 12×; at 1× all sixteen claims hold at all six poses. So "§8 is a
+diagnosis of a configuration" (§8.4) is right but understated: it is a
+diagnosis of a configuration *under load*. A nominal-load benchmark at any pose
+in this family would have found nothing.
+
+**A binary claim can hide a gradient, and one of mine did.** "Anchor headroom
+positive at 1×" is pose-invariant — and useless, because it is 2.4 % at
+$\lambda = 0$ and 64.2 % at $\lambda = 0.8$. Raising the threshold to 10 %
+flips it to pose-dependent. I had predicted the torque-axis claims would move
+and they split instead; the claim that did not move only failed to move because
+it was too weak to. Where this document reports headroom, the number matters
+and the sign does not.
+
+**The recommended pose is not the best pose in this family.** Headroom peaks at
+$\lambda = 0.8$ (64.2 % at 1×) rather than at $\lambda = 1.0$ (49.5 %). §9.3
+selected $\lambda = 1$ against a different objective and at its own $K_0$, so
+this is not a contradiction — but it does mean the pose recommendation is not
+"as far from `phri2` as possible", and nothing in §9 established that it was.
+
+**And the one finding that does not move at all is the uncomfortable one.**
+§11.0's misclassification failure is pose-invariant in an unusually strong
+sense: the leaked runs converge to nearly the same place at every pose —
+reported residual 0.104–0.134 against a clean 2.04–2.51, true error 2.99–3.03.
+Six poses, and the failure mode lands within 3 % of itself each time. After
+nine reversals that were properties of one FR3 configuration, the one result
+here that generalises cleanly is the one about what the certificates cannot
+see.
+
 ---
 
 ## 12. Decision gate
@@ -2082,8 +2160,11 @@ would have been easy to gloss.
       re-stiffening against the tank rather than forbidding it. The escalation route back into
       `certified-realizability` is still the answer for the residual condition
       §8.4 names ($\tau_{\mathrm{base}}$ itself), which no local fix defends.
-- [ ] Re-run the Task 1 gate at a pose/push direction that does not load
-      joint 4, and check whether the headroom problem is FR3-pose-specific.
+- [x] ~~Re-run the Task 1 gate at a pose/push direction that does not load
+      joint 4, and check whether the headroom problem is FR3-pose-specific~~ —
+      §9.3 for the gate, §11.2 for the claim-level sweep. The headroom problem
+      is pose-specific *and* load-specific: every pose-dependent claim fails
+      only at 12×, and only at the `phri2` end of the family.
 - [x] ~~**Implement and test the per-contact reset** `nominal_auth_mono`
       needs~~ — §8.2, §8.5. Solved without a reset, and better: metering the
       re-stiffening against the tank (`nominal_auth_energy`) removes the latch
@@ -2148,6 +2229,8 @@ python3 pir_lemma_check.py                   # ~2 min              (Section 8.5)
 python3 pir_recursive_feasibility.py         # ~8 min              (Section 8.6)
 python3 pir_theory_check.py                  # ~3 min              (Appendix A)
 python3 pir_misclassification.py             # ~8 min              (Section 11.0)
+python3 pir_pose_sweep.py                    # ~22 min             (Section 11.2)
+python3 pir_pose_sweep.py --rescore          # re-derive the claim table only
 python3 -m pytest test_pir_knot_scan.py test_pir_controller.py -q
 ```
 

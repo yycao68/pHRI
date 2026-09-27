@@ -1,0 +1,481 @@
+{
+  "question": "which claims are about the architecture, not the pose?",
+  "design_held_fixed": {
+    "K0": 380.0,
+    "D0_rule": "2 * zeta * sqrt(K0 * Lambda_axis)"
+  },
+  "lambda_grid": [
+    0.0,
+    0.2,
+    0.4,
+    0.6,
+    0.8,
+    1.0
+  ],
+  "rows": [
+    {
+      "lambda": 0.0,
+      "K0": 380.0,
+      "D0": 29.047268974261634,
+      "diag3_e_ss_m": 0.05577598596242624,
+      "s1": {
+        "lemma1_precondition_holds": true,
+        "lemma1_conclusion_holds": true,
+        "tank_floor_holds": true,
+        "alpha_nom_inert": true,
+        "anchor_headroom": 0.02381402939879007,
+        "cert_frac": 0.9866666666666667,
+        "terminal_nonempty_frac": 1.0,
+        "hard_box_frac": 1.0,
+        "qp_infeasible_solves": 0
+      },
+      "s12": {
+        "lemma1_precondition_holds": false,
+        "lemma1_conclusion_holds": true,
+        "tank_floor_holds": true,
+        "alpha_nom_inert": false,
+        "anchor_headroom": -0.1347853914049979,
+        "cert_frac": 0.7166666666666667,
+        "terminal_nonempty_frac": 0.9,
+        "hard_box_frac": 0.6,
+        "qp_infeasible_solves": 12
+      },
+      "misclassification": {
+        "clean": {
+          "reported": 2.5103002280281173,
+          "true": 2.5103002280281173,
+          "certificates_hold": true
+        },
+        "leaked": {
+          "reported": 0.13132880272095682,
+          "true": 2.9848175178217193,
+          "certificates_hold": true
+        }
+      }
+    },
+    {
+      "lambda": 0.2,
+      "K0": 380.0,
+      "D0": 26.482675302706554,
+      "diag3_e_ss_m": 0.053205251339971074,
+      "s1": {
+        "lemma1_precondition_holds": true,
+        "lemma1_conclusion_holds": true,
+        "tank_floor_holds": true,
+        "alpha_nom_inert": true,
+        "anchor_headroom": 0.07885520128254153,
+        "cert_frac": 1.0,
+        "terminal_nonempty_frac": 1.0,
+        "hard_box_frac": 1.0,
+        "qp_infeasible_solves": 0
+      },
+      "s12": {
+        "lemma1_precondition_holds": true,
+        "lemma1_conclusion_holds": true,
+        "tank_floor_holds": true,
+        "alpha_nom_inert": true,
+        "anchor_headroom": 0.0032727870999548214,
+        "cert_frac": 0.89,
+        "terminal_nonempty_frac": 0.9633333333333334,
+        "hard_box_frac": 0.9333333333333333,
+        "qp_infeasible_solves": 0
+      },
+      "misclassification": {
+        "clean": {
+          "reported": 2.38341025156023,
+          "true": 2.38341025156023,
+          "certificates_hold": true
+        },
+        "leaked": {
+          "reported": 0.1293691034795354,
+          "true": 2.995425004045874,
+          "certificates_hold": true
+        }
+      }
+    },
+    {
+      "lambda": 0.4,
+      "K0": 380.0,
+      "D0": 26.032300374390278,
+      "diag3_e_ss_m": 0.05072418707333214,
+      "s1": {
+        "lemma1_precondition_holds": true,
+        "lemma1_conclusion_holds": true,
+        "tank_floor_holds": true,
+        "alpha_nom_inert": true,
+        "anchor_headroom": 0.22772305155709383,
+        "cert_frac": 1.0,
+        "terminal_nonempty_frac": 1.0,
+        "hard_box_frac": 1.0,
+        "qp_infeasible_solves": 0
+      },
+      "s12": {
+        "lemma1_precondition_holds": true,
+        "lemma1_conclusion_holds": true,
+        "tank_floor_holds": true,
+        "alpha_nom_inert": true,
+        "anchor_headroom": 0.21290674381469266,
+        "cert_frac": 0.99,
+        "terminal_nonempty_frac": 1.0,
+        "hard_box_frac": 1.0,
+        "qp_infeasible_solves": 0
+      },
+      "misclassification": {
+        "clean": {
+          "reported": 2.259773595414164,
+          "true": 2.259773595414164,
+          "certificates_hold": true
+        },
+        "leaked": {
+          "reported": 0.1337387062053903,
+          "true": 3.0026150039940656,
+          "certificates_hold": true
+        }
+      }
+    },
+    {
+      "lambda": 0.6,
+      "K0": 380.0,
+      "D0": 27.766113300281383,
+      "diag3_e_ss_m": 0.04862370304247071,
+      "s1": {
+        "lemma1_precondition_holds": true,
+        "lemma1_conclusion_holds": true,
+        "tank_floor_holds": true,
+        "alpha_nom_inert": true,
+        "anchor_headroom": 0.4590836056229808,
+        "cert_frac": 1.0,
+        "terminal_nonempty_frac": 1.0,
+        "hard_box_frac": 1.0,
+        "qp_infeasible_solves": 0
+      },
+      "s12": {
+        "lemma1_precondition_holds": true,
+        "lemma1_conclusion_holds": true,
+        "tank_floor_holds": true,
+        "alpha_nom_inert": true,
+        "anchor_headroom": 0.4307267114778811,
+        "cert_frac": 1.0,
+        "terminal_nonempty_frac": 1.0,
+        "hard_box_frac": 1.0,
+        "qp_infeasible_solves": 0
+      },
+      "misclassification": {
+        "clean": {
+          "reported": 2.155748859638619,
+          "true": 2.155748859638619,
+          "certificates_hold": true
+        },
+        "leaked": {
+          "reported": 0.12728547434647947,
+          "true": 3.0114845723831616,
+          "certificates_hold": true
+        }
+      }
+    },
+    {
+      "lambda": 0.8,
+      "K0": 380.0,
+      "D0": 30.923580313325417,
+      "diag3_e_ss_m": 0.046506368544483416,
+      "s1": {
+        "lemma1_precondition_holds": true,
+        "lemma1_conclusion_holds": true,
+        "tank_floor_holds": true,
+        "alpha_nom_inert": true,
+        "anchor_headroom": 0.6421091485822228,
+        "cert_frac": 1.0,
+        "terminal_nonempty_frac": 1.0,
+        "hard_box_frac": 1.0,
+        "qp_infeasible_solves": 0
+      },
+      "s12": {
+        "lemma1_precondition_holds": true,
+        "lemma1_conclusion_holds": true,
+        "tank_floor_holds": true,
+        "alpha_nom_inert": true,
+        "anchor_headroom": 0.51394179240957,
+        "cert_frac": 1.0,
+        "terminal_nonempty_frac": 1.0,
+        "hard_box_frac": 1.0,
+        "qp_infeasible_solves": 0
+      },
+      "misclassification": {
+        "clean": {
+          "reported": 2.0827946807813125,
+          "true": 2.0827946807813125,
+          "certificates_hold": true
+        },
+        "leaked": {
+          "reported": 0.11556370755745746,
+          "true": 3.020799112607931,
+          "certificates_hold": true
+        }
+      }
+    },
+    {
+      "lambda": 1.0,
+      "K0": 380.0,
+      "D0": 34.393974981201765,
+      "diag3_e_ss_m": 0.04532113478593494,
+      "s1": {
+        "lemma1_precondition_holds": true,
+        "lemma1_conclusion_holds": true,
+        "tank_floor_holds": true,
+        "alpha_nom_inert": true,
+        "anchor_headroom": 0.49473324983369626,
+        "cert_frac": 1.0,
+        "terminal_nonempty_frac": 1.0,
+        "hard_box_frac": 1.0,
+        "qp_infeasible_solves": 0
+      },
+      "s12": {
+        "lemma1_precondition_holds": true,
+        "lemma1_conclusion_holds": true,
+        "tank_floor_holds": true,
+        "alpha_nom_inert": true,
+        "anchor_headroom": 0.4052811568793403,
+        "cert_frac": 1.0,
+        "terminal_nonempty_frac": 1.0,
+        "hard_box_frac": 1.0,
+        "qp_infeasible_solves": 0
+      },
+      "misclassification": {
+        "clean": {
+          "reported": 2.0363134863251267,
+          "true": 2.0363134863251267,
+          "certificates_hold": true
+        },
+        "leaked": {
+          "reported": 0.10401682255249693,
+          "true": 3.032026275042093,
+          "certificates_hold": true
+        }
+      }
+    }
+  ],
+  "claims": {
+    "Lemma 1 precondition holds (1x)": {
+      "per_pose": {
+        "0.0": true,
+        "0.2": true,
+        "0.4": true,
+        "0.6": true,
+        "0.8": true,
+        "1.0": true
+      },
+      "pose_invariant": true,
+      "holds_everywhere": true,
+      "holds_nowhere": false
+    },
+    "Lemma 1 precondition holds (12x)": {
+      "per_pose": {
+        "0.0": false,
+        "0.2": true,
+        "0.4": true,
+        "0.6": true,
+        "0.8": true,
+        "1.0": true
+      },
+      "pose_invariant": false,
+      "holds_everywhere": false,
+      "holds_nowhere": false
+    },
+    "Lemma 1 conclusion holds (1x)": {
+      "per_pose": {
+        "0.0": true,
+        "0.2": true,
+        "0.4": true,
+        "0.6": true,
+        "0.8": true,
+        "1.0": true
+      },
+      "pose_invariant": true,
+      "holds_everywhere": true,
+      "holds_nowhere": false
+    },
+    "Lemma 1 conclusion holds (12x)": {
+      "per_pose": {
+        "0.0": true,
+        "0.2": true,
+        "0.4": true,
+        "0.6": true,
+        "0.8": true,
+        "1.0": true
+      },
+      "pose_invariant": true,
+      "holds_everywhere": true,
+      "holds_nowhere": false
+    },
+    "tank floor holds (12x)": {
+      "per_pose": {
+        "0.0": true,
+        "0.2": true,
+        "0.4": true,
+        "0.6": true,
+        "0.8": true,
+        "1.0": true
+      },
+      "pose_invariant": true,
+      "holds_everywhere": true,
+      "holds_nowhere": false
+    },
+    "alpha_nom inert (1x)": {
+      "per_pose": {
+        "0.0": true,
+        "0.2": true,
+        "0.4": true,
+        "0.6": true,
+        "0.8": true,
+        "1.0": true
+      },
+      "pose_invariant": true,
+      "holds_everywhere": true,
+      "holds_nowhere": false
+    },
+    "alpha_nom inert (12x)": {
+      "per_pose": {
+        "0.0": false,
+        "0.2": true,
+        "0.4": true,
+        "0.6": true,
+        "0.8": true,
+        "1.0": true
+      },
+      "pose_invariant": false,
+      "holds_everywhere": false,
+      "holds_nowhere": false
+    },
+    "diagnostic 3: fallback inside the box": {
+      "per_pose": {
+        "0.0": true,
+        "0.2": true,
+        "0.4": true,
+        "0.6": true,
+        "0.8": true,
+        "1.0": true
+      },
+      "pose_invariant": true,
+      "holds_everywhere": true,
+      "holds_nowhere": false
+    },
+    "anchor headroom positive (1x)": {
+      "per_pose": {
+        "0.0": true,
+        "0.2": true,
+        "0.4": true,
+        "0.6": true,
+        "0.8": true,
+        "1.0": true
+      },
+      "pose_invariant": true,
+      "holds_everywhere": true,
+      "holds_nowhere": false
+    },
+    "anchor headroom positive (12x)": {
+      "per_pose": {
+        "0.0": false,
+        "0.2": true,
+        "0.4": true,
+        "0.6": true,
+        "0.8": true,
+        "1.0": true
+      },
+      "pose_invariant": false,
+      "holds_everywhere": false,
+      "holds_nowhere": false
+    },
+    "anchor headroom above 10% (1x)": {
+      "per_pose": {
+        "0.0": false,
+        "0.2": false,
+        "0.4": true,
+        "0.6": true,
+        "0.8": true,
+        "1.0": true
+      },
+      "pose_invariant": false,
+      "holds_everywhere": false,
+      "holds_nowhere": false
+    },
+    "Prop 2 certificate at every tick (12x)": {
+      "per_pose": {
+        "0.0": false,
+        "0.2": false,
+        "0.4": false,
+        "0.6": true,
+        "0.8": true,
+        "1.0": true
+      },
+      "pose_invariant": false,
+      "holds_everywhere": false,
+      "holds_nowhere": false
+    },
+    "Prop 3 terminal set nonempty (12x)": {
+      "per_pose": {
+        "0.0": false,
+        "0.2": false,
+        "0.4": true,
+        "0.6": true,
+        "0.8": true,
+        "1.0": true
+      },
+      "pose_invariant": false,
+      "holds_everywhere": false,
+      "holds_nowhere": false
+    },
+    "a hard box would still solve (12x)": {
+      "per_pose": {
+        "0.0": false,
+        "0.2": false,
+        "0.4": true,
+        "0.6": true,
+        "0.8": true,
+        "1.0": true
+      },
+      "pose_invariant": false,
+      "holds_everywhere": false,
+      "holds_nowhere": false
+    },
+    "no infeasible solve (12x)": {
+      "per_pose": {
+        "0.0": false,
+        "0.2": true,
+        "0.4": true,
+        "0.6": true,
+        "0.8": true,
+        "1.0": true
+      },
+      "pose_invariant": false,
+      "holds_everywhere": false,
+      "holds_nowhere": false
+    },
+    "misclassification is invisible": {
+      "per_pose": {
+        "0.0": true,
+        "0.2": true,
+        "0.4": true,
+        "0.6": true,
+        "0.8": true,
+        "1.0": true
+      },
+      "pose_invariant": true,
+      "holds_everywhere": true,
+      "holds_nowhere": false
+    }
+  },
+  "verdict": {
+    "n_claims": 16,
+    "n_pose_invariant": 8,
+    "pose_dependent_claims": [
+      "Lemma 1 precondition holds (12x)",
+      "alpha_nom inert (12x)",
+      "anchor headroom positive (12x)",
+      "anchor headroom above 10% (1x)",
+      "Prop 2 certificate at every tick (12x)",
+      "Prop 3 terminal set nonempty (12x)",
+      "a hard box would still solve (12x)",
+      "no infeasible solve (12x)"
+    ]
+  }
+}
