@@ -217,6 +217,56 @@ here. Not applied -- same reasoning as `MPC_s`'s own `--use-jit` addition:
 it's a new optional dependency and a real "is this needed" decision, not
 something to add silently.
 
+## Finding 8: `configs/*.yaml` -- same two suspicious patterns as `MPC_s` had, checked directly
+
+Prompted by being asked "does the yaml have the same problem" after this
+review shipped -- worth checking directly rather than assuming, since the
+answer turned out to be "partly."
+
+**`u_max: [300.0, 300.0, 300.0]` -- present in all four configs, not just
+two.** This is the exact same suspiciously round, force-scale-looking
+constant `MPC_s`'s own Finding 3 traced to an unconverted leftover from the
+paper's `F_max=300N` Cartesian force bound. Here it's *worse* in one sense
+(all four configs share it verbatim, vs `MPC_s` where `hold`/`push` at
+least had a distinct, saner `[8,8,8]`) but currently **harmless**, verified
+directly:
+
+- On `--backend sim` (this project's own "coarse, not the validation of
+  record" backend), `push.yaml` does hit the bound exactly (`peak|u|=
+  300.00`) and does not recover cleanly (`final_err=180mm`) -- but this
+  backend is explicitly not meant to be representative.
+- On `--backend mjc` (the actual validation of record), peak `|u|` across
+  all four tasks is **26.6 / 19.8 / 2.3 / 8.2** -- nowhere near 300. The
+  constraint never binds at the gains currently shipped.
+
+This is exactly the situation `MPC_s` was *also* in before its own gain
+retune (Finding 2's fix) made the box genuinely bind and break offset-free
+recovery for `payload`/`push`. The lesson transfers directly: `u_max=300`
+is a latent problem, not a live one -- harmless *at these specific gains*,
+and worth deriving properly (or at least differentiating per task, the way
+the report's own methodology would) before ever retuning this project's own
+gains stiffer.
+
+**`q_vel = q_pos / 5` in every config (`60`/`12`, `60`/`12`, `60`/`12`,
+`70`/`14`).** The exact same tied-ratio convention `MPC_s`'s underlying
+report flagged as a real tuning-history mistake: "every gain sweep... used
+the rule `q_vel = q_pos/10`... it is then structurally impossible to lower
+the damping while keeping the stiffness. Setting `q_vel=0` is what decouples
+the two." This project uses a fixed `/5` instead of `/10`, but the same
+structural problem applies -- stiffness and damping can't be independently
+explored this way. Not urgent on its own (these are the *initial* config
+values, not necessarily a final tuning), but worth keeping in mind should
+this project's own gains ever go through the same kind of retune `MPC_s`
+did.
+
+**Not the same pattern: the missing `dyn_armature_kg_m2`/`task_mass_kg`
+question.** This is Findings 3/4 above, not a new config-level issue --
+there's no `dyn_armature_kg_m2` key to be missing from these configs
+because the *code* has no such mechanism at all (unlike `MPC_s`, where the
+mechanism existed and simply wasn't wired to any config). `task_mass_kg` is
+set in all four configs but is Finding 3's dead-code variable, not this
+class of bug.
+
 ## What's already fine -- verified, not just assumed
 
 - **`lib/interaction_mpc.py`'s box-constrained receding-horizon QP (FISTA,
@@ -239,8 +289,12 @@ something to add silently.
    cannot run; flag as a known gap in the meantime.
 3. **Finding 3** (dead code / stale docstring) -- trivial, low-risk, do
    whenever convenient.
-4. **Finding 6** (tuning tooling) -- worth porting before the next time
+4. **Finding 8** (`u_max=300` in all four configs, `q_vel=q_pos/5`) --
+   currently harmless (verified: never binds on `--backend mjc` at today's
+   gains), but fix *before* ever retuning gains stiffer, not after -- that
+   order is exactly what turned this from latent into live in `MPC_s`.
+5. **Finding 6** (tuning tooling) -- worth porting before the next time
    gains need changing, not urgent otherwise.
-5. **Finding 2** (Coriolis) and **Finding 7** (`--use-jit`) -- genuine
+6. **Finding 2** (Coriolis) and **Finding 7** (`--use-jit`) -- genuine
    design/dependency decisions, only worth it if this project's own task
    set or performance requirements actually need them.
