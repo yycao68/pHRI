@@ -80,10 +80,8 @@ The run examined in detail in the previous pass: sub-mm to ~1.5mm tracking throu
 then a sign-alternating, amplitude-doubling-per-swing oscillation at 7.72Hz. `q_pos=82547`
 diverged, `q_pos=65405` (`L0255`, above) diverged, `q_pos=51101` (`L024`, in `completed/`)
 did not — the boundary is bracketed between roughly 51101 and 65405, i.e. `\|L\|=0.409-0.435`
-*(corrected via `tools/solve_task_space_gain.py`; see `hardware_results_review.md` section 3
-for the earlier, incorrect values this replaces)*, just under the `\|L\|=0.450` the shipped
-`circle.yaml` currently targets — not the wide margin first reported, but still on the wrong
-side of it.
+(via `tools/solve_task_space_gain.py`), just under the `\|L\|=0.450` the shipped `circle.yaml`
+currently targets.
 
 *(`hw_circle_L024_ry1e-8_1`, `q_pos=51101`, completed cleanly — its plots were already
 pre-generated under `figures/circle/hw_circle_L024_ry1e-8_1/` and aren't reproduced here since

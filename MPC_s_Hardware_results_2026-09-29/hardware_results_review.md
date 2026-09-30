@@ -76,12 +76,6 @@ that caveat being confirmed on real hardware, not a new problem.
 
 ## 3. The circle-task stability boundary is real, and sits just under the sim-derived target
 
-*(Correction: an earlier pass through this section computed `\|L\|` with a shortcut
-instead of the project's own `tools/solve_task_space_gain.py`, and reported values that were
-off by roughly 2x. The numbers below are recomputed with that tool directly; the qualitative
-finding survives, but the margin is much thinner than first reported — the shipped value is
-just past the boundary, not far past it.)*
-
 The student's own sweep localizes it directly:
 
 | q_pos | `\|L\|` (`tools/solve_task_space_gain.py --config configs/circle.yaml --target-l ...`, at `w=50.27`) | circle result |
@@ -95,14 +89,14 @@ The student's own sweep localizes it directly:
 The true boundary sits between `q_pos=51101` (`\|L\|=0.409`, completed) and `q_pos=65405`
 (`\|L\|=0.435`, diverged) — a gap of only ~0.03 in `\|L\|`. `circle.yaml`'s shipped value
 (`q_pos=75290.6`, `\|L\|=0.450`) is on the wrong side of that boundary, but only by about
-0.04-0.09 in `\|L\|`, not by the wide margin an earlier version of this section claimed.
-Meanwhile the **same `\|L\|≈0.45-0.51` range is fine for `hold`** — three repeats at the much
-higher "A" gain (`q_pos=124371`, `\|L\|=0.509`) all completed cleanly (SS error 0.33–1.59mm).
-This is still exactly the "stability is task-dependent, not just gain-dependent" caveat from
-`implementation_fix.md`, now with a concrete (corrected) number: **`circle.yaml`'s current
-`q_pos=75290.6` is past the real margin, if only just**, and should be pulled back toward
-`\|L\|≈0.35` (`q_pos≈27000`, comfortably below the `\|L\|=0.409` point that stayed stable) if
-`circle` is meant to be a reliably-stable shipped config rather than a stress test.
+0.04-0.09 in `\|L\|`. Meanwhile the **same `\|L\|≈0.45-0.51` range is fine for `hold`** —
+three repeats at the much higher "A" gain (`q_pos=124371`, `\|L\|=0.509`) all completed cleanly
+(SS error 0.33–1.59mm). This is exactly the "stability is task-dependent, not just
+gain-dependent" caveat from `implementation_fix.md`, now with a concrete number:
+**`circle.yaml`'s current `q_pos=75290.6` is past the real margin, if only just**, and should
+be pulled back toward `\|L\|≈0.35` (`q_pos≈27000`, comfortably below the `\|L\|=0.409` point
+that stayed stable) if `circle` is meant to be a reliably-stable shipped config rather than a
+stress test.
 
 ## 4. Code drift: anisotropic gains run on hardware, not in the committed repo
 

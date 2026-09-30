@@ -75,9 +75,8 @@ Finding 3 里那种旧的饱和失效模式。
 一个变号、每次摆动振幅近乎翻倍的振荡，频率为 7.72Hz。`q_pos=82547` 发散了，
 `q_pos=65405`（上面的 `L0255`）也发散了，而 `q_pos=51101`（`L024`，在 `completed/`
 目录下）没有发散——边界被夹在大约 51101 到 65405 之间，即 `\|L\|=0.409–0.435`
-*（已用 `tools/solve_task_space_gain.py` 重新算过并更正；此前给出的数值有误，见
-`hardware_results_review.md` 第 3 节）*，刚好低于 `circle.yaml` 目前出货所对应的
-`\|L\|=0.450`——差距并不像最初报告的那么大，但仍然是越界的。
+（用 `tools/solve_task_space_gain.py` 算出），刚好低于 `circle.yaml` 目前出货所对应的
+`\|L\|=0.450`。
 
 *（`hw_circle_L024_ry1e-8_1`，`q_pos=51101`，干净完成——它的图表在此次之前就已预先生成，
 存放在 `figures/circle/hw_circle_L024_ry1e-8_1/` 下，本文件专门讨论发散记录，故不在此

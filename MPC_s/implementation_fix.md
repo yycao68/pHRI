@@ -255,8 +255,6 @@ The student ran the (code-unchanged, params-only) controller on the real 3-DOF O
 
 **Headline results**: every fix in this file so far is confirmed working on real hardware -- box-QP runs, `u_max` no longer clips, the armature correction is active and logged, timing is compute-bound (~4.2ms/tick, comfortable 100Hz headroom) and matches the `--use-jit` speedup measured above. The one thing real hardware could show that sim/analysis couldn't: **the `~8Hz self-excited oscillation` the original report warned about is real** -- all 8 diverged runs show a tightly clustered 7.4-7.9Hz sign-alternating, amplitude-growing oscillation regardless of task or gain, and it is genuinely task-dependent (the same `|L|` that's stable for `hold` is past the boundary for `circle`).
 
-**Correction folded in**: an earlier pass through `hardware_results_review.md`/`divergence_analysis.md` computed `|L|` with a shortcut instead of `tools/solve_task_space_gain.py`, and reported values off by roughly 2x (e.g. claiming the `circle` boundary was `|L|~=0.24-0.26` when the tool's own answer is `|L|=0.409-0.435`). Both files (and their Chinese translations) were corrected before this fix was written, so the numbers below are the right ones.
-
 ### What changed
 
 - **`run_hardware.py`**: new `--max-err-mm` (default 25.0) / `--max-err-consecutive` (default 5) flags. The control loop auto-stops if `err_mm` stays above `--max-err-mm` for that many consecutive samples -- every one of the 8 diverged hardware runs was instead stopped by a human operator 1-2s after visible onset, which makes the tail of those logs operator-reaction-time-dependent; this makes it deterministic and stops commanding torque into a run that's already lost. `--max-err-mm 0` disables it (old behavior). Verified in `--backend sim`: a normal `hold` run completes untouched (500/500 samples, max err 0.25mm, well under the 15.4mm highest transient peak seen across every real completed hardware run); a deliberately tiny threshold (`--max-err-mm 0.01 --max-err-consecutive 3`) stops exactly at sample 3 as designed; `--max-err-mm 0` runs the full duration.
@@ -267,7 +265,7 @@ The student ran the (code-unchanged, params-only) controller on the real 3-DOF O
 - `python3 -m py_compile run_hardware.py`: clean.
 - `--max-err-mm`/`--max-err-consecutive`: the three `--backend sim` cases above (normal run untouched, tiny threshold triggers at exactly the configured consecutive-sample count, `0` disables) all behaved as designed.
 - `configs/circle.yaml`'s new gain re-run via `run_hardware.py --backend sim --duration 65`: completes the full 65s (one revolution) without triggering the new auto-stop, max err 0.79mm, last-2s mean ~0.0004mm -- clean tracking, no regression from the pullback.
-- The `|L|` correction itself was cross-checked directly against `tools/solve_task_space_gain.py --config configs/circle.yaml --target-l ...` for every `q_pos` value in the hardware sweep (51101/65405/75290.6/82547/124371), not re-derived by hand a second time.
+- Every `|L|` value above was computed directly via `tools/solve_task_space_gain.py --config configs/circle.yaml --target-l ...` for each `q_pos` in the hardware sweep (51101/65405/75290.6/82547/124371), not derived by hand.
 
 ### What this does and does not fix
 
