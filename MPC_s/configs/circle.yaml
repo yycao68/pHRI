@@ -22,11 +22,23 @@
 # value). u_max converted from an unconverted force-domain leftover (300 N,
 # Finding 3 in original_implementation.md) to a genuine acceleration-domain
 # bound.
+#
+# q_pos (2026-09-29, real-hardware pullback): a hardware sweep found this
+# task's TRUE stability boundary sits between |L|=0.409 (q_pos=51101,
+# completed) and |L|=0.435 (q_pos=65405, diverged at ~7.6-7.9Hz self-excited
+# oscillation) -- this file's |L|=0.45 target above was already past that
+# boundary, if only by ~0.04-0.09. Pulled back to |L|~=0.35 (comfortably
+# below the 0.409 point that stayed stable across the whole sweep). This is
+# the ONE config that needed this correction: hold/step's own gains, even at
+# the much higher |L|~=0.51 "A" retune, stayed stable on hardware -- the
+# margin is genuinely task-specific, not a property of |L| in general. See
+# MPC_s_Hardware_results_2026-09-29/hardware_results_review.md section 3 and
+# implementation_fix.md for the full hardware evidence.
 
 controller:
   dt: 0.01
   horizon: 25
-  q_pos: 75290.6
+  q_pos: 27086.8
   q_vel: 0.0
   r: 1.0
   # Same bound as the other three configs (see payload.yaml's comment for

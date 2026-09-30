@@ -74,26 +74,35 @@ gain/frequency-dependent stability boundary) was already flagged as a known, una
 limitation in `implementation_fix.md`'s "what this fix does NOT establish" caveat. This is
 that caveat being confirmed on real hardware, not a new problem.
 
-## 3. The circle-task stability boundary is real, and lower than the sim-derived target
+## 3. The circle-task stability boundary is real, and sits just under the sim-derived target
+
+*(Correction: an earlier pass through this section computed `\|L\|` with a shortcut
+instead of the project's own `tools/solve_task_space_gain.py`, and reported values that were
+off by roughly 2x. The numbers below are recomputed with that tool directly; the qualitative
+finding survives, but the margin is much thinner than first reported — the shipped value is
+just past the boundary, not far past it.)*
 
 The student's own sweep localizes it directly:
 
-| q_pos | `\|L\|` (session's metric, at `w=50.27`) | circle result |
+| q_pos | `\|L\|` (`tools/solve_task_space_gain.py --config configs/circle.yaml --target-l ...`, at `w=50.27`) | circle result |
 |---|---|---|
-| 51101 (`L024`) | ≈0.24 | **completed** |
-| 65405 (`L0255`) | ≈0.26 | diverged (~t=17s) |
-| 75290.6 (committed `circle.yaml`, `\|L\|=0.45` target) | 0.45 | *(not directly run here; A/L027 bracket it)* |
-| 82547 (`L027`) | ≈0.27 | diverged (~t=14s) |
-| 124371 ("A", escalated retune) | ≈0.62 | diverged |
+| 51101 (`L024`) | 0.409 | **completed** |
+| 65405 (`L0255`) | 0.435 | diverged (~t=17s) |
+| 75290.6 (committed `circle.yaml`) | 0.450 | *(not directly run here; A/L027 bracket it)* |
+| 82547 (`L027`) | 0.460 | diverged (~t=14s) |
+| 124371 ("A", escalated retune) | 0.509 | diverged |
 
-The true boundary sits close to `q_pos≈51101` (`|L|≈0.24–0.26`), well under the `|L|=0.45`
-value `circle.yaml` currently ships with (`q_pos=75290.6`). Meanwhile the **same `|L|=0.45`
-family is fine for `hold`** — three repeats at the much higher "A" gains (`q_pos=124371`,
-`|L|≈0.62`) all completed cleanly (SS error 0.33–1.59mm). This is exactly the "stability is
-task-dependent, not just gain-dependent" caveat from `implementation_fix.md`, now with a
-concrete number: **`circle.yaml`'s current `q_pos=75290.6` is probably past the real margin**
-and should be pulled back toward ~50000 (leaving headroom below the ≈51101 measured boundary)
-if `circle` is meant to be a reliably-stable shipped config rather than a stress test.
+The true boundary sits between `q_pos=51101` (`\|L\|=0.409`, completed) and `q_pos=65405`
+(`\|L\|=0.435`, diverged) — a gap of only ~0.03 in `\|L\|`. `circle.yaml`'s shipped value
+(`q_pos=75290.6`, `\|L\|=0.450`) is on the wrong side of that boundary, but only by about
+0.04-0.09 in `\|L\|`, not by the wide margin an earlier version of this section claimed.
+Meanwhile the **same `\|L\|≈0.45-0.51` range is fine for `hold`** — three repeats at the much
+higher "A" gain (`q_pos=124371`, `\|L\|=0.509`) all completed cleanly (SS error 0.33–1.59mm).
+This is still exactly the "stability is task-dependent, not just gain-dependent" caveat from
+`implementation_fix.md`, now with a concrete (corrected) number: **`circle.yaml`'s current
+`q_pos=75290.6` is past the real margin, if only just**, and should be pulled back toward
+`\|L\|≈0.35` (`q_pos≈27000`, comfortably below the `\|L\|=0.409` point that stayed stable) if
+`circle` is meant to be a reliably-stable shipped config rather than a stress test.
 
 ## 4. Code drift: anisotropic gains run on hardware, not in the committed repo
 
@@ -155,6 +164,7 @@ were correctly logged as "completed" and don't need reclassifying.
   `divergence_analysis.md`: all 8 diverged runs (not just circle) show the same tightly
   clustered ~7.4–7.9Hz oscillatory mode.
 - Visual spot-check of the pre-generated PNG figures against these numeric conclusions.
-- Decide whether `circle.yaml`'s shipped `q_pos` should be pulled back from 75290.6 toward the
-  measured ~50000 boundary, and whether the anisotropic-gain code should be ported into the
-  repo.
+- ~~Decide whether `circle.yaml`'s shipped `q_pos` should be pulled back~~ — done, see
+  `implementation_fix.md`: pulled back from 75290.6 to `\|L\|≈0.35` (`q_pos≈27000`).
+- Whether the anisotropic-gain code should be ported into the repo (pending the student's
+  clarification on whether it's a real extension or a one-off fork).

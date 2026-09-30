@@ -20,10 +20,11 @@ but only a 2D (x-z) task, so one degree of freedom is redundant, and
 disturbing the task-space motion.
 
 SAFETY: start with the arm supported and a low current_limit_ticks; torque
-is disabled on any exit (including Ctrl+C and exceptions). Use --backend sim
-to validate a config before ever touching real hardware -- see
-docs/03_hardware_safety.md before running --backend dynamixel for the
-first time.
+is disabled on any exit (including Ctrl+C and exceptions). The loop also
+auto-stops on a sustained tracking divergence (see --max-err-mm) instead of
+running until --duration or Ctrl+C. Use --backend sim to validate a config
+before ever touching real hardware -- see docs/03_hardware_safety.md before
+running --backend dynamixel for the first time.
 
 Usage:
   python run_hardware.py --backend sim --config configs/hold.yaml --duration 10
@@ -218,6 +219,7 @@ def run(args: argparse.Namespace) -> Path | None:
     # including during move_to_start, BEFORE the main control loop even starts.
     fh = None; writer = None; live = None; sample = 0
     J_xz_prev = None  # for Jdot_xz (task-space Coriolis/centrifugal term)
+    bad_streak = 0  # consecutive samples with err_mm > args.max_err_mm -- see that flag's help text
     try:
         # Slow, smooth joint-space move from wherever the arm currently is to
         # posture_q_rad, BEFORE the real controller starts -- see lib/move_to_start.py's
@@ -372,6 +374,20 @@ def run(args: argparse.Namespace) -> Path | None:
                       f"tau={np.round(tau, 2)}  ~{hz_inst:5.1f}Hz  n={sample:6d}   ",
                       end="", flush=True)
                 last_print = now
+
+            # Auto-stop on a real divergence (see --max-err-mm's help text): every one of
+            # the 8 diverged runs in MPC_s_Hardware_results_2026-09-29 showed a genuine
+            # closed-loop instability (~7.6-7.9Hz, amplitude growing every cycle) that was
+            # only ever stopped by a human operator 1-2s after visible onset -- this makes
+            # that deterministic instead of reaction-time-dependent, and stops commanding
+            # torque into a run that's already lost, without relying on --duration/Ctrl+C.
+            if args.max_err_mm > 0:
+                bad_streak = bad_streak + 1 if err_mm > args.max_err_mm else 0
+                if bad_streak >= args.max_err_consecutive:
+                    print(f"\n[omx-3dof] AUTO-STOP: err_mm > {args.max_err_mm:.1f}mm for "
+                          f"{bad_streak} consecutive samples (t={t:.2f}s) -- treating this as a "
+                          f"real divergence, not a settling transient. Pass --max-err-mm 0 to disable.")
+                    break
             time.sleep(max(0.0, next_tick - time.monotonic()))
     except KeyboardInterrupt:
         pass
@@ -410,6 +426,20 @@ def main() -> None:
                           "implementation_fix.md's \"would C++ help\" section. Requires `pip install numba` "
                           "(optional dependency, off by default). Pays a one-time JIT compile cost "
                           "(~1-3s) at startup, before the real-time loop -- not on its first tick.")
+    ap.add_argument("--max-err-mm", type=float, default=25.0,
+                     help="auto-stop the run if err_mm stays above this for --max-err-consecutive samples "
+                          "in a row (a real divergence, not a normal settling/step-response transient -- "
+                          "the highest transient peak seen across every completed real-hardware run so far "
+                          "is 15.4mm, see MPC_s_Hardware_results_2026-09-29/hardware_results_review.md section 5). "
+                          "Every one of the 8 diverged hardware runs analyzed so far was instead stopped by "
+                          "a human operator 1-2s after visible onset, which makes the tail of those logs "
+                          "operator-reaction-time-dependent; this makes it deterministic. <=0 disables the "
+                          "check entirely (old behavior: run until --duration or Ctrl+C).")
+    ap.add_argument("--max-err-consecutive", type=int, default=5,
+                     help="number of consecutive samples err_mm must stay above --max-err-mm before "
+                          "auto-stopping (default 5 samples = 50ms at dt=0.01s -- roughly a third of one "
+                          "cycle of the ~7.6Hz oscillatory instability seen in every diverged hardware run, "
+                          "short enough to catch it early but long enough to ignore a single noisy sample).")
     run(ap.parse_args())
 
 

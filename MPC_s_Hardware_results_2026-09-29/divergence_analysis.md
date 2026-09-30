@@ -52,7 +52,7 @@ old saturation failure mode from Finding 3.
 
 ## `circle` task (3 of 4 circle configs diverged)
 
-### `hw_circle_A_ry1e-8_1` (q_pos=124371, `|L|≈0.62`)
+### `hw_circle_A_ry1e-8_1` (q_pos=124371, `\|L\|=0.509`)
 
 ![err](figures/circle/hw_circle_A_ry1e-8_1/hw_circle_A_ry1e-8_1_err.png)
 
@@ -62,7 +62,7 @@ right at the end of the recorded window. This is the same escalated "A" gain tha
 `circle` task's stability margin (see `hardware_results_review.md` §3 for the full boundary
 sweep).
 
-### `hw_circle_L0255_ry1e-8_1` (q_pos=65405, `|L|≈0.26`)
+### `hw_circle_L0255_ry1e-8_1` (q_pos=65405, `\|L\|=0.435`)
 
 ![err](figures/circle/hw_circle_L0255_ry1e-8_1/hw_circle_L0255_ry1e-8_1_err.png)
 
@@ -72,15 +72,18 @@ divergences despite the lowest gain of the three, which is unsurprising once the
 excited: how far it runs before an operator stops it, not the gain itself, mostly sets the
 peak amplitude of an exponentially-growing oscillation.
 
-### `hw_circle_L027_ry1e-8_1` (q_pos=82547, `|L|≈0.27`)
+### `hw_circle_L027_ry1e-8_1` (q_pos=82547, `\|L\|=0.460`)
 
 ![err](figures/circle/hw_circle_L027_ry1e-8_1/hw_circle_L027_ry1e-8_1_err.png)
 
 The run examined in detail in the previous pass: sub-mm to ~1.5mm tracking through t≈13.9s,
 then a sign-alternating, amplitude-doubling-per-swing oscillation at 7.72Hz. `q_pos=82547`
 diverged, `q_pos=65405` (`L0255`, above) diverged, `q_pos=51101` (`L024`, in `completed/`)
-did not — the boundary is bracketed between roughly 51101 and 65405, i.e. `|L|≈0.24–0.26`,
-comfortably below the `|L|=0.45` the shipped `circle.yaml` currently targets.
+did not — the boundary is bracketed between roughly 51101 and 65405, i.e. `\|L\|=0.409-0.435`
+*(corrected via `tools/solve_task_space_gain.py`; see `hardware_results_review.md` section 3
+for the earlier, incorrect values this replaces)*, just under the `\|L\|=0.450` the shipped
+`circle.yaml` currently targets — not the wide margin first reported, but still on the wrong
+side of it.
 
 *(`hw_circle_L024_ry1e-8_1`, `q_pos=51101`, completed cleanly — its plots were already
 pre-generated under `figures/circle/hw_circle_L024_ry1e-8_1/` and aren't reproduced here since

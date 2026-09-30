@@ -49,7 +49,7 @@ Finding 3 里那种旧的饱和失效模式。
 
 ## `circle` 任务（4 个 circle 配置中有 3 个发散）
 
-### `hw_circle_A_ry1e-8_1`（q_pos=124371，`|L|≈0.62`）
+### `hw_circle_A_ry1e-8_1`（q_pos=124371，`\|L\|=0.509`）
 
 ![err](figures/circle/hw_circle_A_ry1e-8_1/hw_circle_A_ry1e-8_1_err.png)
 
@@ -58,7 +58,7 @@ Finding 3 里那种旧的饱和失效模式。
 "A"增益——直接证实了这个增益水平对 `hold` 没问题，但已经超出了 `circle` 任务的稳定裕度
 （完整的边界扫描见 `hardware_results_review.md` 第 3 节）。
 
-### `hw_circle_L0255_ry1e-8_1`（q_pos=65405，`|L|≈0.26`）
+### `hw_circle_L0255_ry1e-8_1`（q_pos=65405，`\|L\|=0.435`）
 
 ![err](figures/circle/hw_circle_L0255_ry1e-8_1/hw_circle_L0255_ry1e-8_1_err.png)
 
@@ -67,15 +67,17 @@ Finding 3 里那种旧的饱和失效模式。
 三者中最低的，这一点在模态一旦被激发后并不意外：决定振荡最终振幅大小的主要是"操作人员
 在多久之后停止了记录"，而不是增益本身——毕竟这是一个指数增长的振荡。
 
-### `hw_circle_L027_ry1e-8_1`（q_pos=82547，`|L|≈0.27`）
+### `hw_circle_L027_ry1e-8_1`（q_pos=82547，`\|L\|=0.460`）
 
 ![err](figures/circle/hw_circle_L027_ry1e-8_1/hw_circle_L027_ry1e-8_1_err.png)
 
 上一轮已详细核查过的记录：在 t≈13.9s 之前跟踪误差在亚毫米到约 1.5mm 之间，随后出现
 一个变号、每次摆动振幅近乎翻倍的振荡，频率为 7.72Hz。`q_pos=82547` 发散了，
 `q_pos=65405`（上面的 `L0255`）也发散了，而 `q_pos=51101`（`L024`，在 `completed/`
-目录下）没有发散——边界被夹在大约 51101 到 65405 之间，即 `|L|≈0.24–0.26`，明显低于
-`circle.yaml` 目前出货所对应的 `|L|=0.45`。
+目录下）没有发散——边界被夹在大约 51101 到 65405 之间，即 `\|L\|=0.409–0.435`
+*（已用 `tools/solve_task_space_gain.py` 重新算过并更正；此前给出的数值有误，见
+`hardware_results_review.md` 第 3 节）*，刚好低于 `circle.yaml` 目前出货所对应的
+`\|L\|=0.450`——差距并不像最初报告的那么大，但仍然是越界的。
 
 *（`hw_circle_L024_ry1e-8_1`，`q_pos=51101`，干净完成——它的图表在此次之前就已预先生成，
 存放在 `figures/circle/hw_circle_L024_ry1e-8_1/` 下，本文件专门讨论发散记录，故不在此

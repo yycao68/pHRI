@@ -246,3 +246,33 @@ The whole-tick numbers matter more than the isolated-function ones: they are wha
 Confirms, with real end-to-end numbers rather than isolated-function estimates, that the entire per-tick compute (RNEA + FISTA + the rest) can plausibly go from ~2ms to ~0.2-0.5ms -- useful for headroom at 200-500Hz (the original report's own Section 6.7 ran TDC at 500Hz) and, separately, because Numba's compiled code doesn't hit Python's garbage collector, plausibly tightening worst-case latency too (a candidate explanation for the original report's own PID "max=37.57ms" outlier against its 6.73ms mean, though this was not directly measured here).
 
 **Does not touch communication.** Return_Delay_Time, bus arbitration, and the USB-serial adapter's own latency timer are unaffected by `--use-jit` -- see the section above for those levers, and `tools/benchmark_io.py --backend dynamixel` (with or without `--use-jit`) for measuring the actual real-hardware split once available.
+
+## Applied: real-hardware validation, divergence auto-stop, and a `circle.yaml` gain pullback (2026-09-29)
+
+**Status: APPLIED and verified.**
+
+The student ran the (code-unchanged, params-only) controller on the real 3-DOF OpenManipulator-X across `hold`/`step`/`circle` tasks (19 runs, 11 completed / 8 diverged, multiple gain sweeps). Full analysis in `MPC_s_Hardware_results_2026-09-29/hardware_results_review.md` and `divergence_analysis.md` (+ Chinese translations); summarized here only as far as it produced actual code/config changes.
+
+**Headline results**: every fix in this file so far is confirmed working on real hardware -- box-QP runs, `u_max` no longer clips, the armature correction is active and logged, timing is compute-bound (~4.2ms/tick, comfortable 100Hz headroom) and matches the `--use-jit` speedup measured above. The one thing real hardware could show that sim/analysis couldn't: **the `~8Hz self-excited oscillation` the original report warned about is real** -- all 8 diverged runs show a tightly clustered 7.4-7.9Hz sign-alternating, amplitude-growing oscillation regardless of task or gain, and it is genuinely task-dependent (the same `|L|` that's stable for `hold` is past the boundary for `circle`).
+
+**Correction folded in**: an earlier pass through `hardware_results_review.md`/`divergence_analysis.md` computed `|L|` with a shortcut instead of `tools/solve_task_space_gain.py`, and reported values off by roughly 2x (e.g. claiming the `circle` boundary was `|L|~=0.24-0.26` when the tool's own answer is `|L|=0.409-0.435`). Both files (and their Chinese translations) were corrected before this fix was written, so the numbers below are the right ones.
+
+### What changed
+
+- **`run_hardware.py`**: new `--max-err-mm` (default 25.0) / `--max-err-consecutive` (default 5) flags. The control loop auto-stops if `err_mm` stays above `--max-err-mm` for that many consecutive samples -- every one of the 8 diverged hardware runs was instead stopped by a human operator 1-2s after visible onset, which makes the tail of those logs operator-reaction-time-dependent; this makes it deterministic and stops commanding torque into a run that's already lost. `--max-err-mm 0` disables it (old behavior). Verified in `--backend sim`: a normal `hold` run completes untouched (500/500 samples, max err 0.25mm, well under the 15.4mm highest transient peak seen across every real completed hardware run); a deliberately tiny threshold (`--max-err-mm 0.01 --max-err-consecutive 3`) stops exactly at sample 3 as designed; `--max-err-mm 0` runs the full duration.
+- **`configs/circle.yaml`**: `q_pos: 75290.6 -> 27086.8`, i.e. `|L|: 0.450 -> 0.350`. The hardware sweep bracketed the true boundary between `q_pos=51101` (`|L|=0.409`, completed) and `q_pos=65405` (`|L|=0.435`, diverged) -- the previously-shipped `|L|=0.45` was already just past that boundary. `|L|=0.35` sits comfortably below the `0.409` point that stayed stable across the whole sweep. This is the only config that needed pulling back: `hold`'s and `step`'s own gains, even at the much higher `|L|~=0.51` escalated retune, stayed stable on hardware in most trials -- the margin is task-specific, not a property of `|L|` in general (see caveat below).
+
+### Verification
+
+- `python3 -m py_compile run_hardware.py`: clean.
+- `--max-err-mm`/`--max-err-consecutive`: the three `--backend sim` cases above (normal run untouched, tiny threshold triggers at exactly the configured consecutive-sample count, `0` disables) all behaved as designed.
+- `configs/circle.yaml`'s new gain re-run via `run_hardware.py --backend sim --duration 65`: completes the full 65s (one revolution) without triggering the new auto-stop, max err 0.79mm, last-2s mean ~0.0004mm -- clean tracking, no regression from the pullback.
+- The `|L|` correction itself was cross-checked directly against `tools/solve_task_space_gain.py --config configs/circle.yaml --target-l ...` for every `q_pos` value in the hardware sweep (51101/65405/75290.6/82547/124371), not re-derived by hand a second time.
+
+### What this does and does not fix
+
+Fixes: `circle.yaml` now ships a gain with real hardware margin below the measured instability boundary, and any future hardware run (on any config, any task) stops itself deterministically instead of relying on an operator's reaction time.
+
+**Does NOT fix**: `step.yaml` has no config-level fix yet. The hardware data shows the committed default (`q_pos=11293.6`) diverges on `step`, and even the escalated `q_pos=124371` retune is only marginally stable there (2/3 trials). Unlike `circle`, there is no dedicated gain sweep for `step` yet (no `step_L...` equivalent of `circle_L024/L0255/L027`) to bracket a safe value from -- picking one now would be guessing, not measuring. This needs a real sweep before `step.yaml` gets its own pullback.
+
+**Also NOT fixed**: the anisotropic-gain code drift (`step_Az.yaml`/`step_Az55.yaml` use list-valued `q_pos`/`q_vel`, which this repo's `ControllerConfig`/`controller_config()` cannot parse -- confirmed by direct `grep`, zero matches for `q_pos_z`/list-handling anywhere in the repo). Pending clarification from the student on whether that's a small controller-config extension worth porting back, or a separate untracked fork.
