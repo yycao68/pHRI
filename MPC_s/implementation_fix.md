@@ -274,3 +274,32 @@ Fixes: `circle.yaml` now ships a gain with real hardware margin below the measur
 **Does NOT fix**: `step.yaml` has no config-level fix yet. The hardware data shows the committed default (`q_pos=11293.6`) diverges on `step`, and even the escalated `q_pos=124371` retune is only marginally stable there (2/3 trials). Unlike `circle`, there is no dedicated gain sweep for `step` yet (no `step_L...` equivalent of `circle_L024/L0255/L027`) to bracket a safe value from -- picking one now would be guessing, not measuring. This needs a real sweep before `step.yaml` gets its own pullback.
 
 **Also NOT fixed**: the anisotropic-gain code drift (`step_Az.yaml`/`step_Az55.yaml` use list-valued `q_pos`/`q_vel`, which this repo's `ControllerConfig`/`controller_config()` cannot parse -- confirmed by direct `grep`, zero matches for `q_pos_z`/list-handling anywhere in the repo). Pending clarification from the student on whether that's a small controller-config extension worth porting back, or a separate untracked fork.
+
+## Prepared: `step` trajectory type + a controlled step-task gain sweep (2026-10-01)
+
+**Status: trajectory support APPLIED and verified in sim. The sweep itself is only sim-verified -- the real-hardware runs it needs still have to be done on the physical arm, which this session has no access to.**
+
+Follows from `next_steps_test_plan.md` item 1 (the `step.yaml` gap flagged in the previous fix above). Two things were needed before any sweep could even be attempted:
+
+### What changed
+
+- **`lib/trajectory.py` gained a `step` trajectory type.** It did not exist at all before this -- `CartesianTrajectory.sample()` only handled `hold`/`circle` and raised `ValueError` on `type: step`, which `MPC_s_Hardware_results_2026-09-29/configs/step/*.yaml` all use. Whatever generated those real hardware runs has (or had) a `step`-capable trajectory generator that was never in this repo -- the same "ran on hardware, not in the tracked code" pattern as the anisotropic-gain finding above, just for a different file. Implemented from the only two things available to reconstruct it from: the config schema itself (`step_axis`, `step_amplitude_m`, `step_move_time_s`, `step_dwell_s`, `step_cycles`) and `MPC_s_Hardware_results_2026-09-29/configs/step/step.yaml`'s own comment ("5s hold, then 4 cycles of a 20mm move along x (1.5s quintic) and back, 5s dwell after each move"). Minimum-jerk (quintic) move profile, zero velocity/acceleration at both ends of each move. `step_initial_hold_s` is accepted but not required -- no real config sets it, so it defaults to `step_dwell_s` (reusing that value rather than inventing an unobserved constant).
+- **`configs/step.yaml`** added to the repo (did not exist before -- `configs/` only had `hold`/`push`/`payload`/`circle`). Trajectory/robot/pid blocks copied verbatim from the hardware-results file (same physical task, same arm); `q_pos=124371` kept as-is but the file's own comment marks it PROVISIONAL, not validated the way the other four configs are -- 5/7 real runs at this exact config completed, 2 diverged.
+- **`configs/step_L15.yaml` / `_L20.yaml` / `_L25.yaml` / `_L30.yaml` / `_L35.yaml`**: five sweep points, `q_pos` solved via `tools/solve_task_space_gain.py --config configs/step.yaml --target-l <0.15..0.35>` so each targets a specific `|L|` with everything else (`r=8.77`, observer tuning, robot/trajectory blocks) held fixed at `step.yaml`'s own values -- a controlled, single-variable sweep, unlike the existing hardware data (see below for why that distinction matters here).
+
+### Why a controlled sweep, specifically
+
+Computing `|L|` properly for `step.yaml`'s own `r`/`lambda_damping` (not circle's) gives a result worth flagging on its own: the one hardware run that diverged at low gain (`hw_step_re_1`, `q_pos=11293.6`) sits at `|L|=0.166`, while the "A" config that was MOSTLY stable (`q_pos=124371`, 5/7 real runs) sits at `|L|=0.299` -- higher gain, better outcome, the opposite of circle's pattern (where higher `|L|` is less stable). That is not evidence `|L|` works backwards for `step` -- it is evidence those two hardware runs are not a clean `q_pos`-only comparison: `hw_step_re_1` used the committed `hold`/`push` defaults' `r`/observer values, not `step.yaml`'s own, so `q_pos` was not the only thing that changed between the two. The existing hardware data cannot actually establish the `step`-task `q_pos`-vs-stability relationship at all. The 5-point sweep above fixes exactly that by holding everything but `q_pos` constant.
+
+### Verification
+
+- `python3 -m py_compile lib/trajectory.py`: clean.
+- `test_local.py`: unchanged, still passes (it does not exercise `step`).
+- All 6 files (`step.yaml` + 5 sweep points) run via `run_hardware.py --backend sim --duration 60`: all complete the full 60s/6000 samples with no traceback and no auto-stop, max transient error 0.85-0.97mm during the quintic moves, settling back to ~0.000mm by the final dwell, peak `|u|` 0.05-0.16 (nowhere near `u_max=100`) -- the sweep is safe to try on real hardware, which is the one thing sim can actually tell us before doing so.
+- Each sweep file's `|L|` was independently cross-checked by running `tools/solve_task_space_gain.py` directly on it afterward (not just trusted from the generation script): 0.150/0.200/0.250/0.300/0.350 as intended, `q_pos`=7568.0/24339.4/60339.0/126787.2/237551.6.
+
+### What this does and does not fix
+
+Fixes: `step` can now be run via `run_hardware.py` at all (it could not before), and there is now a safe-in-sim, controlled sweep ready to run on real hardware.
+
+**Does NOT fix**: `step.yaml`'s own `q_pos` is still provisional. Nobody has run `step_L15.yaml` through `step_L35.yaml` on the real arm yet -- that is real-hardware work this session cannot do. Per `next_steps_test_plan.md` item 1: each point needs at least 2 real-hardware repeats (the existing "A" data shows a single run is not enough to call a marginal config "stable"), and `--max-err-mm`'s new auto-stop (above) should be on for all of them.
