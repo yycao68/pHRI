@@ -49,6 +49,11 @@ controller:
   observer_q_d: 1.0
   observer_r_y: 0.0004
   observer_d_hat_max: 300.0
+  # FISTA iterations/tick (2026-10-01): see hold.yaml's comment / implementation_fix.md.
+  # Re-verified specifically on THIS config's own closed-loop circle-tracking
+  # test (the hardest of the four tasks to track): max/steady-state error
+  # unchanged (0.787mm / 0.0004mm) at qp_iters=50 vs the 200 default.
+  qp_iters: 50
 
 # ---------------------------------------------------------------------------
 # Task-space PID gains, used by run_pid.py ONLY. run_hardware.py ignores this

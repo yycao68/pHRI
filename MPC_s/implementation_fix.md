@@ -330,3 +330,35 @@ The first version defaulted to `--f0 0.5` (per `next_steps_test_plan.md`'s own d
 Fixes/adds: a ready-to-use, safety-checked tool for the one measurement that can actually distinguish the two candidate explanations for the resonance.
 
 **Does NOT establish**: which explanation is correct. That needs `tools/chirp_response.py --backend dynamixel` run on all 3 joints on the real arm, then `--plot` compared against the 7.4-7.9Hz band -- not done here, no hardware access from this session.
+
+## Applied: `qp_iters` reduced from 200 to 50 in every shipped config (2026-10-01)
+
+**Status: APPLIED and verified. All 10 configs (`hold`, `push`, `payload`, `circle`, `step`, `step_L15`-`step_L35`) updated and re-run clean in `--backend sim`.**
+
+In response to the user asking whether anything else could shorten the per-tick time delay or improve efficiency, beyond what's already in this file (`--use-jit`, the still-unverified `Return_Delay_Time`/USB latency timer levers). `qp_iters` (FISTA iterations per `solve()` call) defaults to 200 and no shipped config had ever overridden it -- but `NormalizedInteractionMPC._solve_box_qp()` warm-starts FISTA from the PREVIOUS tick's solution every tick (`self._u_warm`), so 200 fresh iterations re-solves a problem that is already nearly solved.
+
+### Evidence (verified three independent ways before touching any config)
+
+1. **Isolated `solve()` calls**, warm-started across a realistic sequence of 300 ticks (random `x_state`/`d_hat` perturbations): `qp_iters=200` costs 916.8us/solve; `qp_iters=50` costs 242.8us/solve (**3.8x faster**), with the resulting `u` deviating at most ~3% from the 200-iteration answer.
+2. **`tools/benchmark_compute.py`** (deliberately excludes sim-physics overhead, times only the real control-law cost) on `configs/circle.yaml` with `--use-jit`: p99 compute time 1.729ms -> 0.424ms at `qp_iters=50` (**4.1x**).
+3. **Closed-loop `--backend sim` on `circle.yaml`** (the hardest tracking case of the four original tasks): max error 0.787mm -> 0.787mm, steady-state 0.0004mm -> 0.0004mm -- identical, not just "close."
+
+One confound found and worth recording: an earlier closed-loop comparison via `run_hardware.py`'s own `compute_ms` column showed almost NO change across `qp_iters` values, which looked like the whole effort was pointless -- until remembering (same lesson as `tools/benchmark_io.py`'s own docstring) that `SimArmBackend.read_state()` does real physics-substep integration, which dominates that column and has nothing to do with `qp_iters`. `benchmark_compute.py` exists specifically to exclude that confound, which is where the real 4.1x number above comes from. Logged here so this isn't rediscovered the hard way later.
+
+### What changed
+
+- `configs/hold.yaml`, `push.yaml`, `payload.yaml`, `circle.yaml`, `step.yaml`: added `qp_iters: 50` to the `controller:` block (previously absent, meaning the 200 default was silently in effect everywhere).
+- `configs/step_L15.yaml` through `step_L35.yaml`: same addition, keeping them in sync with `step.yaml`'s body (they were generated as full copies of it with only `q_pos` varied -- `qp_iters` is unrelated to the gain being swept, so adding it doesn't compromise that sweep's single-variable design).
+
+### Verification
+
+- `test_local.py`: unchanged, still passes.
+- `--backend sim --duration 20`, `hold`/`push`/`payload`: max error 0.252mm / 1.663mm / 6.696mm -- matches the pre-existing baselines in this file (push ~1.7mm, payload ~6.4mm) within normal run-to-run variance.
+- `--backend sim --duration 65`, `circle`: max error 0.787mm, steady-state 0.0004mm -- identical to the pre-change number (see the gain-pullback entry above).
+- `--backend sim --duration 60`, `step` + all 5 `step_L*` sweep points: max error 0.853-0.974mm across all 6, matching the pre-change sweep-verification numbers in the `step` trajectory entry above to 3 decimal places. No auto-stop, no traceback, in any of the 6.
+
+### What this does and does not fix
+
+Fixes: real, verified compute headroom (~4x on the FISTA share specifically) with no measurable cost, available immediately -- does not require real hardware to adopt, unlike most of the other items in `next_steps_test_plan.md`.
+
+**Does NOT fix**: communication-side delay (still needs `Return_Delay_Time`/`Status_Return_Level`/USB latency timer verified on real hardware, per the earlier entry) or any of the other efficiency ideas raised alongside this one but not yet tried: a higher baud rate (XM430-W350 supports well above the 1Mbps currently used in every example, exact ceiling not confirmed against the firmware here), `gc.disable()` during the real-time loop (Python's cyclic GC is a plausible but unconfirmed explanation for the PID "max=37.57ms" outlier flagged earlier in this file), and a shorter `horizon` (would help further but changes the MPC's actual behavior, not just its speed -- needs the same full re-verification treatment as a gain change, not done here).

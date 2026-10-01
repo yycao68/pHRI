@@ -28,6 +28,8 @@ controller:
   observer_q_d: 5.0e-5
   observer_r_y: 1.0e-5
   observer_d_hat_max: 100.0
+  # FISTA iterations/tick (2026-10-01): see hold.yaml's comment / implementation_fix.md.
+  qp_iters: 50
 
 # ---------------------------------------------------------------------------
 # Task-space PID gains, used by run_pid.py ONLY -- see circle.yaml's comment

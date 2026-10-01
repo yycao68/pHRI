@@ -43,6 +43,13 @@ controller:
   observer_q_d: 3.0               # observer bandwidth knob (higher = faster, noisier)
   observer_r_y: 0.0004            # observer's trust in the position measurement
   observer_d_hat_max: 15.0        # anti-windup clamp on the disturbance estimate
+  # FISTA iterations/tick (2026-10-01, down from the 200 default): FISTA is
+  # warm-started from the previous tick's solution, so 200 fresh iterations
+  # re-solves an already-nearly-solved problem. Verified 3.8-4.1x faster
+  # (isolated solve + tools/benchmark_compute.py) with no measurable
+  # tracking-quality change on circle.yaml's closed-loop test -- see
+  # implementation_fix.md.
+  qp_iters: 50
 
 # ---------------------------------------------------------------------------
 # Task-space PID gains, used by run_pid.py ONLY. run_hardware.py ignores this
