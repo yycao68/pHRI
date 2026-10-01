@@ -1,6 +1,6 @@
 # 下一步测试方案 与 共振规避策略
 
-承接 `MPC_s_Hardware_results_2026-09-29/hardware_results_review.md` 和 `divergence_analysis.md` 的真实硬件结果，以及 `implementation_fix.md` 最新一条修复（自动发散停止 + `circle.yaml` 增益回调）。本文件只是**方案草案**，排好优先级，实际测试前请逐条确认，不要一次性全跑。
+承接 `hardware_results_review.md` 和 `divergence_analysis.md` 的真实硬件结果，以及 `implementation_fix_20261001.md`（2026-09-29 起的修复记录，与覆盖 2026-09-27 的 `implementation_fix.md` 分开）最新一条修复（自动发散停止 + `circle.yaml` 增益回调）。本文件只是**方案草案**，排好优先级，实际测试前请逐条确认，不要一次性全跑。
 
 ## 0. 每次上手测试前的硬性前提
 
@@ -12,7 +12,7 @@
 
 **为什么优先**：`circle` 已经有 `L024/L0255/L027` 三点扫描把边界夹出来了，`step` 还没有——现在已知 `q_pos=11293.6` 会发散、`q_pos=124371` 处于临界（3 次里 2 次成功），中间完全是空的。`step.yaml` 现在没有一个"确认安全"的推荐值，这是当前最大的空白。
 
-**进展（2026-10-01，详见 `implementation_fix.md` "Prepared: `step` trajectory type + a controlled step-task gain sweep"）**：
+**进展（2026-10-01，详见 `implementation_fix_20261001.md` "Prepared: `step` trajectory type + a controlled step-task gain sweep"）**：
 
 - 发现并修复了一个更底层的缺口——`lib/trajectory.py` 之前根本不支持 `step` 轨迹类型（只有 `hold`/`circle`），`configs/` 目录也从来没有 `step.yaml`。两者现已补上（轨迹类型按真机配置的注释 + 字段逆向实现；`configs/step.yaml` 内容照搬硬件结果目录里的版本，`q_pos=124371` 标注为"未验证，待扫描"）。
 - 用 `tools/solve_task_space_gain.py --config configs/step.yaml --target-l ...`（固定 `step.yaml` 自己的 `r=8.77`，只变 `q_pos`，做成真正单变量的扫描，原因见下）生成了 5 个扫描点：`configs/step_L15.yaml` ~ `step_L35.yaml`，对应 `|L|=0.15/0.20/0.25/ 0.30/0.35`（`q_pos=7568.0/24339.4/60339.0/126787.2/237551.6`）。
@@ -23,7 +23,7 @@
 
 1. 真实硬件上每个点（`step.yaml` 本身 + 5 个 `step_L*.yaml`）至少重复 2 次——`step`的"A"在 124371 这个点上 7 次里出现过 2 次发散，单次测试不足以判断"稳定"还是"运气好"；
 2. 把结果和 `circle` 的边界（`|L|=0.409-0.435`）放一张表比较，看 `|L|` 在两个任务间差多少——如果差很大（目前的单点线索——0.166 发散/0.299 大致稳定——暗示 `step`的边界可能明显低于 `circle`，但这只是基于混杂了其他变量的旧数据的猜测，扫描结果出来前不能当结论用）；
-3. 找到边界后，照 `circle.yaml` 的方式回调（目标 `|L|` 比测得的"完成"边界再低0.05-0.10 左右），写入 `configs/step.yaml`，并在 `implementation_fix.md` 补一条记录，同时把 `step.yaml` 注释里的"PROVISIONAL"去掉。
+3. 找到边界后，照 `circle.yaml` 的方式回调（目标 `|L|` 比测得的"完成"边界再低0.05-0.10 左右），写入 `configs/step.yaml`，并在 `implementation_fix_20261001.md` 补一条记录，同时把 `step.yaml` 注释里的"PROVISIONAL"去掉。
 
 ## 2. `circle.yaml` 新增益（27086.8）的重复验证
 
@@ -90,7 +90,7 @@ flowchart TD
 ## 代码改动汇总（截至 2026-10-01）
 
 这份方案本身只是草案，但执行过程中已经有一批真实的代码/配置改动落地了（全部已在 sim
-验证，细节见各自在 `implementation_fix.md` 里的条目）。汇总如下，方便直接对照"还差
+验证，细节见各自在 `implementation_fix_20261001.md` 里的条目）。汇总如下，方便直接对照"还差
 什么"去跑，而不用在上面几节里逐条翻找：
 
 | 文件 | 改动 | 状态 |

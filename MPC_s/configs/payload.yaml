@@ -41,7 +41,7 @@ controller:
   observer_q_d: 3.0
   observer_r_y: 0.0004
   observer_d_hat_max: 300.0
-  # FISTA iterations/tick (2026-10-01): see hold.yaml's comment / implementation_fix.md.
+  # FISTA iterations/tick (2026-10-01): see hold.yaml's comment / implementation_fix_20261001.md.
   qp_iters: 50
 
 # ---------------------------------------------------------------------------

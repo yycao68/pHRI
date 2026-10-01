@@ -32,8 +32,8 @@
 # the ONE config that needed this correction: hold/step's own gains, even at
 # the much higher |L|~=0.51 "A" retune, stayed stable on hardware -- the
 # margin is genuinely task-specific, not a property of |L| in general. See
-# MPC_s_Hardware_results_2026-09-29/hardware_results_review.md section 3 and
-# implementation_fix.md for the full hardware evidence.
+# hardware_results_review.md section 3 and implementation_fix_20261001.md
+# for the full hardware evidence.
 
 controller:
   dt: 0.01
@@ -49,7 +49,7 @@ controller:
   observer_q_d: 1.0
   observer_r_y: 0.0004
   observer_d_hat_max: 300.0
-  # FISTA iterations/tick (2026-10-01): see hold.yaml's comment / implementation_fix.md.
+  # FISTA iterations/tick (2026-10-01): see hold.yaml's comment / implementation_fix_20261001.md.
   # Re-verified specifically on THIS config's own closed-loop circle-tracking
   # test (the hardest of the four tasks to track): max/steady-state error
   # unchanged (0.787mm / 0.0004mm) at qp_iters=50 vs the 200 default.

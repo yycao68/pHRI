@@ -1,6 +1,8 @@
 # 真实硬件结果评审（`MPC_s_Hardware_results_2026-09-29`）
 
-对照 `pHRI/MPC_s/original_implementation.md` 与 `implementation_fix.md` 进行交叉核验。
+对照 `pHRI/MPC_s/original_implementation.md` 与 `implementation_fix.md`（本文档所验证的
+2026-09-27 那批修复）进行交叉核验；针对本文档自身发现而做的修复，另见
+`implementation_fix_20261001.md`。
 数据来源：19 组 CSV 记录（11 组 `completed`，8 组 `diverged`），覆盖 `hold`/`step`/`circle`
 三类任务、12 种配置变体，另有预先生成的图表。下文所有数字均从原始 CSV 重新计算得出，
 并非取自文件名或先前的说法。
@@ -86,7 +88,7 @@ PID 3.9x）几乎完全吻合。更可能的解释很简单：`_re_1` 是在没�
 测试配置。
 
 *（更新，2026-10-01：这个回调已经实际做了——`circle.yaml` 现在出货的是 `q_pos=27086.8`，
-`\|L\|=0.350`，并在 `--backend sim` 下重新验证过干净。详见 `implementation_fix.md` 的
+`\|L\|=0.350`，并在 `--backend sim` 下重新验证过干净。详见 `implementation_fix_20261001.md` 的
 "circle.yaml gain pullback" 条目。上面的表格仍然反映的是扫描当时、回调之前出货增益的
 原始数据。）*
 
@@ -144,5 +146,5 @@ LQR 回归问题）如出一辙——值得决定一下：是把各轴独立增�
   同一个高度集中在约 7.4–7.9Hz 的振荡模态。
 - 用预先生成的 PNG 图表对上述数值结论做一次目视核对。
 - ~~决定是否要把 `circle.yaml` 出货配置中的 `q_pos` 往回调~~——已完成，见
-  `implementation_fix.md`：从 75290.6 调到 `\|L\|≈0.35`（`q_pos≈27000`）。
+  `implementation_fix_20261001.md`：从 75290.6 调到 `\|L\|≈0.35`（`q_pos≈27000`）。
 - 是否要把各轴独立增益的代码能力移植进仓库（取决于学生对上一个问题的回复）。

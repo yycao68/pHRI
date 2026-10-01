@@ -48,7 +48,7 @@ controller:
   # re-solves an already-nearly-solved problem. Verified 3.8-4.1x faster
   # (isolated solve + tools/benchmark_compute.py) with no measurable
   # tracking-quality change on circle.yaml's closed-loop test -- see
-  # implementation_fix.md.
+  # implementation_fix_20261001.md.
   qp_iters: 50
 
 # ---------------------------------------------------------------------------

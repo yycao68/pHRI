@@ -1,6 +1,8 @@
 # Review of real-hardware results (`MPC_s_Hardware_results_2026-09-29`)
 
-Cross-checked against `pHRI/MPC_s/original_implementation.md` and `implementation_fix.md`.
+Cross-checked against `pHRI/MPC_s/original_implementation.md` and `implementation_fix.md`
+(the 2026-09-27 fixes this document validates); fixes made in response to this document's
+own findings are tracked separately in `implementation_fix_20261001.md`.
 Source data: 19 CSV runs (11 `completed`, 8 `diverged`) across `hold`/`step`/`circle` tasks, 12 config variants, plus pre-generated figures. All numbers below are freshly recomputed from the raw CSVs, not taken from filenames or prior claims.
 
 ## Bottom line
@@ -48,7 +50,7 @@ The student's own sweep localizes it directly:
 The true boundary sits between `q_pos=51101` (`\|L\|=0.409`, completed) and `q_pos=65405` (`\|L\|=0.435`, diverged) — a gap of only ~0.03 in `\|L\|`. `circle.yaml`'s shipped value (`q_pos=75290.6`, `\|L\|=0.450`) is on the wrong side of that boundary, but only by about 0.04-0.09 in `\|L\|`. Meanwhile the **same `\|L\|≈0.45-0.51` range is fine for `hold`** — three repeats at the much higher "A" gain (`q_pos=124371`, `\|L\|=0.509`) all completed cleanly (SS error 0.33–1.59mm). This is exactly the "stability is task-dependent, not just gain-dependent" caveat from `implementation_fix.md`, now with a concrete number:
 **`circle.yaml`'s then-current `q_pos=75290.6` was past the real margin, if only just**, and needed pulling back toward `\|L\|≈0.35` (`q_pos≈27000`, comfortably below the `\|L\|=0.409` point that stayed stable) to be a reliably-stable shipped config rather than a stress test.
 
-*(Update, 2026-10-01: this pullback has since been applied — `circle.yaml` now ships `q_pos=27086.8`, `\|L\|=0.350` — and re-verified clean in `--backend sim`. See `implementation_fix.md`'s "circle.yaml gain pullback" entry. The table above still reflects the sweep data as originally measured, against the gain that shipped at the time.)*
+*(Update, 2026-10-01: this pullback has since been applied — `circle.yaml` now ships `q_pos=27086.8`, `\|L\|=0.350` — and re-verified clean in `--backend sim`. See `implementation_fix_20261001.md`'s "circle.yaml gain pullback" entry. The table above still reflects the sweep data as originally measured, against the gain that shipped at the time.)*
 
 ## 4. Code drift: anisotropic gains run on hardware, not in the committed repo
 
@@ -74,5 +76,5 @@ None of these show the diverged runs' signature (sign-alternating, amplitude-gro
 - Confirm with you whether `hw_hold_re_1` really was run without `--use-jit` (timing story above is inferred from the numbers, not confirmed from a log/flag).
 - ~~Characterize `hw_step_re_1` etc.'s divergence signatures~~ — done, see `divergence_analysis.md`: all 8 diverged runs (not just circle) show the same tightly clustered ~7.4–7.9Hz oscillatory mode.
 - Visual spot-check of the pre-generated PNG figures against these numeric conclusions.
-- ~~Decide whether `circle.yaml`'s shipped `q_pos` should be pulled back~~ — done, see `implementation_fix.md`: pulled back from 75290.6 to `\|L\|≈0.35` (`q_pos≈27000`).
+- ~~Decide whether `circle.yaml`'s shipped `q_pos` should be pulled back~~ — done, see `implementation_fix_20261001.md`: pulled back from 75290.6 to `\|L\|≈0.35` (`q_pos≈27000`).
 - Whether the anisotropic-gain code should be ported into the repo (pending the student's clarification on whether it's a real extension or a one-off fork).
