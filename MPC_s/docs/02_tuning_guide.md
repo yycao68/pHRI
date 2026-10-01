@@ -56,7 +56,7 @@ practical approach is a small root-finding loop:
    residuals under `1e-6` within 5-10 iterations.
 
 This is genuinely a numerical step, not something to eyeball -- but you
-only need to do it once per target bandwidth, and the four configs already
+only need to do it once per target bandwidth, and the configs already
 in `configs/` give you good starting points to interpolate from by trial
 and error if you'd rather not write the root-finder yourself.
 

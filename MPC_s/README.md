@@ -210,12 +210,14 @@ MPC_s/
   README.md                 <- you are here
   requirements.txt
   docs/                      the three documents listed above
-  configs/                   hold.yaml, push.yaml, payload.yaml, circle.yaml
-                             (each carries both a controller: and a pid: block)
+  configs/                   hold.yaml, push.yaml, payload.yaml, circle.yaml, step.yaml
+                             (each carries both a controller: and a pid: block);
+                             step_L15.yaml..step_L35.yaml are a controlled gain
+                             sweep for step.yaml, see next_steps_test_plan.md
   lib/
     kinematics.py             forward kinematics + Jacobian
     dynamics.py                mass matrix / gravity / Coriolis (RNEA)
-    trajectory.py               reference generator (hold / circle)
+    trajectory.py               reference generator (hold / circle / step)
     interaction_mpc.py           the MPC (NormalizedInteractionMPC) and the
                                   observer (RandomWalkDisturbanceObserver)
     pid_controller.py             the task-space PID (TaskSpacePID)
@@ -228,9 +230,17 @@ MPC_s/
     plot_push.py, plot_payload.py   disturbance-specific plots
     check_circle_workspace.py    offline reachability/singularity check
     benchmark_compute.py          per-tick compute cost of either control law
+    benchmark_io.py                 splits a tick into read/compute/send to see
+                                    whether compute or communication dominates
+    solve_task_space_gain.py        solve q_pos for a target stiffness or |L|
+                                    stability metric, instead of guessing
     calibrate_joints.py            interactive joint sign/offset calibration (hardware)
     test_gravity_compensation.py   gravity-compensation-only hardware sanity check
     check_current_interface.py     confirm the servos accept Current Control Mode (hardware)
+    chirp_response.py               open-loop (no feedback) swept-sine torque
+                                    diagnostic -- per-joint frequency response,
+                                    for telling a real mechanical resonance
+                                    apart from a closed-loop-delay effect
   run_hardware.py             control loop for the MPC + observer
   run_pid.py                  control loop for the task-space PID -- the same file
                               with one line changed, see section 4
