@@ -2,7 +2,7 @@
 
 Review date: 2026-09-27 (Finding 4 added same day, second pass, triggered by
 fact-checking an external review's citation of the report's Section 2.5)
-Reviewed against: `ReportOPENManipulatorX.pdf` (stage report, 28 Aug 2026, 39pp), `MPC PID and TDC Manipulator.pdf` (slide deck, 02 Sep 2026), the cited paper (Cao & Tang, arXiv:2606.08281 -- `pHRI/arXiv/phri_combined.tex`), and the already-validated reference port of the same controller to the same robot family, `pHRI/openmanipulator_verify/`.
+Reviewed against: `ReportOPENManipulatorX.pdf` (stage report, 28 Aug 2026, 39pp) and `MPC PID and TDC Manipulator.pdf` (slide deck, 02 Sep 2026) -- both now kept alongside the real-hardware data in `../MPC_s_Hardware_results_2026-09-29/`, not in this folder -- the cited paper (Cao & Tang, arXiv:2606.08281 -- `pHRI/arXiv/phri_combined.tex`), and the already-validated reference port of the same controller to the same robot family, `pHRI/openmanipulator_verify/`.
 
 This file records **problems found** in the code as it stood at review time. Fixes -- applied or recommended -- are tracked separately in `implementation_fix.md`, not here.
 

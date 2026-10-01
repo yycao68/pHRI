@@ -303,3 +303,30 @@ Computing `|L|` properly for `step.yaml`'s own `r`/`lambda_damping` (not circle'
 Fixes: `step` can now be run via `run_hardware.py` at all (it could not before), and there is now a safe-in-sim, controlled sweep ready to run on real hardware.
 
 **Does NOT fix**: `step.yaml`'s own `q_pos` is still provisional. Nobody has run `step_L15.yaml` through `step_L35.yaml` on the real arm yet -- that is real-hardware work this session cannot do. Per `next_steps_test_plan.md` item 1: each point needs at least 2 real-hardware repeats (the existing "A" data shows a single run is not enough to call a marginal config "stable"), and `--max-err-mm`'s new auto-stop (above) should be on for all of them.
+
+## Prepared: `tools/chirp_response.py`, an open-loop resonance-vs-loop-delay diagnostic (2026-10-01)
+
+**Status: written and sim-verified clean on all 3 joints. Not yet run on real hardware -- that is the whole point of the tool, and this session cannot do it.**
+
+Follows `next_steps_test_plan.md` item 3: the 7.4-7.9Hz self-excited oscillation's frequency being essentially gain-independent (`divergence_analysis.md`) is consistent with two different root causes needing two different fixes -- a genuine mechanical/structural resonance (fix: a notch filter, or hardware work) vs. a closed-loop critical frequency from total loop delay (fix: reduce that delay). Telling them apart needs measuring the arm with the control loop entirely removed.
+
+### What changed
+
+- **`tools/chirp_response.py`** (new): commands ONLY `tau = gravity_scale*dyn.gravity(q) - damping*dq + chirp(t)` on one chosen joint -- the same no-feedback-at-all design as the existing `tools/test_gravity_compensation.py`, so there is no possibility of closed-loop instability contaminating the measurement. The chirp is a logarithmic (exponential) swept sine (`--f0`/`--f1`/`--duration`/`--amplitude-nm`), analyzed via `--plot` as a sliding-window RMS of the excited joint's velocity mapped to the chirp's (analytically known, not estimated) instantaneous frequency -- a response-amplitude-vs-frequency curve, with the 7.4-7.9Hz band marked for reference. Safety: a hard abort (`--max-dev-rad`, same pattern as `run_hardware.py`'s `--max-err-mm`) if the excited joint strays too far from its starting angle, `move_to_start` first for a reproducible operating point, and the script refuses an `--amplitude-nm` that isn't comfortably under the joint's `tau_max_Nm`.
+
+### A real design problem found and fixed during this, not just written blind
+
+The first version defaulted to `--f0 0.5` (per `next_steps_test_plan.md`'s own draft wording). Running it in `--backend sim` tripped the safety abort in well under half a second. Not a bug in the abort logic -- a correct consequence of removing ALL position feedback: a joint's response to a torque at frequency `f` scales as `1/f^2` for a plain double integrator (`tau -> M*qddot`), so a low-frequency chirp component acts like a slowly-varying bias torque with nothing to center the joint against it. Fixed by moving the default sweep to `--f0 3 --f1 15` (still a ~2.3-octave band straddling 7.4-7.9Hz on both sides) -- verified clean afterward. Documented in the script's own docstring so this isn't rediscovered the hard way on real hardware.
+
+### Verification
+
+- `python3 -m py_compile tools/chirp_response.py`: clean.
+- `--amplitude-nm` safety refusal: confirmed it refuses an amplitude at or above half the excited joint's `tau_max_Nm`.
+- `--backend sim --config configs/hold.yaml`, all 3 joints, `--duration 10`: all complete the full 1000 samples with no auto-stop, deviation stayed under ~0.15 rad (well under the 0.3 rad default threshold) throughout.
+- `--plot` on the resulting CSVs: both output plots (response-vs-frequency, raw time trace) inspected visually -- frequency sweeps smoothly from ~3.25Hz to ~14Hz as commanded, response amplitude decays smoothly with no spurious peak (expected: sim's rigid-body model has no mechanical resonance to find; this only confirms the script's own plumbing, exactly like `tools/benchmark_io.py`'s sim backend only validates wiring, not the real answer).
+
+### What this does and does not establish
+
+Fixes/adds: a ready-to-use, safety-checked tool for the one measurement that can actually distinguish the two candidate explanations for the resonance.
+
+**Does NOT establish**: which explanation is correct. That needs `tools/chirp_response.py --backend dynamixel` run on all 3 joints on the real arm, then `--plot` compared against the 7.4-7.9Hz band -- not done here, no hardware access from this session.
