@@ -20,7 +20,7 @@ observer_q_d/observer_r_y from a target closed-loop bandwidth.
 NOTE (2026-09-27): an earlier version of this file replaced the receding-
 horizon box-constrained QP below with a static, precomputed LQR gain (no
 re-solve, no per-step box constraint over the horizon) -- see
-`original_implementation.md` Finding 1 for how that was found and why it
+`docs/original_implementation.md` Finding 1 for how that was found and why it
 does not match either the report this project produced or the cited paper.
 This restores the QP.
 
@@ -29,7 +29,7 @@ Optional JIT (`ControllerConfig.use_jit=True`): the FISTA loop in
 at ~926us/call (200 iterations) in numpy vs ~170us/call compiled (~5.4x;
 smaller than dynamics.py's _rnea() speedup because H@y here is a real
 50-ish-dim matvec, not overhead on a tiny 3x3 matrix -- see
-implementation_fix.md's "would C++ help" section). Requires
+docs/implementation_fix.md's "would C++ help" section). Requires
 `pip install numba` (optional, see requirements.txt); raises a clear error
 if requested and unavailable. Call `NormalizedInteractionMPC.warmup()` once
 before a real-time loop starts -- Numba's first call pays a one-time

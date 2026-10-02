@@ -1,14 +1,14 @@
 # MPC_s Implementation Fixes
 
-This file tracks fixes for the problems recorded in `original_implementation.md` 
--- both applied and merely recommended, clearly labeled as such. Do not add new problem reports here; add them to `original_implementation.md` instead.
+This file tracks fixes for the problems recorded in `docs/original_implementation.md` 
+-- both applied and merely recommended, clearly labeled as such. Do not add new problem reports here; add them to `docs/original_implementation.md` instead.
 
 **This file covers 2026-09-27 only -- all sim/analysis-only fixes made before any real
 hardware data existed.** Fixes from 2026-09-29 onward (everything that came out of the
 real-hardware validation data in `MPC_s_Hardware_results_2026-09-29/`, and everything
-downstream of it) are tracked separately in `implementation_fix_20261001.md`, to keep
+downstream of it) are tracked separately in `docs/implementation_fix_20261001.md`, to keep
 the pre-hardware and post-hardware stories from blurring together. Add new fixes to
-whichever file matches when they happened -- most likely `implementation_fix_20261001.md`
+whichever file matches when they happened -- most likely `docs/implementation_fix_20261001.md`
 now.
 
 ## Applied: the ~6.8ms per-tick compute cost (2026-09-27)
@@ -55,7 +55,7 @@ Post-fix, both controllers benchmark at ~1.0 ms mean / ~1.2 ms p99 on this dev m
 
 **Status: APPLIED (structural fix). Gain re-derivation is a separate, still-open follow-up -- see below.**
 
-Addresses `original_implementation.md`'s Finding 1 (the shipped "MPC" was a static LQR gain, not the report/paper's receding-horizon box-constrained QP). Chose option (A) from the two listed below the fold: restore the real QP, rather than (B) re-deriving gains to match the static-LQR shortcut.
+Addresses `docs/original_implementation.md`'s Finding 1 (the shipped "MPC" was a static LQR gain, not the report/paper's receding-horizon box-constrained QP). Chose option (A) from the two listed below the fold: restore the real QP, rather than (B) re-deriving gains to match the static-LQR shortcut.
 
 **What changed.** `lib/interaction_mpc.py`'s `NormalizedInteractionMPC` was replaced with the already-validated box-QP implementation from `pHRI/openmanipulator_verify/lib/interaction_mpc.py` (same robot family, same controller, previously MuJoCo-validated), adapted to this project's own conventions rather than copied verbatim:
 
@@ -106,7 +106,7 @@ evaluated at the report's own observed oscillation frequency $\omega$ (full deri
 | match report's Kp=101.39 N/m directly | 1,206,539 | 101.4 | **1.463** (5.6x the report's own validated max, 0.261) |
 | match report's own `\|L\|`=0.21 at its `w` | 508 | 2.9 | 0.210 (barely above the pre-retune value) |
 
-Neither extreme is usable as-is: the first is very likely unstable by the report's own criterion; the second is barely an improvement over the 15-250x-too-soft gains Finding 2 documented. **This is itself a real refinement to Finding 2**, not just an implementation detail: "match the report's raw Kp number" was never the right target once the posture's own `Λ(q)` differs this much -- neither is now recorded as a discovered problem in `original_implementation.md` (which stays as a record of the code as it stood at review time); it is recorded here because it is specific to *how* Finding 2 gets fixed.
+Neither extreme is usable as-is: the first is very likely unstable by the report's own criterion; the second is barely an improvement over the 15-250x-too-soft gains Finding 2 documented. **This is itself a real refinement to Finding 2**, not just an implementation detail: "match the report's raw Kp number" was never the right target once the posture's own `Λ(q)` differs this much -- neither is now recorded as a discovered problem in `docs/original_implementation.md` (which stays as a record of the code as it stood at review time); it is recorded here because it is specific to *how* Finding 2 gets fixed.
 
 ### What changed
 

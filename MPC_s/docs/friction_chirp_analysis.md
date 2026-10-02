@@ -42,7 +42,7 @@ $$
 $$
 
 - $\Lambda(q)$ -- the operational-space (task-space) mass matrix, same quantity `run_hardware.py` computes every tick.
-- $M(q)$ is the joint-space mass matrix INCLUDING the reflected-rotor armature correction (`dyn_armature_kg_m2`, see `implementation_fix.md`'s Finding-4 entry) -- using the same $M(q)$ the controller itself uses is what makes $\tau_{eq}$ a fair read of what the controller's own observer believed, not a recomputation with a different model.
+- $M(q)$ is the joint-space mass matrix INCLUDING the reflected-rotor armature correction (`dyn_armature_kg_m2`, see `docs/implementation_fix.md`'s Finding-4 entry) -- using the same $M(q)$ the controller itself uses is what makes $\tau_{eq}$ a fair read of what the controller's own observer believed, not a recomputation with a different model.
 - $J_{xz}(q)$ is the 2x3 task-space (x-z rows only) Jacobian.
 
 Each section below is a different way of asking what $\tau_{eq}$ (or, for breakaway, the raw logged $\tau$) says about $\tau_c$/$b$/$\tau_s$ -- none of them isolate friction cleanly from "everything else $\hat d$ is also carrying," which is the recurring caveat throughout Part 1.
@@ -187,7 +187,7 @@ I\,\ddot q &= \tau_{chirp}(t) \\
 q(t) = -\frac{A}{I\omega^2}\sin(\omega t)
 $$
 
-Position amplitude scales as $1/\omega^2$ for a FIXED torque amplitude $A$ -- a low-frequency chirp component acts like a slowly-varying bias torque with nothing to center the joint against it (no feedback at all, by design). This is why the script's `--f0 0.5` default was tried, tripped the safety abort in well under half a second (`implementation_fix_20261001.md`), and was moved to `--f0 3` -- not a bug, a direct consequence of the equation above.
+Position amplitude scales as $1/\omega^2$ for a FIXED torque amplitude $A$ -- a low-frequency chirp component acts like a slowly-varying bias torque with nothing to center the joint against it (no feedback at all, by design). This is why the script's `--f0 0.5` default was tried, tripped the safety abort in well under half a second (`docs/implementation_fix_20261001.md`), and was moved to `--f0 3` -- not a bug, a direct consequence of the equation above.
 
 ### The chirp signal and the response extraction itself
 

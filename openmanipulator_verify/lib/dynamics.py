@@ -12,7 +12,7 @@ original approach, kept below as `_mass_matrix_rnea` for a regression check
 in `test_local.py`) -- this was the single largest per-tick cost (measured
 ~1.98ms/call for this n=4 arm vs ~0.50ms for a single RNEA call), the same
 fix applied to the sibling 3-DOF project this arm's own design was forked
-into (`pHRI/MPC_s`; see its `implementation_fix.md`).
+into (`pHRI/MPC_s`; see its `docs/implementation_fix.md`).
 """
 from __future__ import annotations
 

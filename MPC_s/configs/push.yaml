@@ -27,14 +27,14 @@ controller:
   r: 0.15
   # Raised from 8: at the new, much stiffer q_pos this bound was found to
   # bind DURING the push transient (peak error 303mm vs 103mm at a wider
-  # bound, same disturbance) -- see implementation_fix.md. 100 keeps ~2x
+  # bound, same disturbance) -- see docs/implementation_fix.md. 100 keeps ~2x
   # margin over the largest naturally-occurring correction observed across
   # all four configs (~50 m/s^2, on payload.yaml's sustained-force transient).
   u_max: [100.0, 100.0, 100.0]
   observer_q_d: 3.0
   observer_r_y: 0.0004
   observer_d_hat_max: 15.0
-  # FISTA iterations/tick (2026-10-01): see hold.yaml's comment / implementation_fix_20261001.md.
+  # FISTA iterations/tick (2026-10-01): see hold.yaml's comment / docs/implementation_fix_20261001.md.
   qp_iters: 50
 
 # ---------------------------------------------------------------------------

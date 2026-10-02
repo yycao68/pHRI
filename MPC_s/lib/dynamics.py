@@ -24,7 +24,7 @@ plus the Jacobian-formula mass matrix, which is not RNEA at all).
 Optional JIT (`use_jit=True`, see `OpenManipulatorDynamics.__init__`):
 _rnea() is Python/numpy-overhead-bound, not FLOP-bound (these are 3x3
 matrices) -- measured at ~395us/call in pure numpy vs ~5us/call Numba-JIT-
-compiled (~79x, see implementation_fix.md's "would C++ help" section, which
+compiled (~79x, see docs/implementation_fix.md's "would C++ help" section, which
 is where this number first came from). Requires `pip install numba`
 (deliberately NOT a hard dependency of this numpy-only project -- see
 requirements.txt); raises a clear error if `use_jit=True` and numba isn't

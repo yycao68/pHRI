@@ -5,7 +5,7 @@ Triggered by: `pHRI/MPC_s` (a 3-DOF, waist-removed fork of this project's own
 design) surfaced a long chain of real bugs this session -- once that work
 was done, it was worth checking whether the same classes of problem exist
 in *this*, the original 4-DOF reference it was forked from. See
-`pHRI/MPC_s/original_implementation.md` and `implementation_fix.md` for the
+`pHRI/MPC_s/docs/original_implementation.md` and `docs/implementation_fix.md` for the
 full history this review draws on.
 
 **One fix already applied** (low-risk, directly portable, independently

@@ -186,7 +186,7 @@ Bring-up order, once per arm:
 | 1    | `tools/check_current_interface.py`   | do the servos accept Current Control Mode at all? No torque is commanded.                                                                  |
 | 2    | `tools/calibrate_joints.py`          | `joint_sign` and `joint_offset_rad` for **your** arm                                                                                       |
 | 3    | `tools/test_gravity_compensation.py` | is the calibration right? Gravity only, no error feedback, so a wrong sign cannot destabilize it -- the arm should feel roughly weightless |
-| 4    | `tools/benchmark_compute.py`         | can this PC compute a tick inside `controller.dt`? Run it for both `--controller mpc` and `--controller pid`, and with/without `--use-jit` (optional, `pip install numba` -- ~65x/~5x measured speedup on the RNEA/FISTA hot paths, see `implementation_fix.md`) if the plain-numpy numbers are tight |
+| 4    | `tools/benchmark_compute.py`         | can this PC compute a tick inside `controller.dt`? Run it for both `--controller mpc` and `--controller pid`, and with/without `--use-jit` (optional, `pip install numba` -- ~65x/~5x measured speedup on the RNEA/FISTA hot paths, see `docs/implementation_fix.md`) if the plain-numpy numbers are tight |
 | 5    | `tools/check_circle_workspace.py`    | is the trajectory reachable and clear of singularities?                                                                                    |
 
 Step 1 comes first because it is the cheapest possible failure, and step 3
@@ -215,6 +215,12 @@ MPC_s/
     03_hardware_safety.md        every safety mechanism + pre-flight checklist
     friction_chirp_analysis.md    real-hardware friction proxies (Part 1) +
                                   open-loop chirp resonance diagnostic (Part 2)
+    original_implementation.md    problem reports against the original stage
+                                  report; add new problems here, not fixes
+    implementation_fix.md         fixes for those problems, 2026-09-27
+                                  (sim/analysis-only, pre-hardware-data)
+    implementation_fix_20261001.md  fixes from 2026-09-29 onward, i.e.
+                                  everything the real-hardware data drove
   configs/                   hold.yaml, push.yaml, payload.yaml, circle.yaml, step.yaml
                              (each carries both a controller: and a pid: block);
                              step_L15.yaml..step_L35.yaml are a controlled gain

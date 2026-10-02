@@ -17,10 +17,10 @@
 # tools/solve_task_space_gain.py) for the SAME target |L|=0.45 all four
 # configs now share (this config's own pre-retune level was already close,
 # |L|=0.573 -- slightly ABOVE this target, so this is a small step back in
-# raw stiffness, not a jump; see implementation_fix.md for why a uniform
+# raw stiffness, not a jump; see docs/implementation_fix.md for why a uniform
 # target across configs was chosen over matching this file's own prior
 # value). u_max converted from an unconverted force-domain leftover (300 N,
-# Finding 3 in original_implementation.md) to a genuine acceleration-domain
+# Finding 3 in docs/original_implementation.md) to a genuine acceleration-domain
 # bound.
 #
 # q_pos (2026-09-29, real-hardware pullback): a hardware sweep found this
@@ -32,7 +32,7 @@
 # the ONE config that needed this correction: hold/step's own gains, even at
 # the much higher |L|~=0.51 "A" retune, stayed stable on hardware -- the
 # margin is genuinely task-specific, not a property of |L| in general. See
-# hardware_results_review.md section 3 and implementation_fix_20261001.md
+# hardware_results_review.md section 3 and docs/implementation_fix_20261001.md
 # for the full hardware evidence.
 
 controller:
@@ -49,7 +49,7 @@ controller:
   observer_q_d: 1.0
   observer_r_y: 0.0004
   observer_d_hat_max: 300.0
-  # FISTA iterations/tick (2026-10-01): see hold.yaml's comment / implementation_fix_20261001.md.
+  # FISTA iterations/tick (2026-10-01): see hold.yaml's comment / docs/implementation_fix_20261001.md.
   # Re-verified specifically on THIS config's own closed-loop circle-tracking
   # test (the hardest of the four tasks to track): max/steady-state error
   # unchanged (0.787mm / 0.0004mm) at qp_iters=50 vs the 200 default.

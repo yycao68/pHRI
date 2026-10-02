@@ -4,9 +4,9 @@ Review date: 2026-09-27 (Finding 4 added same day, second pass, triggered by
 fact-checking an external review's citation of the report's Section 2.5)
 Reviewed against: `ReportOPENManipulatorX.pdf` (stage report, 28 Aug 2026, 39pp) and `MPC PID and TDC Manipulator.pdf` (slide deck, 02 Sep 2026) -- both now kept alongside the real-hardware data in `../MPC_s_Hardware_results_2026-09-29/`, not in this folder -- the cited paper (Cao & Tang, arXiv:2606.08281 -- `pHRI/arXiv/phri_combined.tex`), and the already-validated reference port of the same controller to the same robot family, `pHRI/openmanipulator_verify/`.
 
-This file records **problems found** in the code as it stood at review time. Fixes -- applied or recommended -- are tracked separately in `implementation_fix.md`, not here.
+This file records **problems found** in the code as it stood at review time. Fixes -- applied or recommended -- are tracked separately in `docs/implementation_fix.md`, not here.
 
-**Status: all four findings below now have a corresponding fix recorded in `implementation_fix.md`** (Findings 1 & 2 structurally, via the restored QP; Finding 2's gains, via a retune; Finding 3, via a `u_max` correction; Finding 4, via activating the missing config key) -- this file is kept as the historical record of what was wrong, not a live list of open issues. Cross-check `implementation_fix.md`'s own section headers (each names which finding it addresses) before treating anything below as still outstanding.
+**Status: all four findings below now have a corresponding fix recorded in `docs/implementation_fix.md`** (Findings 1 & 2 structurally, via the restored QP; Finding 2's gains, via a retune; Finding 3, via a `u_max` correction; Finding 4, via activating the missing config key) -- this file is kept as the historical record of what was wrong, not a live list of open issues. Cross-check `docs/implementation_fix.md`'s own section headers (each names which finding it addresses) before treating anything below as still outstanding.
 
 ## Summary
 
@@ -70,9 +70,9 @@ The report's own Section 2.5 identifies a decisive model correction: the link-ge
 - `docs/01_concepts.md` **does not contain the promised derivation** -- the cross-reference in `run_hardware.py`'s own comment is itself stale/dangling.
 - `test_local.py`'s own simplified control loop computed `Mq = dyn.mass_matrix(io.q)` directly, never reading `dyn_armature_kg_m2` at all -- even if a config set it, this test harness would still silently run the controller against the wrong plant model.
 
-**Measured impact.** At this project's shared posture (`[0.6, -2.3493, -1.86]`), adding the correct `c=0.01` changes the operational-space mass matrix `Λ(q)` from `[[0.201, 0.076], [0.076, 0.052]]` to `[[0.686, -0.022], [-0.022, 0.384]]` -- diagonal entries up 240%/639%, and the off-diagonal coupling drops from being over 100% of the smaller diagonal entry to a small, genuinely secondary term. Notably, the corrected `Λ` is now close to the report's own validated posture's `Λxx≈0.67, Λzz≈0.43` -- suggesting the earlier apparent "this posture's task inertia is much smaller/more anisotropic than the report's" finding (used in fixing Finding 2, see `implementation_fix.md`) was itself largely an artifact of this missing correction, not a genuine posture difference.
+**Measured impact.** At this project's shared posture (`[0.6, -2.3493, -1.86]`), adding the correct `c=0.01` changes the operational-space mass matrix `Λ(q)` from `[[0.201, 0.076], [0.076, 0.052]]` to `[[0.686, -0.022], [-0.022, 0.384]]` -- diagonal entries up 240%/639%, and the off-diagonal coupling drops from being over 100% of the smaller diagonal entry to a small, genuinely secondary term. Notably, the corrected `Λ` is now close to the report's own validated posture's `Λxx≈0.67, Λzz≈0.43` -- suggesting the earlier apparent "this posture's task inertia is much smaller/more anisotropic than the report's" finding (used in fixing Finding 2, see `docs/implementation_fix.md`) was itself largely an artifact of this missing correction, not a genuine posture difference.
 
-This was found while independently fact-checking an external review's citation of the report's Section 2.5 -- the citation was accurate, and checking it against the current codebase surfaced this gap. See `implementation_fix.md` for the fix and its full verification.
+This was found while independently fact-checking an external review's citation of the report's Section 2.5 -- the citation was accurate, and checking it against the current codebase surfaced this gap. See `docs/implementation_fix.md` for the fix and its full verification.
 
 ## What was checked and found correct
 

@@ -7,12 +7,12 @@
 # produced an actual closed-loop task-space stiffness of only Kp~=[1.9, 0.5]
 # N/m at this posture (computed via tools/solve_task_space_gain.py), 50-100x
 # below what the project's own original stage report validated as workable
-# against real stiction (see original_implementation.md Finding 2). q_vel=0
+# against real stiction (see docs/original_implementation.md Finding 2). q_vel=0
 # (the report's own Section 4.1 finding: this decouples stiffness from
 # damping, letting q_pos alone set Kp) and q_pos solved for a target |L|
 # (the report's loop-gain-delay stability metric) of 0.45 -- matching, not
 # exceeding, the level configs/payload.yaml already ran at unincident after
-# restoring the box-QP (implementation_fix.md). Resulting Kp~=[49, 12.7] N/m,
+# restoring the box-QP (docs/implementation_fix.md). Resulting Kp~=[49, 12.7] N/m,
 # Kd~=[4.45, 1.15] Ns/m. This is a sim-verified, evidence-based starting
 # point, NOT a hardware-validated final gain -- follow docs/02_tuning_guide.md
 # section 3 step 5 (one small increment at a time) before trusting it at full
@@ -48,7 +48,7 @@ controller:
   # re-solves an already-nearly-solved problem. Verified 3.8-4.1x faster
   # (isolated solve + tools/benchmark_compute.py) with no measurable
   # tracking-quality change on circle.yaml's closed-loop test -- see
-  # implementation_fix_20261001.md.
+  # docs/implementation_fix_20261001.md.
   qp_iters: 50
 
 # ---------------------------------------------------------------------------
@@ -98,7 +98,7 @@ robot:
   # hardware identification (same servo, same correction): sweeping a
   # constant added to M(q)'s diagonal against an open-loop joint-3 torque
   # replay showed the 0.1s prediction RMSE fall from 137.0 deg (c=0) to
-  # 2.87 deg (c=0.01) -- see original_implementation.md. Also fed to
+  # 2.87 deg (c=0.01) -- see docs/original_implementation.md. Also fed to
   # SimArmBackend (must match what the controller assumes, so its own plant
   # has the inertia the controller believes it has).
   dyn_armature_kg_m2: 0.01

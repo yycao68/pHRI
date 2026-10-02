@@ -15,7 +15,7 @@ disabled on every exit path, including the failure paths.
 
 It also reports (read-only by default) two registers relevant to per-tick
 communication latency -- see "Is the ~6-8ms per tick communication-bound?"
-in implementation_fix.md and tools/benchmark_io.py, which this is meant to
+in docs/implementation_fix.md and tools/benchmark_io.py, which this is meant to
 be run alongside:
 
 - Return_Delay_Time (addr 9): how long the servo waits before replying to a

@@ -1,6 +1,6 @@
 # MPC_s Implementation Fixes -- Real-Hardware Results (2026-09-29 onward)
 
-Continuation of `implementation_fix.md`, split out specifically for the fixes that came out of the real-hardware validation data (`MPC_s_Hardware_results_2026-09-29/`, first received 2026-09-29) and everything downstream of it, as opposed to `implementation_fix.md`'s own fixes (2026-09-27), which were all sim/analysis-only at the time they were applied. Same rules as that file: this records fixes -- applied or merely prepared, clearly labeled as such -- not new problem reports (those still go in `original_implementation.md`).
+Continuation of `docs/implementation_fix.md`, split out specifically for the fixes that came out of the real-hardware validation data (`MPC_s_Hardware_results_2026-09-29/`, first received 2026-09-29) and everything downstream of it, as opposed to `docs/implementation_fix.md`'s own fixes (2026-09-27), which were all sim/analysis-only at the time they were applied. Same rules as that file: this records fixes -- applied or merely prepared, clearly labeled as such -- not new problem reports (those still go in `docs/original_implementation.md`).
 
 ## Applied: real-hardware validation, divergence auto-stop, and a `circle.yaml` gain pullback (2026-09-29)
 
@@ -8,7 +8,7 @@ Continuation of `implementation_fix.md`, split out specifically for the fixes th
 
 The student ran the (code-unchanged, params-only) controller on the real 3-DOF OpenManipulator-X across `hold`/`step`/`circle` tasks (19 runs, 11 completed / 8 diverged, multiple gain sweeps). Full analysis in `hardware_results_review.md` and `divergence_analysis.md` (+ Chinese translations); summarized here only as far as it produced actual code/config changes.
 
-**Headline results**: every fix in `implementation_fix.md` so far is confirmed working on real hardware -- box-QP runs, `u_max` no longer clips, the armature correction is active and logged, timing is compute-bound (~4.2ms/tick, comfortable 100Hz headroom) and matches the `--use-jit` speedup measured there. The one thing real hardware could show that sim/analysis couldn't: **the `~8Hz self-excited oscillation` the original report warned about is real** -- all 8 diverged runs show a tightly clustered 7.4-7.9Hz sign-alternating, amplitude-growing oscillation regardless of task or gain, and it is genuinely task-dependent (the same `|L|` that's stable for `hold` is past the boundary for `circle`).
+**Headline results**: every fix in `docs/implementation_fix.md` so far is confirmed working on real hardware -- box-QP runs, `u_max` no longer clips, the armature correction is active and logged, timing is compute-bound (~4.2ms/tick, comfortable 100Hz headroom) and matches the `--use-jit` speedup measured there. The one thing real hardware could show that sim/analysis couldn't: **the `~8Hz self-excited oscillation` the original report warned about is real** -- all 8 diverged runs show a tightly clustered 7.4-7.9Hz sign-alternating, amplitude-growing oscillation regardless of task or gain, and it is genuinely task-dependent (the same `|L|` that's stable for `hold` is past the boundary for `circle`).
 
 ### What changed
 
@@ -96,7 +96,7 @@ Fixes/adds: a ready-to-use, safety-checked tool for the one measurement that can
 
 **Status: APPLIED and verified. All 10 configs (`hold`, `push`, `payload`, `circle`, `step`, `step_L15`-`step_L35`) updated and re-run clean in `--backend sim`.**
 
-In response to the user asking whether anything else could shorten the per-tick time delay or improve efficiency, beyond what's already in `implementation_fix.md` (`--use-jit`, the still-unverified `Return_Delay_Time`/USB latency timer levers). `qp_iters` (FISTA iterations per `solve()` call) defaults to 200 and no shipped config had ever overridden it -- but `NormalizedInteractionMPC._solve_box_qp()` warm-starts FISTA from the PREVIOUS tick's solution every tick (`self._u_warm`), so 200 fresh iterations re-solves a problem that is already nearly solved.
+In response to the user asking whether anything else could shorten the per-tick time delay or improve efficiency, beyond what's already in `docs/implementation_fix.md` (`--use-jit`, the still-unverified `Return_Delay_Time`/USB latency timer levers). `qp_iters` (FISTA iterations per `solve()` call) defaults to 200 and no shipped config had ever overridden it -- but `NormalizedInteractionMPC._solve_box_qp()` warm-starts FISTA from the PREVIOUS tick's solution every tick (`self._u_warm`), so 200 fresh iterations re-solves a problem that is already nearly solved.
 
 ### Evidence (verified three independent ways before touching any config)
 
@@ -122,7 +122,7 @@ One confound found and worth recording: an earlier closed-loop comparison via `r
 
 Fixes: real, verified compute headroom (~4x on the FISTA share specifically) with no measurable cost, available immediately -- does not require real hardware to adopt, unlike most of the other items in `next_steps_test_plan.md`.
 
-**Does NOT fix**: communication-side delay (still needs `Return_Delay_Time`/`Status_Return_Level`/USB latency timer verified on real hardware, per `implementation_fix.md`'s earlier entry) or any of the other efficiency ideas raised alongside this one but not yet tried: a higher baud rate (XM430-W350 supports well above the 1Mbps currently used in every example, exact ceiling not confirmed against the firmware here), `gc.disable()` during the real-time loop (Python's cyclic GC is a plausible but unconfirmed explanation for the PID "max=37.57ms" outlier flagged in `implementation_fix.md`), and a shorter `horizon` (would help further but changes the MPC's actual behavior, not just its speed -- needs the same full re-verification treatment as a gain change, not done here).
+**Does NOT fix**: communication-side delay (still needs `Return_Delay_Time`/`Status_Return_Level`/USB latency timer verified on real hardware, per `docs/implementation_fix.md`'s earlier entry) or any of the other efficiency ideas raised alongside this one but not yet tried: a higher baud rate (XM430-W350 supports well above the 1Mbps currently used in every example, exact ceiling not confirmed against the firmware here), `gc.disable()` during the real-time loop (Python's cyclic GC is a plausible but unconfirmed explanation for the PID "max=37.57ms" outlier flagged in `docs/implementation_fix.md`), and a shorter `horizon` (would help further but changes the MPC's actual behavior, not just its speed -- needs the same full re-verification treatment as a gain change, not done here).
 
 ## Applied: `tools/estimate_friction.py`, three proxy friction estimates from existing logs (2026-10-02)
 

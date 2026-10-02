@@ -417,7 +417,7 @@ def main() -> None:
                           "tracking. <=0 disables this and starts tracking immediately from the current pose.")
     ap.add_argument("--use-jit", action="store_true",
                      help="Numba-JIT-compile the RNEA hot path (lib/dynamics.py) instead of plain numpy "
-                          "-- measured ~65x speedup, see implementation_fix.md's \"would C++ help\" "
+                          "-- measured ~65x speedup, see docs/implementation_fix.md's \"would C++ help\" "
                           "section. Requires `pip install numba` (optional, off by default). Pays a "
                           "one-time JIT compile cost (~1-3s) at startup, before the real-time loop.")
     run(ap.parse_args())

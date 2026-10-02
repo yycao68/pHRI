@@ -19,7 +19,7 @@ criterion from the original stage report (|L| = sqrt(Kp^2+(w*Kd)^2) /
 ALSO reported here for context, using that report's own w=50.27 rad/s
 (f_crit=8Hz) -- but that frequency was derived from a ~30ms round-trip loop
 delay dominated by an ~8ms QP solve that no longer exists in this codebase
-(see implementation_fix.md: FISTA now costs ~1ms). The TRUE stability
+(see docs/implementation_fix.md: FISTA now costs ~1ms). The TRUE stability
 boundary for THIS loop is very likely higher (more permissive) than what
 this old frequency implies, but confirming that requires an actual hardware
 sweep (mirroring the original report's own Section 6.1), which this tool
@@ -61,7 +61,7 @@ def lambda_at_posture(config: dict) -> np.ndarray:
     # Must match run_hardware.py's own Mq exactly, including the reflected-
     # rotor/gearbox armature term -- omitting it (as an earlier version of
     # this tool did) understates M(q) and overstates Lambda's anisotropy;
-    # see original_implementation.md's armature-correction finding.
+    # see docs/original_implementation.md's armature-correction finding.
     armature = float(config["robot"].get("dyn_armature_kg_m2", 0.0))
     Mq = dyn.mass_matrix(q_nom) + armature * np.eye(n)
     Minv = np.linalg.inv(Mq)

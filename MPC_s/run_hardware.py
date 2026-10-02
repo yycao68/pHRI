@@ -423,7 +423,7 @@ def main() -> None:
     ap.add_argument("--use-jit", action="store_true",
                      help="Numba-JIT-compile the RNEA (lib/dynamics.py) and FISTA (lib/interaction_mpc.py) "
                           "hot paths instead of plain numpy -- measured ~65x/~5x speedups, see "
-                          "implementation_fix.md's \"would C++ help\" section. Requires `pip install numba` "
+                          "docs/implementation_fix.md's \"would C++ help\" section. Requires `pip install numba` "
                           "(optional dependency, off by default). Pays a one-time JIT compile cost "
                           "(~1-3s) at startup, before the real-time loop -- not on its first tick.")
     ap.add_argument("--max-err-mm", type=float, default=25.0,

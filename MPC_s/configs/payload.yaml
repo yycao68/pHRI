@@ -23,7 +23,7 @@
 # configs now share, which happens to be almost exactly this config's own
 # PRE-retune level (|L|=0.434, unincident in sim) -- so this file changes the
 # least of the four. u_max converted from an unconverted force-domain
-# leftover (300 N, Finding 3 in original_implementation.md) to a genuine
+# leftover (300 N, Finding 3 in docs/original_implementation.md) to a genuine
 # acceleration-domain bound.
 
 controller:
@@ -41,7 +41,7 @@ controller:
   observer_q_d: 3.0
   observer_r_y: 0.0004
   observer_d_hat_max: 300.0
-  # FISTA iterations/tick (2026-10-01): see hold.yaml's comment / implementation_fix_20261001.md.
+  # FISTA iterations/tick (2026-10-01): see hold.yaml's comment / docs/implementation_fix_20261001.md.
   qp_iters: 50
 
 # ---------------------------------------------------------------------------

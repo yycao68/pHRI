@@ -12,13 +12,13 @@ this explicitly and admits it never checked it --
 
 `tools/benchmark_compute.py` deliberately times ONLY the algorithm (no sim
 physics, no serial I/O -- see its own docstring) and this session's timing
-fix (implementation_fix.md) targeted exactly that algorithmic path (removing
+fix (docs/implementation_fix.md) targeted exactly that algorithmic path (removing
 redundant RNEA calls, `mass_matrix()` via a closed-form Jacobian formula
 instead of 3 RNEA calls). That fix is only worth what it says it's worth if
 the ~6.8ms real-hardware figure was actually dominated by compute -- if it
 was instead mostly `read_state()`/`send_torque()` (GroupSyncRead/
 GroupSyncWrite serial round trips), the earlier "~2.45x speedup -> ~2.8ms"
-extrapolation in implementation_fix.md is optimistic, because compute was
+extrapolation in docs/implementation_fix.md is optimistic, because compute was
 never the majority of the number in the first place. This script settles
 that by timing all three phases of the SAME real loop `run_hardware.py`/
 `run_pid.py` actually run, separately, over many ticks.
@@ -238,12 +238,12 @@ def main() -> None:
         print("-> majority of the tick is communication (read_state/send_torque), NOT "
               "compute: the original report's own 'PID's 6.73ms is most likely "
               "communication-bound' hypothesis would be CONFIRMED here, and the compute "
-              "optimizations in implementation_fix.md are capped in how much real-hardware "
+              "optimizations in docs/implementation_fix.md are capped in how much real-hardware "
               "benefit they can deliver by whatever this comm share leaves on the table.")
     else:
         print("-> majority of the tick is compute, NOT communication: the report's "
               "'communication-bound' hypothesis would be REJECTED here, and the compute "
-              "speedup already measured in implementation_fix.md should translate close to "
+              "speedup already measured in docs/implementation_fix.md should translate close to "
               "directly into a lower real per-tick time.")
 
 
