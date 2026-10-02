@@ -1,13 +1,21 @@
-# Friction analysis (real hardware data)
+# Friction and chirp analysis
 
-Produced by `tools/estimate_friction.py` (see its own docstring for the full method and
-caveats behind each number here -- this file is the write-up, not a restatement of it).
-This project's dynamics model has no friction term at all (`docs/01_concepts.md`), so
-everything below is a PROXY read off existing closed-loop logs, not a clean measurement --
-the one thing that could give a clean, joint-space, closed-loop-free measurement is
-`tools/chirp_response.py --backend dynamixel`, which hasn't been run on real hardware yet.
-Treat this as "here's what the existing data already hints at," not a friction model ready
-to drop into `lib/dynamics.py`.
+Two related, independently-run diagnostics on the real OpenManipulator-X, written up
+together because both exist to characterize what this project's dynamics model does NOT
+capture (`docs/01_concepts.md`: "the simulator has no friction model... the friction part
+of the story needs real hardware"):
+
+- **§0-3 (friction, `tools/estimate_friction.py`)**: three PROXY friction estimates read off
+  EXISTING closed-loop logs -- cheap, available now, but each filtered through the
+  controller's own disturbance observer, not a clean measurement.
+- **§4 (chirp, `tools/chirp_response.py`)**: an open-loop (no feedback at all) swept-sine
+  torque diagnostic -- the one approach that COULD give a clean, joint-space,
+  closed-loop-free measurement, including of friction, but whose real purpose here is
+  distinguishing a genuine mechanical resonance from a closed-loop-delay effect (see §4).
+  Only run in sim so far; the real-hardware run is what would actually answer that question.
+
+Treat everything below as "here's what's been learned so far," not a friction model ready to
+drop into `lib/dynamics.py`, and not yet an answer to the resonance question in §4.
 
 ## 0. Method: the friction model these estimates target, and how `d_hat` connects to it
 
@@ -190,7 +198,7 @@ Running the same scan against `--backend sim` data (`configs/step.yaml`, 15s) fi
 events on all three joints** -- expected, since sim has no stiction model at all, and a
 useful sanity check that this detector isn't just pattern-matching ordinary noise.
 
-## What this does and does not establish
+## What §1-3 do and do not establish
 
 **Does establish**: real friction-like effects are present and roughly the sizes these three
 methods report (holding residual ~0.01-0.1 Nm/joint, a weak-but-real velocity-opposing term,
@@ -201,6 +209,55 @@ an earlier, dedicated measurement (different joint, different test, same order o
 **Does NOT establish**: a trustworthy per-joint Coulomb/viscous friction MODEL. Every number
 above is a proxy filtered through this controller's own observer and its own assumptions --
 none of it isolates friction from "everything else the model doesn't capture." The genuinely
-clean version of this analysis needs `tools/chirp_response.py --backend dynamixel` run on
-real hardware (open-loop, no observer, no feedback at all) -- not done yet, see
-`next_steps_test_plan.md` item 3 and `implementation_fix_20261001.md`.
+clean version needs §4's tool run for real, which is where this picks up.
+
+## 4. Open-loop chirp diagnostic (`tools/chirp_response.py`)
+
+Different purpose from §1-3, and a different design specifically so it can answer what they
+can't: `tools/chirp_response.py` commands ONLY `tau = gravity_scale*dyn.gravity(q) -
+damping*dq + chirp(t)` on one joint at a time -- NO disturbance observer, no feedback law, no
+controller of any kind. Whatever shows up in the response is a property of the physical arm,
+not of this project's control code. Primary motivation is the real-hardware question from
+`next_steps_test_plan.md` item 3: is the ~7.4-7.9Hz self-excited closed-loop oscillation
+(`divergence_analysis.md`) a genuine mechanical resonance, or a closed-loop critical frequency
+from total loop delay? A real amplitude peak in that band on the open-loop plant would support
+the former; a flat response there, with the closed-loop oscillation still real, would support
+the latter. (It would also, incidentally, be the only clean way to fit §0's $\tau_c$/$b$/$\tau_s$
+-- a joint-space, friction-isolated measurement, unlike anything in §1-3 -- but that fit hasn't
+been done, and needs the real-hardware CSVs below to exist first.)
+
+**Status: run on all 3 joints in `--backend sim` only so far (2026-10-02). The real-hardware
+run -- the one that actually answers the resonance question -- has not been done; this
+session has no hardware access (confirmed: no USB-serial/Dynamixel adapter present).**
+
+```bash
+python3 tools/chirp_response.py --backend sim --config configs/hold.yaml \
+    --joint {0,1,2} --duration 30 --output results/chirp/sim_j{0,1,2}.csv
+python3 tools/chirp_response.py --plot results/chirp/sim_j{0,1,2}.csv \
+    --plot-output figures/chirp/sim_j{0,1,2}.png
+```
+
+All three joints: 3000/3000 samples, no auto-stop, deviation from the starting angle stayed
+under ~0.14 rad throughout (well under the 0.3 rad default `--max-dev-rad`).
+
+![joint 0 response](figures/chirp/sim_j0_response.png)
+![joint 1 response](figures/chirp/sim_j1_response.png)
+![joint 2 response](figures/chirp/sim_j2_response.png)
+
+All three: a smooth, monotonically decreasing response with no peak anywhere, including
+inside the red 7.4-7.9Hz reference band. Exactly what's expected -- sim's rigid-body model
+has no mechanical resonance to find, so this is NOT evidence against the resonance
+hypothesis, only confirmation that the collection/analysis pipeline itself works correctly
+end to end (chirp injection, the safety abort, logging, and `--plot`'s response-vs-frequency
+extraction) before ever risking it on the real arm:
+
+![joint 1 trace](figures/chirp/sim_j1_trace.png)
+
+The joint-1 raw trace above (q/dq/tau) shows the expected shape independent of any resonance
+question: a clean 3-15Hz sweep, response amplitude rolling off smoothly as frequency rises
+(ordinary inertia, not a resonance), torque staying well inside `tau_max_Nm`.
+
+**Next step, unchanged from `next_steps_test_plan.md` item 3**: the same three commands with
+`--backend dynamixel --port <port>` on the real arm, then the same `--plot` comparison against
+the 7.4-7.9Hz band -- this is the one piece of data in this whole file that can actually
+distinguish the two hypotheses, and it doesn't exist yet.
