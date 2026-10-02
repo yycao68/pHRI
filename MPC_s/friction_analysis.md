@@ -9,11 +9,63 @@ the one thing that could give a clean, joint-space, closed-loop-free measurement
 Treat this as "here's what the existing data already hints at," not a friction model ready
 to drop into `lib/dynamics.py`.
 
+## 0. Method: the friction model these estimates target, and how `d_hat` connects to it
+
+The standard robotics friction model this project's dynamics has no term for (Coulomb +
+viscous, with a separate static/breakaway threshold `τ_s` while the joint isn't moving):
+
+```
+tau_friction(qdot) = tau_c * sign(qdot) + b * qdot       for |qdot| > 0
+|tau_friction|      <= tau_s                              for qdot = 0  (stiction)
+```
+
+- `tau_c` -- Coulomb (kinetic) friction torque, opposes motion, roughly constant once moving.
+- `b` -- viscous friction coefficient, friction grows linearly with speed.
+- `tau_s` -- static friction (stiction): while at rest, friction exactly cancels whatever
+  torque is applied, UP TO this limit -- it's a constraint on what the joint can resist, not
+  a fixed value. Motion begins only once the applied torque exceeds it. Usually `tau_s >=
+  tau_c` (breakaway takes more torque than keeping something already moving).
+
+None of `tau_c`, `b`, `tau_s` appear anywhere in `lib/dynamics.py`. What this controller DOES
+have is a disturbance observer that estimates everything its own rigid-body model doesn't
+capture -- `lib/interaction_mpc.py`'s own docstring names friction explicitly as one of the
+things `d_hat` is designed to lump together, with the controller's equilibrium condition
+being `u = -d_hat` (`docs/01_concepts.md` section 3). `d_hat` is a task-space RESIDUAL
+ACCELERATION (2D, x-z), not a torque, so every estimate below first converts it:
+
+```
+F      = Lambda(q) @ d_hat              # task-space force [N]
+tau_eq = Jxz(q)^T @ F                   # joint-space torque equivalent [Nm]
+```
+
+- `Lambda(q) = (Jxz(q) @ M(q)^-1 @ Jxz(q)^T + lambda_damp * I)^-1` -- the operational-space
+  (task-space) mass matrix, same quantity `run_hardware.py` computes every tick.
+- `M(q)` is the joint-space mass matrix INCLUDING the reflected-rotor armature correction
+  (`dyn_armature_kg_m2`, see `implementation_fix.md`'s Finding-4 entry) -- using the same
+  `M(q)` the controller itself uses is what makes `tau_eq` a fair read of what the
+  controller's own observer believed, not a recomputation with a different model.
+- `Jxz(q)` is the 2x3 task-space (x-z rows only) Jacobian.
+
+Each section below is a different way of asking what `tau_eq` (or, for breakaway, the raw
+logged `tau`) says about `tau_c`/`b`/`tau_s` -- none of them isolate friction cleanly from
+"everything else `d_hat` is also carrying," which is the recurring caveat throughout.
+
 ## 1. Static (holding-residual) estimate
 
-Hold-task steady-state `d_hat`, mapped through `Λ(q)`/`J^T` into joint-torque units. This is
-the torque the controller needed on top of its own gravity/Coriolis/mass-matrix model to
-hold position at zero velocity -- NOT the breakaway/stiction threshold (see §3 for that).
+Hold-task steady-state `d_hat`, mapped through `Λ(q)`/`J^T` into joint-torque units (§0's
+`F`/`tau_eq` equations). At `qdot=0` and settled (`qddot=0` too), the friction model's
+stiction regime applies -- the controller's own residual IS (approximately) the friction
+torque it had to supply to stay put:
+
+```
+d_hat_mean = mean(d_hat over the last tail_s seconds)
+tau_eq    ~= tau_friction(qdot=0)        # approximately -- see the caveat below the table
+```
+
+This is the torque the controller needed on top of its own gravity/Coriolis/mass-matrix model
+to hold position at zero velocity -- NOT the breakaway/stiction threshold `tau_s` itself (that
+needs motion to actually be attempted against it, see §3), and only "approximately" `tau_c`
+since `d_hat` also carries any small gravity-model residual error, not friction alone.
 
 | run | q_pos | mean d_hat (x, z) | \|F\| [N] | joint torque equiv [Nm] |
 |---|---|---|---|---|
@@ -39,9 +91,18 @@ above) is somewhat tail-window-dependent; a longer hold would likely give a clea
 ## 2. Viscous (velocity-correlated) estimate
 
 Moving-task `d_hat` converted to task-space force via `Λ(q)` (computed per sample, not one
-fixed posture) and correlated against `ee_vel`, by axis. Kept in task space on purpose --
-these logs don't record joint velocity, only `ee_vel`, and a pseudo-inverse projection into
-joint space would introduce a null-space ambiguity this controller's own posture term uses.
+fixed posture, via §0's `F` equation) and correlated against `ee_vel`, by axis. Kept in task
+space on purpose -- these logs don't record joint velocity, only `ee_vel`, and a
+pseudo-inverse projection into joint space would introduce a null-space ambiguity this
+controller's own posture term uses. Tests the viscous term of §0's model directly, in task
+space rather than joint space:
+
+```
+F(t) ~= -b_visc * ee_vel(t) + c         # c: everything velocity-independent (bias, stiction
+                                         #    residue, model error -- not part of the model)
+b, c  = polyfit(ee_vel, F, degree=1)    # b should come out NEGATIVE if this is really viscous
+R^2   = corr(F, ee_vel)^2               # how much of F's variance velocity actually explains
+```
 
 | axis | corr(F, ee_vel) | R² | fit |
 |---|---|---|---|
@@ -63,7 +124,18 @@ plausibly the circle's own curvature/direction-reversal points, not a friction e
 Scans logged `q` for a joint pinned within ~1 encoder tick (XM430-W350: `2π/4096` rad, i.e.
 genuinely not moving, not sensor noise) for a sustained run, immediately followed by real
 motion. This is the most direct, least-filtered evidence of the three -- a real physical
-event, not a controller-internal residual.
+event (the actual `tau` commanded to the servo, not a controller-internal residual), and the
+only one of the three that directly tests §0's stiction regime rather than approximating it:
+
+```
+stuck:     |q(t) - q(t_start)| <= 1.5 * tick_rad          for t in [t_start, t_break)
+breakaway: |q(t_break) - q(t_start)| > 3 * tick_rad        (real motion resumes)
+
+tau_swing = tau(t_break) - tau(t_start)      # proxy for tau_s, NOT tau_s itself --
+                                              # only equals it if tau(t_start)=0, which
+                                              # it generally isn't (gravity comp, other
+                                              # joints' coupling are already in tau(t_start))
+```
 
 ![breakaway mode plot](figures/friction/breakaway_step.png)
 
