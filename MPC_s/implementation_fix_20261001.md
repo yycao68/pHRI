@@ -1,12 +1,6 @@
 # MPC_s Implementation Fixes -- Real-Hardware Results (2026-09-29 onward)
 
-Continuation of `implementation_fix.md`, split out specifically for the fixes that
-came out of the real-hardware validation data (`MPC_s_Hardware_results_2026-09-29/`,
-first received 2026-09-29) and everything downstream of it, as opposed to
-`implementation_fix.md`'s own fixes (2026-09-27), which were all sim/analysis-only at
-the time they were applied. Same rules as that file: this records fixes -- applied or
-merely prepared, clearly labeled as such -- not new problem reports (those still go in
-`original_implementation.md`).
+Continuation of `implementation_fix.md`, split out specifically for the fixes that came out of the real-hardware validation data (`MPC_s_Hardware_results_2026-09-29/`, first received 2026-09-29) and everything downstream of it, as opposed to `implementation_fix.md`'s own fixes (2026-09-27), which were all sim/analysis-only at the time they were applied. Same rules as that file: this records fixes -- applied or merely prepared, clearly labeled as such -- not new problem reports (those still go in `original_implementation.md`).
 
 ## Applied: real-hardware validation, divergence auto-stop, and a `circle.yaml` gain pullback (2026-09-29)
 
@@ -123,3 +117,35 @@ One confound found and worth recording: an earlier closed-loop comparison via `r
 Fixes: real, verified compute headroom (~4x on the FISTA share specifically) with no measurable cost, available immediately -- does not require real hardware to adopt, unlike most of the other items in `next_steps_test_plan.md`.
 
 **Does NOT fix**: communication-side delay (still needs `Return_Delay_Time`/`Status_Return_Level`/USB latency timer verified on real hardware, per `implementation_fix.md`'s earlier entry) or any of the other efficiency ideas raised alongside this one but not yet tried: a higher baud rate (XM430-W350 supports well above the 1Mbps currently used in every example, exact ceiling not confirmed against the firmware here), `gc.disable()` during the real-time loop (Python's cyclic GC is a plausible but unconfirmed explanation for the PID "max=37.57ms" outlier flagged in `implementation_fix.md`), and a shorter `horizon` (would help further but changes the MPC's actual behavior, not just its speed -- needs the same full re-verification treatment as a gain change, not done here).
+
+## Applied: `tools/estimate_friction.py`, three proxy friction estimates from existing logs (2026-10-02)
+
+**Status: written and verified against real hardware data (not just sim). All three modes checked for sensible, non-trivial output; a real methodological bug found and fixed during that check, not just written blind.**
+
+Follows directly from the user asking "can we estimate the friction [from existing data]?" -- answered inline in chat with ad-hoc analysis at the time, never saved as code. This is that analysis turned into a reusable tool, plus a third mode (`breakaway`) that automates a manual finding from the same conversation rather than leaving it as a one-off eyeballed observation.
+
+### What changed
+
+- **`tools/estimate_friction.py`** (new), three independent `--mode`s, none a substitute for `tools/chirp_response.py --backend dynamixel` (open-loop, joint-space, not filtered by the observer) once that data exists -- see the script's own docstring for the full caveats on each:
+  - `static`: a `hold`-task log's steady-state `d_hat`, mapped through `Lambda(q)`/`J^T` into joint-torque units -- the holding residual at zero velocity, not breakaway stiction.
+  - `viscous`: a moving-task log's `d_hat` (converted to task-space force via `Lambda(q)` computed PER SAMPLE, not one fixed posture) correlated against `ee_vel`, by axis. Stays in task space on purpose -- this project's logs don't record joint velocity, only `ee_vel`, and a pseudo-inverse projection into joint space would introduce a null-space ambiguity the controller's own posture term actually uses.
+  - `breakaway`: scans logged `q` for a joint pinned within ~1 encoder tick (XM430-W350: `2*pi/4096` rad) for a sustained run, immediately followed by real motion -- reports the commanded-torque swing during the stuck window, automating the manual find from the earlier chat analysis (joint 0, `hw_step_A_1.csv`, ~0.12-0.15 Nm) rather than leaving it as one eyeballed window.
+
+### A real methodological bug found and fixed during testing, not written blind
+
+First version of `breakaway` added a `--max-stuck-s` cap that DROPPED windows longer than it, meant to filter out ordinary commanded dwell phases (`step_dwell_s=5.0` in the real configs) that look identical to stiction (both are "q flat, then q moves"). Running it against `hw_step_A_1.csv` silently ate the exact event this script exists to find: the real breakaway's torque ramp is CONTINUOUS across the boundary between a preceding legitimate hold and the actual stiction window (confirmed by printing the raw `tau_0` trace: a smooth, unbroken ramp from well before the move starts to well after), so there is no discontinuity to split the window on, and the duration-from-start cap discarded the whole thing. Fixed by never dropping events -- `--likely-dwell-s` now TAGS long events in the printed output instead, so a human (or future caller) sees everything and can judge, rather than trusting a cap that already proved it hides real signal.
+
+### Verification
+
+- `python3 -m py_compile tools/estimate_friction.py`: clean.
+- `static` on all 5 real `hold/completed/*.csv` logs: joint-torque-equivalent estimates all land in the same 0.01-0.1 Nm range found in the original ad-hoc chat analysis (not identical -- this version uses each run's own mean `q` over the tail window rather than one fixed nominal posture, a real accuracy improvement, not a regression).
+- `viscous` on `hw_circle_L024_ry1e-8_1.csv`: same sign (opposing velocity, consistent with viscous friction) and same rough magnitude (R^2 0.12-0.22) as the original chat analysis; now reported in physical force units (N) via per-sample `Lambda(q)` rather than raw, harder-to-interpret `d_hat` units.
+- `breakaway` on `hw_step_A_1.csv`: after the fix above, correctly re-surfaces the joint-0 event (now reported as `t=3.390-5.550s`, `swing=+0.1794 Nm`, tagged `likely_dwell` since the window exceeds 2s -- an honest flag, not a hidden one, given the continuous-ramp finding above).
+- `--backend sim --config configs/step.yaml` (15s) piped straight into `breakaway`: zero events on all 3 joints, as expected -- sim has no stiction model, confirming the detector isn't just pattern-matching noise.
+- `test_local.py`: unchanged, still passes.
+
+### What this does and does not establish
+
+Adds: a reusable tool instead of one-off chat analysis, for three different (still rough) friction proxies against data that already exists.
+
+**Does NOT establish**: a trustworthy, joint-space friction MODEL (Coulomb coefficient + viscous coefficient per joint) -- all three modes here are proxies through the closed-loop controller and its observer, exactly as caveated in the script's own docstring. That still needs `tools/chirp_response.py --backend dynamixel` run on real hardware, which doesn't exist yet.

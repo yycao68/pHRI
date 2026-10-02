@@ -241,6 +241,9 @@ MPC_s/
                                     diagnostic -- per-joint frequency response,
                                     for telling a real mechanical resonance
                                     apart from a closed-loop-delay effect
+    estimate_friction.py            three rough friction proxies (static/
+                                    viscous/breakaway) from EXISTING logs --
+                                    see its own docstring for the caveats
   run_hardware.py             control loop for the MPC + observer
   run_pid.py                  control loop for the task-space PID -- the same file
                               with one line changed, see section 4
