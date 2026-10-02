@@ -70,11 +70,15 @@ Three independent, differently-flawed estimates, pick what the log supports:
 
 Usage:
     python3 tools/estimate_friction.py static \
-        --csv hold/completed/hw_hold_A_ry1e-8_1.csv --config configs/hold.yaml
+        --csv hold/completed/hw_hold_A_ry1e-8_1.csv --config configs/hold.yaml \
+        --plot-output figures/friction/static_hold.png
     python3 tools/estimate_friction.py viscous \
-        --csv circle/completed/hw_circle_L024_ry1e-8_1.csv --config configs/circle.yaml
+        --csv circle/completed/hw_circle_L024_ry1e-8_1.csv --config configs/circle.yaml \
+        --plot-output figures/friction/viscous_circle.png
     python3 tools/estimate_friction.py breakaway \
-        --csv step/completed/hw_step_A_1.csv
+        --csv step/completed/hw_step_A_1.csv \
+        --plot-output figures/friction/breakaway_step.png
+`--plot-output` is optional for all three modes -- omit it to just print numbers.
 """
 from __future__ import annotations
 
@@ -132,7 +136,7 @@ def _robot_block(config_path: Path) -> dict:
     return config.get("robot", {})
 
 
-def analyze_static(csv_path: Path, config_path: Path, tail_s: float) -> None:
+def analyze_static(csv_path: Path, config_path: Path, tail_s: float) -> dict:
     d = load_csv(csv_path)
     t = d["t"].astype(float)
     dt = float(np.median(np.diff(t))) if len(t) > 1 else 0.01
@@ -149,9 +153,10 @@ def analyze_static(csv_path: Path, config_path: Path, tail_s: float) -> None:
               f"during the tail window -- this doesn't look like a settled hold; the result below "
               f"is NOT a clean static estimate. Use a hold-task log, or shorten --tail-s.")
 
+    d_hat_full = cols(d, "d_hat")
     q_tail = cols(d, "q")[-n_tail:]
     q_mean = q_tail.mean(axis=0)
-    d_hat_tail = cols(d, "d_hat")[-n_tail:]
+    d_hat_tail = d_hat_full[-n_tail:]
     d_hat_mean = np.array([d_hat_tail[:, 0].mean(), d_hat_tail[:, 2].mean()])  # x, z only (y is always 0)
 
     robot = _robot_block(config_path)
@@ -170,8 +175,11 @@ def analyze_static(csv_path: Path, config_path: Path, tail_s: float) -> None:
     print(f"  -> joint torque equiv: {np.round(tau_eq, 3)} Nm  (per joint, this is NOT breakaway")
     print(f"                          stiction -- see --mode breakaway for that)")
 
+    return dict(t=t, d_hat_x=d_hat_full[:, 0], d_hat_z=d_hat_full[:, 2], tail_s=tail_s,
+                n_tail=n_tail, q_mean=q_mean, d_hat_mean=d_hat_mean, F=F, tau_eq=tau_eq)
 
-def analyze_viscous(csv_path: Path, config_path: Path, skip_s: float) -> None:
+
+def analyze_viscous(csv_path: Path, config_path: Path, skip_s: float) -> dict:
     d = load_csv(csv_path)
     t = d["t"].astype(float)
     mask = t > skip_s
@@ -199,6 +207,7 @@ def analyze_viscous(csv_path: Path, config_path: Path, skip_s: float) -> None:
 
     print(f"[estimate_friction viscous] {csv_path.name}  (skip={skip_s:.1f}s, n={mask.sum()} samples)")
     print(f"  NOTE: correlation, not a clean measurement -- see this script's own docstring for why.")
+    fits = {}
     for axis, idx in (("x", 0), ("z", 2)):
         v = ee_vel[:, idx]
         f = F[:, 0] if idx == 0 else F[:, 1]
@@ -211,6 +220,9 @@ def analyze_viscous(csv_path: Path, config_path: Path, skip_s: float) -> None:
               f"F ~= {b:+.2f}*vel {c:+.3f}  N per (m/s)  [{sign_note}]")
         print(f"           vel range {v.min():+.3f}..{v.max():+.3f} m/s, "
               f"F range {f.min():+.3f}..{f.max():+.3f} N")
+        fits[axis] = dict(v=v, f=f, corr=corr, b=b, c=c, r2=r2)
+
+    return dict(fits=fits, skip_s=skip_s)
 
 
 def _distinct_within(x: np.ndarray, tol: float) -> np.ndarray:
@@ -263,7 +275,7 @@ def detect_breakaway(t: np.ndarray, q: np.ndarray, tau: np.ndarray, tick_rad: fl
 
 
 def analyze_breakaway(csv_path: Path, tick_rad: float, min_stuck_s: float,
-                       likely_dwell_s: float | None) -> None:
+                       likely_dwell_s: float | None) -> dict:
     d = load_csv(csv_path)
     t = d["t"].astype(float)
     dt = float(np.median(np.diff(t))) if len(t) > 1 else 0.01
@@ -277,8 +289,10 @@ def analyze_breakaway(csv_path: Path, tick_rad: float, min_stuck_s: float,
     print(f"[estimate_friction breakaway] {csv_path.name}  "
           f"(tick={tick_rad*1000:.4f} mrad, min_stuck={min_stuck_s:.2f}s = {min_stuck_samples} samples{tag_note})")
     total = 0
+    per_joint_events: list[list[dict]] = []
     for j in range(n_joints):
         events = detect_breakaway(t, q[:, j], tau[:, j], tick_rad, min_stuck_samples, likely_dwell_s)
+        per_joint_events.append(events)
         if not events:
             print(f"  joint {j}: no breakaway events found")
             continue
@@ -294,6 +308,93 @@ def analyze_breakaway(csv_path: Path, tick_rad: float, min_stuck_s: float,
         print("  (no events on any joint -- expected for --backend sim logs, which have no "
               "stiction model; a real-hardware log with zero events either means this task/gain "
               "never stressed stiction, or --min-stuck-s / --tick-rad need adjusting)")
+
+    return dict(t=t, q=q, tau=tau, per_joint_events=per_joint_events)
+
+
+def plot_static(result: dict, csv_name: str, output: Path | None) -> None:
+    import matplotlib.pyplot as plt
+
+    t, n_tail = result["t"], result["n_tail"]
+    fig, ax = plt.subplots(figsize=(7, 5))
+    ax.plot(t, result["d_hat_x"], color="tab:blue", lw=1, label="d_hat_x")
+    ax.plot(t, result["d_hat_z"], color="tab:orange", lw=1, label="d_hat_z")
+    ax.axvspan(t[-n_tail], t[-1], color="0.8", alpha=0.5,
+               label=f"tail window used ({result['tail_s']:.1f}s)")
+    tau_eq = result["tau_eq"]
+    ax.set_xlabel("t [s]"); ax.set_ylabel("d_hat (residual accel. units)")
+    ax.set_title(f"static mode -- {csv_name}\n"
+                 f"mean d_hat over tail -> joint torque equiv {np.round(tau_eq, 3)} Nm")
+    ax.legend(fontsize=8, loc="best")
+    fig.tight_layout()
+    if output:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(output, dpi=110)
+        print(f"[estimate_friction] saved {output}")
+    else:
+        plt.show()
+
+
+def plot_viscous(result: dict, csv_name: str, output: Path | None) -> None:
+    import matplotlib.pyplot as plt
+
+    fig, axes = plt.subplots(1, 2, figsize=(10, 5))
+    for ax, axis in zip(axes, ("x", "z")):
+        fit = result["fits"][axis]
+        v, f = fit["v"], fit["f"]
+        ax.scatter(v, f, s=4, alpha=0.3, color="tab:blue")
+        vs = np.linspace(v.min(), v.max(), 50)
+        ax.plot(vs, fit["b"] * vs + fit["c"], color="tab:red", lw=2,
+                label=f"fit: F={fit['b']:+.1f}*vel{fit['c']:+.2f}")
+        ax.set_xlabel(f"ee_vel_{axis} [m/s]"); ax.set_ylabel(f"F_{axis} [N]")
+        ax.set_title(f"axis {axis}: corr={fit['corr']:+.3f}, R^2={fit['r2']:.3f}")
+        ax.legend(fontsize=8, loc="best")
+    fig.suptitle(f"viscous mode -- {csv_name} (skip={result['skip_s']:.1f}s)")
+    fig.tight_layout()
+    if output:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(output, dpi=110)
+        print(f"[estimate_friction] saved {output}")
+    else:
+        plt.show()
+
+
+def plot_breakaway(result: dict, csv_name: str, output: Path | None, pad_s: float = 1.0) -> None:
+    import matplotlib.pyplot as plt
+
+    t, q, tau = result["t"], result["q"], result["tau"]
+    # Plot the single largest-|swing| event found on any joint -- the most
+    # informative one to look at, not necessarily the first found.
+    best = None
+    for j, events in enumerate(result["per_joint_events"]):
+        for e in events:
+            if best is None or abs(e["tau_swing"]) > abs(best[1]["tau_swing"]):
+                best = (j, e)
+    if best is None:
+        print("[estimate_friction] no events to plot")
+        return
+    j, e = best
+    mask = (t >= e["t_start"] - pad_s) & (t <= e["t_break"] + pad_s)
+
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 6.5), sharex=True)
+    ax1.plot(t[mask], q[mask, j], color="tab:blue")
+    ax1.axvspan(e["t_start"], e["t_break"], color="tab:red", alpha=0.15, label="stuck window")
+    ax1.set_ylabel(f"q[{j}] [rad]")
+    dwell_note = "\n(duration exceeds --likely-dwell-s -- could be a commanded dwell, not stiction)" \
+        if e["likely_dwell"] else ""
+    ax1.set_title(f"breakaway mode -- {csv_name}, joint {j} (largest |swing|)\n"
+                   f"swing={e['tau_swing']:+.4f} Nm over {e['duration_s']:.2f}s{dwell_note}", fontsize=10)
+    ax1.legend(fontsize=8, loc="best")
+    ax2.plot(t[mask], tau[mask, j], color="tab:green")
+    ax2.axvspan(e["t_start"], e["t_break"], color="tab:red", alpha=0.15)
+    ax2.set_xlabel("t [s]"); ax2.set_ylabel(f"tau[{j}] [Nm]")
+    fig.tight_layout()
+    if output:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(output, dpi=110)
+        print(f"[estimate_friction] saved {output}")
+    else:
+        plt.show()
 
 
 def main() -> None:
@@ -317,6 +418,9 @@ def main() -> None:
                      help="[breakaway] flag (NOT drop -- see docstring) events stuck longer "
                           "than this as more likely a commanded dwell phase than stiction; "
                           "pass a negative number to disable the flag")
+    ap.add_argument("--plot-output", type=Path, default=None,
+                     help="save a mode-appropriate plot (PNG) here instead of just printing "
+                          "numbers; omit to skip plotting entirely (the default)")
     args = ap.parse_args()
     if args.mode == "breakaway" and args.likely_dwell_s is not None and args.likely_dwell_s < 0:
         args.likely_dwell_s = None
@@ -325,11 +429,17 @@ def main() -> None:
         raise SystemExit(f"--config is required for --mode {args.mode}")
 
     if args.mode == "static":
-        analyze_static(args.csv, args.config, args.tail_s)
+        result = analyze_static(args.csv, args.config, args.tail_s)
+        if args.plot_output:
+            plot_static(result, args.csv.name, args.plot_output)
     elif args.mode == "viscous":
-        analyze_viscous(args.csv, args.config, args.skip_s)
+        result = analyze_viscous(args.csv, args.config, args.skip_s)
+        if args.plot_output:
+            plot_viscous(result, args.csv.name, args.plot_output)
     else:
-        analyze_breakaway(args.csv, args.tick_rad, args.min_stuck_s, args.likely_dwell_s)
+        result = analyze_breakaway(args.csv, args.tick_rad, args.min_stuck_s, args.likely_dwell_s)
+        if args.plot_output:
+            plot_breakaway(result, args.csv.name, args.plot_output)
 
 
 if __name__ == "__main__":
