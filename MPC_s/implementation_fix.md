@@ -93,7 +93,13 @@ Addresses `original_implementation.md`'s Finding 1 (the shipped "MPC" was a stat
 
 ### Why this needed a new tool, not just a number
 
-Fix (A) restored the QP *structure* but left `configs/*.yaml`'s `q_pos`/`q_vel`/`r` untouched, so Finding 2's softness was expected to persist (as that entry said). Re-deriving them turned out to be less simple than "target the report's Kp=101.39 N/m": that number was validated at the *report's own* posture, whose task inertia `Λ(q)` (Λxx≈0.67, Λzz≈0.43) is quite different from this project's own shared posture (`Λ=[[0.201, 0.076], [0.076, 0.052]]` -- notably smaller and more anisotropic, `Λzz` alone ~8x smaller). Both a raw-Kp match and a stability-margin match were tried directly against the report's own `|L|` metric (`sqrt(Kp^2+(w*Kd)^2) / (Lam_ii*w^2)`, evaluated at the report's own oscillation frequency `w=50.27 rad/s`, `f_crit=8Hz`):
+Fix (A) restored the QP *structure* but left `configs/*.yaml`'s `q_pos`/`q_vel`/`r` untouched, so Finding 2's softness was expected to persist (as that entry said). Re-deriving them turned out to be less simple than "target the report's Kp=101.39 N/m": that number was validated at the *report's own* posture, whose task inertia `Λ(q)` (Λxx≈0.67, Λzz≈0.43) is quite different from this project's own shared posture (`Λ=[[0.201, 0.076], [0.076, 0.052]]` -- notably smaller and more anisotropic, `Λzz` alone ~8x smaller). Both a raw-Kp match and a stability-margin match were tried directly against the report's own `|L|` metric,
+
+$$
+|L|_{ii} = \frac{\sqrt{K_{p,ii}^2 + (\omega K_{d,ii})^2}}{\Lambda_{ii}\,\omega^2}, \qquad \omega = 50.27\ \mathrm{rad/s}\ \ (f_{crit}=8\,\mathrm{Hz})
+$$
+
+evaluated at the report's own observed oscillation frequency $\omega$ (full derivation, caveats, and why $\omega$ is pinned at this old value rather than re-measured: `hardware_results_review.md` §3):
 
 | target | resulting q_pos (hold.yaml) | Kp_zz | stability metric `\|L\|` |
 |---|---:|---:|---:|
@@ -163,7 +169,17 @@ Found while independently fact-checking an external review's citation of the ori
 
 At this project's shared posture, adding the correct armature term changes `Λ(q)` from `[[0.201, 0.076], [0.076, 0.052]]` to `[[0.686, -0.022], [-0.022, 0.384]]` -- diagonal entries up **240%/639%**, off-diagonal coupling dropping from >100% of the smaller diagonal entry to a small, genuinely secondary term. The corrected `Λ` is now close to the *original report's own* validated-posture `Λ` (`Λxx≈0.67, Λzz≈0.43`) -- meaning the "this posture's task inertia is much smaller and more anisotropic than the report's" reasoning used earlier to justify the `|L|`-based (rather than raw-`Kp`-based) gain target in Finding 2's fix was itself largely an artifact of this missing correction, not a genuine posture difference.
 
-One reassuring, verified fact limits the damage: `|L|` (the metric Finding 2's fix actually targeted) is **exactly invariant to `Λ(q)`** for this controller whenever `q_vel=0` and `Q`/`R` are isotropic (both true for all four configs) -- algebraically, `Kp_ii = Λ_ii · k_p` and `Kd_ii = Λ_ii · k_d` for a scalar `k_p, k_d` shared across axes, and `Λ_ii` cancels exactly out of `|L| = sqrt(Kp_ii²+(w·Kd_ii)²)/(Λ_ii·w²)`. So the `q_pos` values chosen in Finding 2's fix remain the right ones under the same `|L|=0.45` target -- **only the `Kp`/`Kd` numbers reported at the time were wrong**, computed with the uncorrected `Λ`. Recomputed with the fix:
+One reassuring, verified fact limits the damage: `|L|` (the metric Finding 2's fix actually targeted) is **exactly invariant to `Λ(q)`** for this controller whenever `q_vel=0` and `Q`/`R` are isotropic (both true for all four configs). Algebraically, matching `q_vel=0`/isotropic `Q`,`R` makes the closed-loop gains a scalar multiple of $\Lambda$ on each diagonal entry, $K_{p,ii} = \Lambda_{ii}\,k_p$ and $K_{d,ii} = \Lambda_{ii}\,k_d$ for the same scalars $k_p, k_d$ on every axis, so $\Lambda_{ii}$ factors straight out of the `|L|` definition (`hardware_results_review.md` §3) and cancels:
+
+$$
+\begin{aligned}
+|L|_{ii} &= \frac{\sqrt{(\Lambda_{ii}k_p)^2 + (\omega\,\Lambda_{ii}k_d)^2}}{\Lambda_{ii}\,\omega^2} \\
+&= \frac{\Lambda_{ii}\sqrt{k_p^2 + (\omega k_d)^2}}{\Lambda_{ii}\,\omega^2} \\
+&= \frac{\sqrt{k_p^2 + (\omega k_d)^2}}{\omega^2}
+\end{aligned}
+$$
+
+-- the right-hand side has no $\Lambda_{ii}$ left in it at all. So the `q_pos` values chosen in Finding 2's fix remain the right ones under the same `|L|=0.45` target -- **only the `Kp`/`Kd` numbers reported at the time were wrong**, computed with the uncorrected `Λ`. Recomputed with the fix:
 
 | | reported at the time (wrong `Λ`) | actual (corrected `Λ`) |
 |---|---:|---:|

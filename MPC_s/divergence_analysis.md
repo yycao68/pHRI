@@ -6,7 +6,13 @@ Full 9-plot sets (`_path`, `_posref`, `_err`, `_q`, `_tau`, `_cur`, `_hz`, `_yha
 
 ## Cross-run finding, before the per-run detail
 
-Onset time (last moment the error was calmly tracking before it blows up and never comes back) and the oscillation frequency during the blow-up (from zero-crossings of the signed x-axis error in the final ~1.5-2s of each run) were computed the same way for all 8 runs:
+Onset time (last moment the error was calmly tracking before it blows up and never comes back) and the oscillation frequency during the blow-up were computed the same way for all 8 runs. The frequency comes from zero-crossings of the signed x-axis error $e(t)$ in the final ~1.5-2s of each run: for the crossing times $t_1 < t_2 < \dots < t_N$ where $e(t)$ changes sign, each adjacent pair brackets one half-period of the oscillation, so
+
+$$
+\hat f_{osc} = \frac{1}{2\,\overline{\Delta t}}, \qquad \overline{\Delta t} = \frac{1}{N-1}\sum_{k=1}^{N-1} (t_{k+1} - t_k)
+$$
+
+(`|L|`, the gain metric in every per-run header below, is defined in `hardware_results_review.md` §3 -- not repeated here since it doesn't depend on anything in this file.)
 
 | run | task | q_pos (x) | q_pos_z | onset t | run ends | time-to-stop after onset | osc. freq | err max |
 |---|---|---|---|---|---|---|---|---|

@@ -13,7 +13,7 @@ The student ran the (code-unchanged, params-only) controller on the real 3-DOF O
 ### What changed
 
 - **`run_hardware.py`**: new `--max-err-mm` (default 25.0) / `--max-err-consecutive` (default 5) flags. The control loop auto-stops if `err_mm` stays above `--max-err-mm` for that many consecutive samples -- every one of the 8 diverged hardware runs was instead stopped by a human operator 1-2s after visible onset, which makes the tail of those logs operator-reaction-time-dependent; this makes it deterministic and stops commanding torque into a run that's already lost. `--max-err-mm 0` disables it (old behavior). Verified in `--backend sim`: a normal `hold` run completes untouched (500/500 samples, max err 0.25mm, well under the 15.4mm highest transient peak seen across every real completed hardware run); a deliberately tiny threshold (`--max-err-mm 0.01 --max-err-consecutive 3`) stops exactly at sample 3 as designed; `--max-err-mm 0` runs the full duration.
-- **`configs/circle.yaml`**: `q_pos: 75290.6 -> 27086.8`, i.e. `|L|: 0.450 -> 0.350`. The hardware sweep bracketed the true boundary between `q_pos=51101` (`|L|=0.409`, completed) and `q_pos=65405` (`|L|=0.435`, diverged) -- the previously-shipped `|L|=0.45` was already just past that boundary. `|L|=0.35` sits comfortably below the `0.409` point that stayed stable across the whole sweep. This is the only config that needed pulling back: `hold`'s and `step`'s own gains, even at the much higher `|L|~=0.51` escalated retune, stayed stable on hardware in most trials -- the margin is task-specific, not a property of `|L|` in general (see caveat below).
+- **`configs/circle.yaml`**: `q_pos: 75290.6 -> 27086.8`, i.e. $|L|: 0.450 \to 0.350$ (`|L|` defined in `hardware_results_review.md` §3). The hardware sweep bracketed the true boundary between `q_pos=51101` ($|L|=0.409$, completed) and `q_pos=65405` ($|L|=0.435$, diverged) -- the previously-shipped $|L|=0.45$ was already just past that boundary. $|L|=0.35$ sits comfortably below the $0.409$ point that stayed stable across the whole sweep. This is the only config that needed pulling back: `hold`'s and `step`'s own gains, even at the much higher $|L|\approx 0.51$ escalated retune, stayed stable on hardware in most trials -- the margin is task-specific, not a property of `|L|` in general (see caveat below).
 
 ### Verification
 
@@ -71,7 +71,13 @@ Follows `next_steps_test_plan.md` item 3: the 7.4-7.9Hz self-excited oscillation
 
 ### A real design problem found and fixed during this, not just written blind
 
-The first version defaulted to `--f0 0.5` (per `next_steps_test_plan.md`'s own draft wording). Running it in `--backend sim` tripped the safety abort in well under half a second. Not a bug in the abort logic -- a correct consequence of removing ALL position feedback: a joint's response to a torque at frequency `f` scales as `1/f^2` for a plain double integrator (`tau -> M*qddot`), so a low-frequency chirp component acts like a slowly-varying bias torque with nothing to center the joint against it. Fixed by moving the default sweep to `--f0 3 --f1 15` (still a ~2.3-octave band straddling 7.4-7.9Hz on both sides) -- verified clean afterward. Documented in the script's own docstring so this isn't rediscovered the hard way on real hardware.
+The first version defaulted to `--f0 0.5` (per `next_steps_test_plan.md`'s own draft wording). Running it in `--backend sim` tripped the safety abort in well under half a second. Not a bug in the abort logic -- a correct consequence of removing ALL position feedback: with no position term to center against, a torque at angular frequency $\omega$ on a plain double integrator ($I\ddot q = \tau$) drives a position amplitude
+
+$$
+|q/\tau|(\omega) = \frac{1}{I\,\omega^2}
+$$
+
+(full derivation, including the frequency-response forms with and without the chirp harness's safety-damping/resonance terms: `friction_chirp_analysis.md` §2.0) -- i.e. amplitude grows as $1/\omega^2$ as $\omega\to0$, so a low-frequency chirp component acts like a slowly-varying bias torque the joint has nothing to resist. Fixed by moving the default sweep to `--f0 3 --f1 15` (still a ~2.3-octave band straddling 7.4-7.9Hz on both sides) -- verified clean afterward. Documented in the script's own docstring so this isn't rediscovered the hard way on real hardware.
 
 ### Verification
 
@@ -126,7 +132,7 @@ Follows directly from the user asking "can we estimate the friction [from existi
 
 ### What changed
 
-- **`tools/estimate_friction.py`** (new), three independent `--mode`s, none a substitute for `tools/chirp_response.py --backend dynamixel` (open-loop, joint-space, not filtered by the observer) once that data exists -- see the script's own docstring for the full caveats on each:
+- **`tools/estimate_friction.py`** (new), three independent `--mode`s, none a substitute for `tools/chirp_response.py --backend dynamixel` (open-loop, joint-space, not filtered by the observer) once that data exists -- see the script's own docstring for the full caveats on each (and `friction_chirp_analysis.md` §1.0 for the friction model and the $\hat d \to F \to \tau_{eq}$ equations these three modes are all reading off of):
   - `static`: a `hold`-task log's steady-state `d_hat`, mapped through `Lambda(q)`/`J^T` into joint-torque units -- the holding residual at zero velocity, not breakaway stiction.
   - `viscous`: a moving-task log's `d_hat` (converted to task-space force via `Lambda(q)` computed PER SAMPLE, not one fixed posture) correlated against `ee_vel`, by axis. Stays in task space on purpose -- this project's logs don't record joint velocity, only `ee_vel`, and a pseudo-inverse projection into joint space would introduce a null-space ambiguity the controller's own posture term actually uses.
   - `breakaway`: scans logged `q` for a joint pinned within ~1 encoder tick (XM430-W350: `2*pi/4096` rad) for a sustained run, immediately followed by real motion -- reports the commanded-torque swing during the stuck window, automating the manual find from the earlier chat analysis (joint 0, `hw_step_A_1.csv`, ~0.12-0.15 Nm) rather than leaving it as one eyeballed window.

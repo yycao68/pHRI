@@ -1,8 +1,6 @@
 # Review of real-hardware results (`MPC_s_Hardware_results_2026-09-29`)
 
-Cross-checked against `pHRI/MPC_s/original_implementation.md` and `implementation_fix.md`
-(the 2026-09-27 fixes this document validates); fixes made in response to this document's
-own findings are tracked separately in `implementation_fix_20261001.md`.
+Cross-checked against `pHRI/MPC_s/original_implementation.md` and `implementation_fix.md` (the 2026-09-27 fixes this document validates); fixes made in response to this document's own findings are tracked separately in `implementation_fix_20261001.md`.
 Source data: 19 CSV runs (11 `completed`, 8 `diverged`) across `hold`/`step`/`circle` tasks, 12 config variants, plus pre-generated figures. All numbers below are freshly recomputed from the raw CSVs, not taken from filenames or prior claims.
 
 ## Bottom line
@@ -36,6 +34,20 @@ The clearest evidence is `circle/diverged/hw_circle_L027_ry1e-8_1.csv` (`q_pos=8
 None of this points to a code bug — the same mechanism (oscillatory instability above a gain/frequency-dependent stability boundary) was already flagged as a known, unavoidable limitation in `implementation_fix.md`'s "what this fix does NOT establish" caveat. This is that caveat being confirmed on real hardware, not a new problem.
 
 ## 3. The circle-task stability boundary is real, and sits just under the sim-derived target
+
+`|L|` is used throughout this section (and reused by `divergence_analysis.md`) as a gain-independent way to compare how aggressive two configs are, so it's worth writing out once. The controller's closed-loop task-space PD gains come from the LQR-to-stiffness mapping (`docs/02_tuning_guide.md` §4):
+
+$$
+K_p = \Lambda(q)\,K_{pos}, \qquad K_d = \Lambda(q)\,K_{vel}
+$$
+
+where $\Lambda(q)$ is the same operational-space mass matrix defined in `friction_chirp_analysis.md` §1.0. The original stage report's loop-gain/delay stability criterion treats each task-space axis $i \in \{x, z\}$ as a second-order loop evaluated at a fixed frequency $\omega$:
+
+$$
+|L|_i = \frac{\sqrt{K_{p,ii}^2 + (\omega K_{d,ii})^2}}{\Lambda_{ii}\,\omega^2}, \qquad \omega = 50.27\ \mathrm{rad/s}\ \ (f_{crit} = 8\,\mathrm{Hz})
+$$
+
+and the single number quoted everywhere below is $|L| = \max(|L|_x, |L|_z)$, computed by `tools/solve_task_space_gain.py --config <config.yaml> --target-l <value>`. $\omega$ is pinned at the ORIGINAL report's own observed self-excited-oscillation frequency, not recomputed for this codebase's own (now much smaller) loop delay -- see that tool's docstring caveat: $\omega=50.27$ was derived from a ~30ms round-trip loop dominated by an ~8ms QP solve that no longer exists here (FISTA now costs ~1ms), so the true boundary for this loop is very likely more permissive than a given `|L|` implies. Treat `|L|` as a rough, conservative, comparable-across-configs number -- useful for the "is config A more or less aggressive than config B" questions this section and `divergence_analysis.md` actually ask of it -- not as a certificate of stability.
 
 The student's own sweep localizes it directly:
 

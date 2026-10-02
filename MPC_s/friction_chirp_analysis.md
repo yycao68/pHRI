@@ -179,7 +179,10 @@ This is the whole principle in one line: **a real amplitude peak near 7.4-7.9Hz 
 ### Why `--f0` can't go too low (same no-resonance model, $k_s=0$, undamped limit)
 
 $$
-I\,\ddot q = \tau_{chirp}(t) \;=\; A\sin(\omega t)
+\begin{aligned}
+I\,\ddot q &= \tau_{chirp}(t) \\
+&= A\sin(\omega t)
+\end{aligned}
 \quad\Longrightarrow\quad
 q(t) = -\frac{A}{I\omega^2}\sin(\omega t)
 $$
