@@ -69,7 +69,7 @@ This is the torque the controller needed on top of its own gravity/Coriolis/mass
 
 All five land in the same **0.01-0.1 Nm per joint** range -- noisy and run-to-run variable (nearly 3x spread across repeats of the *same* config, `hw_hold_A_ry1e-8_1` vs `_3`), not a single clean number. That variability is itself informative: whatever this residual is capturing (friction, small gravity-model error, or both) is NOT simply "the same stiction constant every time" -- it depends on exactly where the arm settled and along what path.
 
-![static mode plot](figures/friction/static_hold.png)
+![static mode plot](../figures/friction/static_hold.png)
 
 `hw_hold_A_ry1e-8_1` plotted above: `d_hat_x` has clearly NOT reached a flat equilibrium even by the end of this 20s run -- it's still drifting through the shaded 2s tail window used for the estimate. This run's own number (and by extension, how much to trust any of the five above) is somewhat tail-window-dependent; a longer hold would likely give a cleaner read.
 
@@ -94,7 +94,7 @@ $c$ absorbs everything velocity-independent (bias, stiction residue, model error
 | x | -0.467 | 0.218 | F ≈ -21.8·vel - 0.34 N |
 | z | -0.352 | 0.124 | F ≈ -22.3·vel - 0.34 N |
 
-![viscous mode plot](figures/friction/viscous_circle.png)
+![viscous mode plot](../figures/friction/viscous_circle.png)
 
 Both axes: the right **sign** (force opposes velocity, consistent with viscous friction) and a clearly nonzero slope -- but R² of 0.12-0.22 means velocity explains at most ~22% of `F`'s variance. The scatter plot shows why directly: there's a real downward trend, but also a wide, nearly-vertical band of points right around `vel≈0` with a large spread in `F` -- plausibly the circle's own curvature/direction-reversal points, not a friction effect at all (see the script's docstring). **This supports "there's probably a viscous-like term," not "here is its coefficient."**
 
@@ -120,7 +120,7 @@ $\Delta\tau$ is a proxy for $\tau_s$, NOT $\tau_s$ itself -- it only equals it i
 $\tau(t_{start}) = 0$, which it generally isn't (gravity compensation and other joints'
 coupling are already baked into $\tau(t_{start})$).
 
-![breakaway mode plot](figures/friction/breakaway_step.png)
+![breakaway mode plot](../figures/friction/breakaway_step.png)
 
 The largest event found in `hw_step_A_1.csv`: **joint 0 stuck for 2.16s (t=3.39-5.55s) while commanded torque ramped smoothly from -0.19 Nm to -0.01 Nm (a 0.179 Nm swing) before the joint broke free** and moved 0.1 rad in well under a second. The torque trace (bottom panel) shows no discontinuity anywhere in this window -- it's one continuous ramp from before the window starts to after it ends, which is exactly why this event is flagged `likely_dwell` (its total stuck duration exceeds `--likely-dwell-s`, matching the task's own `step_dwell_s=5.0`): the data genuinely cannot distinguish "the joint was commanded to hold still and then commanded to move, and happened to need 0.18 Nm of torque change to actually start moving" from "friction was holding it, and 0.18 Nm is roughly the breakaway threshold." Both descriptions fit the same trace.
 
@@ -227,13 +227,13 @@ All three joints: 3000/3000 samples, no auto-stop. Max deviation from the starti
 0.122 rad, joint 1 0.146 rad, joint 2 0.158 rad -- all comfortably under the 0.3 rad default
 `--max-dev-rad`.
 
-![joint 0 response](figures/chirp/sim_j0_response.png)
-![joint 1 response](figures/chirp/sim_j1_response.png)
-![joint 2 response](figures/chirp/sim_j2_response.png)
+![joint 0 response](../figures/chirp/sim_j0_response.png)
+![joint 1 response](../figures/chirp/sim_j1_response.png)
+![joint 2 response](../figures/chirp/sim_j2_response.png)
 
 All three: a smooth, monotonically decreasing response with no peak anywhere, including inside the red 7.4-7.9Hz reference band -- matching §2.0's "no resonance" equation almost exactly (sim's rigid-body model has no $k_s$ term at all, by construction). This is NOT evidence against the resonance hypothesis for the REAL arm -- it only confirms the collection/analysis pipeline itself works correctly end to end (chirp injection, the safety abort, logging, and `--plot`'s response-vs-frequency extraction) before ever risking it on the real arm:
 
-![joint 1 trace](figures/chirp/sim_j1_trace.png)
+![joint 1 trace](../figures/chirp/sim_j1_trace.png)
 
 The joint-1 raw trace above (q/dq/tau) shows the expected shape independent of any resonance question: a clean 3-15Hz sweep, response amplitude rolling off roughly as $1/\omega$ once $I\omega \gg b_{safety}$ (matching §2.0's no-resonance equation's high-frequency limit), torque staying well inside `tau_max_Nm`.
 

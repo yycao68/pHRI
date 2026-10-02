@@ -209,7 +209,12 @@ python run_pid.py --backend dynamixel --port COM3 --baud 1000000 \
 MPC_s/
   README.md                 <- you are here
   requirements.txt
-  docs/                      the three documents listed above
+  docs/
+    01_concepts.md             control architecture, from first principles
+    02_tuning_guide.md          target-bandwidth -> q_pos/q_vel/r/observer_* workflow
+    03_hardware_safety.md        every safety mechanism + pre-flight checklist
+    friction_chirp_analysis.md    real-hardware friction proxies (Part 1) +
+                                  open-loop chirp resonance diagnostic (Part 2)
   configs/                   hold.yaml, push.yaml, payload.yaml, circle.yaml, step.yaml
                              (each carries both a controller: and a pid: block);
                              step_L15.yaml..step_L35.yaml are a controlled gain

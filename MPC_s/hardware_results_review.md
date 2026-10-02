@@ -41,7 +41,7 @@ $$
 K_p = \Lambda(q)\,K_{pos}, \qquad K_d = \Lambda(q)\,K_{vel}
 $$
 
-where $\Lambda(q)$ is the same operational-space mass matrix defined in `friction_chirp_analysis.md` §1.0. The original stage report's loop-gain/delay stability criterion treats each task-space axis $i \in \{x, z\}$ as a second-order loop evaluated at a fixed frequency $\omega$:
+where $\Lambda(q)$ is the same operational-space mass matrix defined in `docs/friction_chirp_analysis.md` §1.0. The original stage report's loop-gain/delay stability criterion treats each task-space axis $i \in \{x, z\}$ as a second-order loop evaluated at a fixed frequency $\omega$:
 
 $$
 |L|_i = \frac{\sqrt{K_{p,ii}^2 + (\omega K_{d,ii})^2}}{\Lambda_{ii}\,\omega^2}, \qquad \omega = 50.27\ \mathrm{rad/s}\ \ (f_{crit} = 8\,\mathrm{Hz})

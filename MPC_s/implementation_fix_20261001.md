@@ -77,7 +77,7 @@ $$
 |q/\tau|(\omega) = \frac{1}{I\,\omega^2}
 $$
 
-(full derivation, including the frequency-response forms with and without the chirp harness's safety-damping/resonance terms: `friction_chirp_analysis.md` §2.0) -- i.e. amplitude grows as $1/\omega^2$ as $\omega\to0$, so a low-frequency chirp component acts like a slowly-varying bias torque the joint has nothing to resist. Fixed by moving the default sweep to `--f0 3 --f1 15` (still a ~2.3-octave band straddling 7.4-7.9Hz on both sides) -- verified clean afterward. Documented in the script's own docstring so this isn't rediscovered the hard way on real hardware.
+(full derivation, including the frequency-response forms with and without the chirp harness's safety-damping/resonance terms: `docs/friction_chirp_analysis.md` §2.0) -- i.e. amplitude grows as $1/\omega^2$ as $\omega\to0$, so a low-frequency chirp component acts like a slowly-varying bias torque the joint has nothing to resist. Fixed by moving the default sweep to `--f0 3 --f1 15` (still a ~2.3-octave band straddling 7.4-7.9Hz on both sides) -- verified clean afterward. Documented in the script's own docstring so this isn't rediscovered the hard way on real hardware.
 
 ### Verification
 
@@ -90,7 +90,7 @@ $$
 
 Fixes/adds: a ready-to-use, safety-checked tool for the one measurement that can actually distinguish the two candidate explanations for the resonance.
 
-**Does NOT establish**: which explanation is correct. That needs `tools/chirp_response.py --backend dynamixel` run on all 3 joints on the real arm, then `--plot` compared against the 7.4-7.9Hz band -- not done here, no hardware access from this session. (2026-10-02: `--backend sim` on all 3 joints done and written up in `friction_chirp_analysis.md` Part 2, including the open-loop plant/resonance equations behind the method -- confirms the pipeline works, not the physics; the real run is still open.)
+**Does NOT establish**: which explanation is correct. That needs `tools/chirp_response.py --backend dynamixel` run on all 3 joints on the real arm, then `--plot` compared against the 7.4-7.9Hz band -- not done here, no hardware access from this session. (2026-10-02: `--backend sim` on all 3 joints done and written up in `docs/friction_chirp_analysis.md` Part 2, including the open-loop plant/resonance equations behind the method -- confirms the pipeline works, not the physics; the real run is still open.)
 
 ## Applied: `qp_iters` reduced from 200 to 50 in every shipped config (2026-10-01)
 
@@ -132,7 +132,7 @@ Follows directly from the user asking "can we estimate the friction [from existi
 
 ### What changed
 
-- **`tools/estimate_friction.py`** (new), three independent `--mode`s, none a substitute for `tools/chirp_response.py --backend dynamixel` (open-loop, joint-space, not filtered by the observer) once that data exists -- see the script's own docstring for the full caveats on each (and `friction_chirp_analysis.md` §1.0 for the friction model and the $\hat d \to F \to \tau_{eq}$ equations these three modes are all reading off of):
+- **`tools/estimate_friction.py`** (new), three independent `--mode`s, none a substitute for `tools/chirp_response.py --backend dynamixel` (open-loop, joint-space, not filtered by the observer) once that data exists -- see the script's own docstring for the full caveats on each (and `docs/friction_chirp_analysis.md` §1.0 for the friction model and the $\hat d \to F \to \tau_{eq}$ equations these three modes are all reading off of):
   - `static`: a `hold`-task log's steady-state `d_hat`, mapped through `Lambda(q)`/`J^T` into joint-torque units -- the holding residual at zero velocity, not breakaway stiction.
   - `viscous`: a moving-task log's `d_hat` (converted to task-space force via `Lambda(q)` computed PER SAMPLE, not one fixed posture) correlated against `ee_vel`, by axis. Stays in task space on purpose -- this project's logs don't record joint velocity, only `ee_vel`, and a pseudo-inverse projection into joint space would introduce a null-space ambiguity the controller's own posture term actually uses.
   - `breakaway`: scans logged `q` for a joint pinned within ~1 encoder tick (XM430-W350: `2*pi/4096` rad) for a sustained run, immediately followed by real motion -- reports the commanded-torque swing during the stuck window, automating the manual find from the earlier chat analysis (joint 0, `hw_step_A_1.csv`, ~0.12-0.15 Nm) rather than leaving it as one eyeballed window.
