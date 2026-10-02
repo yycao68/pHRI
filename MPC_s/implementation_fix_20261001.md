@@ -84,7 +84,7 @@ The first version defaulted to `--f0 0.5` (per `next_steps_test_plan.md`'s own d
 
 Fixes/adds: a ready-to-use, safety-checked tool for the one measurement that can actually distinguish the two candidate explanations for the resonance.
 
-**Does NOT establish**: which explanation is correct. That needs `tools/chirp_response.py --backend dynamixel` run on all 3 joints on the real arm, then `--plot` compared against the 7.4-7.9Hz band -- not done here, no hardware access from this session. (2026-10-02: `--backend sim` on all 3 joints done and written up in `friction_chirp_analysis.md` section 4 -- confirms the pipeline works, not the physics; the real run is still open.)
+**Does NOT establish**: which explanation is correct. That needs `tools/chirp_response.py --backend dynamixel` run on all 3 joints on the real arm, then `--plot` compared against the 7.4-7.9Hz band -- not done here, no hardware access from this session. (2026-10-02: `--backend sim` on all 3 joints done and written up in `friction_chirp_analysis.md` Part 2, including the open-loop plant/resonance equations behind the method -- confirms the pipeline works, not the physics; the real run is still open.)
 
 ## Applied: `qp_iters` reduced from 200 to 50 in every shipped config (2026-10-01)
 

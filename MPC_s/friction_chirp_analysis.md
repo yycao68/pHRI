@@ -3,21 +3,24 @@
 Two related, independently-run diagnostics on the real OpenManipulator-X, written up
 together because both exist to characterize what this project's dynamics model does NOT
 capture (`docs/01_concepts.md`: "the simulator has no friction model... the friction part
-of the story needs real hardware"):
+of the story needs real hardware"), from two different angles:
 
-- **§0-3 (friction, `tools/estimate_friction.py`)**: three PROXY friction estimates read off
-  EXISTING closed-loop logs -- cheap, available now, but each filtered through the
+- **Part 1 (friction, `tools/estimate_friction.py`)**: three PROXY friction estimates read
+  off EXISTING closed-loop logs -- cheap, available now, but each filtered through the
   controller's own disturbance observer, not a clean measurement.
-- **§4 (chirp, `tools/chirp_response.py`)**: an open-loop (no feedback at all) swept-sine
+- **Part 2 (chirp, `tools/chirp_response.py`)**: an open-loop (no feedback at all) swept-sine
   torque diagnostic -- the one approach that COULD give a clean, joint-space,
   closed-loop-free measurement, including of friction, but whose real purpose here is
-  distinguishing a genuine mechanical resonance from a closed-loop-delay effect (see §4).
-  Only run in sim so far; the real-hardware run is what would actually answer that question.
+  distinguishing a genuine mechanical resonance from a closed-loop-delay effect.
 
 Treat everything below as "here's what's been learned so far," not a friction model ready to
-drop into `lib/dynamics.py`, and not yet an answer to the resonance question in §4.
+drop into `lib/dynamics.py`, and not yet an answer to Part 2's resonance question.
 
-## 0. Method: the friction model these estimates target, and how `d_hat` connects to it
+---
+
+# Part 1: Friction analysis
+
+## 1.0 Principle and method: the friction model these estimates target, and how `d_hat` connects to it
 
 The standard robotics friction model this project's dynamics has no term for (Coulomb +
 viscous, with a separate static/breakaway threshold $\tau_s$ while the joint isn't moving):
@@ -66,12 +69,12 @@ $$
 
 Each section below is a different way of asking what $\tau_{eq}$ (or, for breakaway, the raw
 logged $\tau$) says about $\tau_c$/$b$/$\tau_s$ -- none of them isolate friction cleanly from
-"everything else $\hat d$ is also carrying," which is the recurring caveat throughout.
+"everything else $\hat d$ is also carrying," which is the recurring caveat throughout Part 1.
 
-## 1. Static (holding-residual) estimate
+## 1.1 Static (holding-residual) estimate
 
 Hold-task steady-state $\hat d$, mapped through $\Lambda(q)$/$J^T$ into joint-torque units
-(§0's $F$/$\tau_{eq}$ equations). At $\dot q = 0$ and settled ($\ddot q = 0$ too), the
+(§1.0's $F$/$\tau_{eq}$ equations). At $\dot q = 0$ and settled ($\ddot q = 0$ too), the
 friction model's stiction regime applies -- the controller's own residual IS (approximately)
 the friction torque it had to supply to stay put:
 
@@ -83,7 +86,7 @@ $$
 
 This is the torque the controller needed on top of its own gravity/Coriolis/mass-matrix model
 to hold position at zero velocity -- NOT the breakaway/stiction threshold $\tau_s$ itself (that
-needs motion to actually be attempted against it, see §3), and only "approximately" $\tau_c$
+needs motion to actually be attempted against it, see §1.3), and only "approximately" $\tau_c$
 since $\hat d$ also carries any small gravity-model residual error, not friction alone.
 
 | run | q_pos | mean d_hat (x, z) | \|F\| [N] | joint torque equiv [Nm] |
@@ -107,13 +110,13 @@ by the end of this 20s run -- it's still drifting through the shaded 2s tail win
 the estimate. This run's own number (and by extension, how much to trust any of the five
 above) is somewhat tail-window-dependent; a longer hold would likely give a cleaner read.
 
-## 2. Viscous (velocity-correlated) estimate
+## 1.2 Viscous (velocity-correlated) estimate
 
 Moving-task $\hat d$ converted to task-space force via $\Lambda(q)$ (computed per sample, not
-one fixed posture, via §0's $F$ equation) and correlated against $\dot x_{ee}$ (`ee_vel`), by
+one fixed posture, via §1.0's $F$ equation) and correlated against $\dot x_{ee}$ (`ee_vel`), by
 axis. Kept in task space on purpose -- these logs don't record joint velocity, only
 $\dot x_{ee}$, and a pseudo-inverse projection into joint space would introduce a null-space
-ambiguity this controller's own posture term uses. Tests the viscous term of §0's model
+ambiguity this controller's own posture term uses. Tests the viscous term of §1.0's model
 directly, in task space rather than joint space:
 
 $$
@@ -146,13 +149,13 @@ plausibly the circle's own curvature/direction-reversal points, not a friction e
 (see the script's docstring). **This supports "there's probably a viscous-like term," not
 "here is its coefficient."**
 
-## 3. Breakaway (stiction) events
+## 1.3 Breakaway (stiction) events
 
 Scans logged $q$ for a joint pinned within ~1 encoder tick (XM430-W350: $2\pi/4096$ rad, i.e.
 genuinely not moving, not sensor noise) for a sustained run, immediately followed by real
 motion. This is the most direct, least-filtered evidence of the three -- a real physical
 event (the actual $\tau$ commanded to the servo, not a controller-internal residual), and the
-only one of the three that directly tests §0's stiction regime rather than approximating it:
+only one of the three that directly tests §1.0's stiction regime rather than approximating it:
 
 $$
 \text{stuck:}\quad |q(t) - q(t_{start})| \le 1.5\,\delta_{tick}
@@ -198,7 +201,7 @@ Running the same scan against `--backend sim` data (`configs/step.yaml`, 15s) fi
 events on all three joints** -- expected, since sim has no stiction model at all, and a
 useful sanity check that this detector isn't just pattern-matching ordinary noise.
 
-## What §1-3 do and do not establish
+## Part 1 summary: what it does and does not establish
 
 **Does establish**: real friction-like effects are present and roughly the sizes these three
 methods report (holding residual ~0.01-0.1 Nm/joint, a weak-but-real velocity-opposing term,
@@ -209,26 +212,115 @@ an earlier, dedicated measurement (different joint, different test, same order o
 **Does NOT establish**: a trustworthy per-joint Coulomb/viscous friction MODEL. Every number
 above is a proxy filtered through this controller's own observer and its own assumptions --
 none of it isolates friction from "everything else the model doesn't capture." The genuinely
-clean version needs §4's tool run for real, which is where this picks up.
+clean version needs Part 2's tool run for real, which is where this picks up.
 
-## 4. Open-loop chirp diagnostic (`tools/chirp_response.py`)
+---
 
-Different purpose from §1-3, and a different design specifically so it can answer what they
-can't: `tools/chirp_response.py` commands ONLY `tau = gravity_scale*dyn.gravity(q) -
-damping*dq + chirp(t)` on one joint at a time -- NO disturbance observer, no feedback law, no
-controller of any kind. Whatever shows up in the response is a property of the physical arm,
-not of this project's control code. Primary motivation is the real-hardware question from
-`next_steps_test_plan.md` item 3: is the ~7.4-7.9Hz self-excited closed-loop oscillation
-(`divergence_analysis.md`) a genuine mechanical resonance, or a closed-loop critical frequency
-from total loop delay? A real amplitude peak in that band on the open-loop plant would support
-the former; a flat response there, with the closed-loop oscillation still real, would support
-the latter. (It would also, incidentally, be the only clean way to fit §0's $\tau_c$/$b$/$\tau_s$
--- a joint-space, friction-isolated measurement, unlike anything in §1-3 -- but that fit hasn't
-been done, and needs the real-hardware CSVs below to exist first.)
+# Part 2: Chirp analysis
 
-**Status: run on all 3 joints in `--backend sim` only so far (2026-10-02). The real-hardware
-run -- the one that actually answers the resonance question -- has not been done; this
-session has no hardware access (confirmed: no USB-serial/Dynamixel adapter present).**
+## 2.0 Principle and method
+
+### Why an open-loop test at all
+
+Part 1's numbers are all filtered through the closed-loop controller and its disturbance
+observer -- useful, but nothing in Part 1 can separate "this is friction" from "this is
+whatever else $\hat d$ is also carrying." `tools/chirp_response.py` removes the controller
+from the picture entirely. It commands ONLY (same design as `tools/test_gravity_compensation.py`):
+
+$$
+\tau(t) = g_{scale}\, G(q) \;-\; b_{safety}\,\dot q \;+\; \tau_{chirp}(t) \quad \text{(one chosen joint only)}
+$$
+
+-- gravity compensation plus a small, KNOWN safety damping term plus the chirp itself. No
+position/velocity error feedback of any kind. Whatever shows up in the measured response is
+therefore a property of the physical plant (arm + servo + transmission), not of this
+project's control code -- which is exactly what's needed to settle a question Part 1 cannot:
+is the ~7.4-7.9Hz self-excited closed-loop oscillation (`divergence_analysis.md`) a genuine
+mechanical resonance, or a closed-loop critical frequency produced by total loop delay?
+
+### The open-loop plant model, and what distinguishes the two hypotheses
+
+Approximating one joint's own dynamics near its operating point as linear, with effective
+inertia $I$ and the known safety damping $b_{safety}$:
+
+$$
+I\,\ddot q + b_{safety}\,\dot q = \tau_{chirp}(t) \qquad \text{(no resonance -- the model this project's software assumes)}
+$$
+
+$$
+I\,\ddot q + b_{safety}\,\dot q + k_s\,q = \tau_{chirp}(t) \qquad \text{(WITH a resonance -- e.g. gearbox/transmission compliance } k_s\text{, not in the software model at all)}
+$$
+
+Taking the frequency response of each ($\tau_{chirp}(t)=A\sin(\omega t)$, steady state), for
+the velocity $\dot q$ specifically (what `--plot` actually measures):
+
+$$
+\left|\frac{\dot q}{\tau_{chirp}}\right|(\omega) = \frac{1}{\sqrt{(I\omega)^2 + b_{safety}^2}}
+\qquad \text{(no resonance -- MONOTONICALLY DECREASING, no peak, any } k_s)
+$$
+
+$$
+\left|\frac{\dot q}{\tau_{chirp}}\right|(\omega) = \frac{\omega}{\sqrt{(k_s - I\omega^2)^2 + (b_{safety}\omega)^2}}
+\qquad \text{(WITH resonance -- PEAKS near } \omega_n = \sqrt{k_s/I} \text{ if lightly damped)}
+$$
+
+This is the whole principle in one line: **a real amplitude peak near 7.4-7.9Hz on the
+open-loop plant supports the mechanical-resonance hypothesis (there is a real $k_s$); a
+smooth, monotonically decreasing curve through that band, with the closed-loop oscillation
+still real, supports the loop-delay hypothesis instead** (the $k_s$-free model is correct,
+and the closed-loop resonance is instead an artifact of control-loop delay interacting with
+gain -- a stability/phase-margin effect this open-loop test cannot see at all, since there is
+no loop here to have delay in).
+
+### Why `--f0` can't go too low (same no-resonance model, $k_s=0$, undamped limit)
+
+$$
+I\,\ddot q = \tau_{chirp}(t) \;=\; A\sin(\omega t)
+\quad\Longrightarrow\quad
+q(t) = -\frac{A}{I\omega^2}\sin(\omega t)
+$$
+
+Position amplitude scales as $1/\omega^2$ for a FIXED torque amplitude $A$ -- a low-frequency
+chirp component acts like a slowly-varying bias torque with nothing to center the joint
+against it (no feedback at all, by design). This is why the script's `--f0 0.5` default was
+tried, tripped the safety abort in well under half a second (`implementation_fix_20261001.md`),
+and was moved to `--f0 3` -- not a bug, a direct consequence of the equation above.
+
+### The chirp signal and the response extraction itself
+
+Logarithmic (exponential) swept sine from `--f0` to `--f1` over `--duration` seconds,
+amplitude `--amplitude-nm`:
+
+$$
+f(t) = f_0\,k^{t}, \qquad k = \left(\frac{f_1}{f_0}\right)^{1/T}
+$$
+
+$$
+\phi(t) = \frac{2\pi f_0\,(k^{t}-1)}{\ln k}
+\qquad\Longrightarrow\qquad
+\tau_{chirp}(t) = A\,\sin\big(\phi(t)\big)
+$$
+
+A log sweep spends roughly equal time per OCTAVE rather than per Hz -- the default `--f0 3
+--f1 15` is a ~2.3-octave band straddling the 7.4-7.9Hz band of interest on both sides. The
+instantaneous frequency $f(t)$ above is KNOWN analytically (it's what was commanded, not
+estimated), so `--plot` extracts the response-vs-frequency curve as a sliding-window RMS of
+the measured $\dot q$, each window mapped to $f(t)$ at its center:
+
+$$
+\mathrm{Response}(f) = \mathrm{RMS}\big(\dot q(t)\ \text{over a window centered where } f(t)=f\big)
+$$
+
+This is deliberately simpler than a full FFT-based transfer-function/phase estimate -- enough
+to see whether there IS a peak, which is the actual question; a real Bode-style
+magnitude+phase estimate would be the right next step only if this finds something worth
+characterizing more precisely.
+
+## 2.1 Results (sim only, 2026-10-02)
+
+**Status: run on all 3 joints in `--backend sim` so far. The real-hardware run -- the one
+that actually distinguishes the two hypotheses in §2.0 -- has not been done; this session has
+no hardware access (confirmed: no USB-serial/Dynamixel adapter present).**
 
 ```bash
 python3 tools/chirp_response.py --backend sim --config configs/hold.yaml \
@@ -245,19 +337,28 @@ under ~0.14 rad throughout (well under the 0.3 rad default `--max-dev-rad`).
 ![joint 2 response](figures/chirp/sim_j2_response.png)
 
 All three: a smooth, monotonically decreasing response with no peak anywhere, including
-inside the red 7.4-7.9Hz reference band. Exactly what's expected -- sim's rigid-body model
-has no mechanical resonance to find, so this is NOT evidence against the resonance
-hypothesis, only confirmation that the collection/analysis pipeline itself works correctly
-end to end (chirp injection, the safety abort, logging, and `--plot`'s response-vs-frequency
-extraction) before ever risking it on the real arm:
+inside the red 7.4-7.9Hz reference band -- matching §2.0's "no resonance" equation almost
+exactly (sim's rigid-body model has no $k_s$ term at all, by construction). This is NOT
+evidence against the resonance hypothesis for the REAL arm -- it only confirms the
+collection/analysis pipeline itself works correctly end to end (chirp injection, the safety
+abort, logging, and `--plot`'s response-vs-frequency extraction) before ever risking it on
+the real arm:
 
 ![joint 1 trace](figures/chirp/sim_j1_trace.png)
 
 The joint-1 raw trace above (q/dq/tau) shows the expected shape independent of any resonance
-question: a clean 3-15Hz sweep, response amplitude rolling off smoothly as frequency rises
-(ordinary inertia, not a resonance), torque staying well inside `tau_max_Nm`.
+question: a clean 3-15Hz sweep, response amplitude rolling off roughly as $1/\omega$ once
+$I\omega \gg b_{safety}$ (matching §2.0's no-resonance equation's high-frequency limit),
+torque staying well inside `tau_max_Nm`.
 
-**Next step, unchanged from `next_steps_test_plan.md` item 3**: the same three commands with
-`--backend dynamixel --port <port>` on the real arm, then the same `--plot` comparison against
-the 7.4-7.9Hz band -- this is the one piece of data in this whole file that can actually
-distinguish the two hypotheses, and it doesn't exist yet.
+## Part 2 summary: what it does and does not establish
+
+**Does establish**: the tool and its analysis pipeline work correctly, and the sim result is
+consistent with §2.0's no-resonance model to the extent sim can confirm anything (it has no
+$k_s$ to test against).
+
+**Does NOT establish**: which hypothesis is correct for the real arm. That is the ONE
+measurement in this entire file that would actually be conclusive, and it's also the one
+still missing -- **next step, unchanged from `next_steps_test_plan.md` item 3**: the same
+three commands with `--backend dynamixel --port <port>` on the real arm, then the same
+`--plot` comparison against the 7.4-7.9Hz band.
