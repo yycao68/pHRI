@@ -55,6 +55,8 @@
 
 **还差什么（需要在真实硬件上跑）**：对 `configs/hold.yaml`（或任意一个已验证稳定的配置）依次对三个关节各跑一次 `tools/chirp_response.py --backend dynamixel`，然后用 `--plot` 看三张响应曲线里有没有一个在 7.4–7.9Hz 附近出现尖峰。`--backend sim` 下三个关节的扫描已经跑过并写进了 `friction_chirp_analysis.md` Part 2（含原理推导/方程，不只是结果）——全部平滑无尖峰，符合预期（sim 没有机械谐振可找），只确认了采集/分析流程本身没问题，真机那条还是空的。
 
+🚫 **当前被阻塞**：这条在本 Claude Code 会话里跑不了——这里是开发/分析用的终端环境，没有接 USB 转串口适配器（U2D2），也没有接任何真实舵机（已反复用 `ls /dev/tty.*`/`system_profiler SPUSBDataType` 确认过，最近一次是 2026-10-02）。需要你或学生本人在真正接着 OpenManipulator-X 的那台控制电脑上，手动跑上面那三条 `--backend dynamixel` 命令。跑完把三份真机 CSV（或它们存放的路径）发回来，我这边可以直接接手做 `--plot` 分析、判断 7.4–7.9Hz 附近有没有尖峰，并把结果写回 `friction_chirp_analysis.md` Part 2——这是目前整个共振排查里唯一能真正给出答案的一步，而它现在还缺这组数据。
+
 ## 4. 如果确认是机械谐振：陷波滤波器（notch filter）方案
 
 假设第 3 步确认 7.4–7.9Hz 是一个真实的结构谐振峰，推荐的工程规避手段：
