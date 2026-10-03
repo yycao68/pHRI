@@ -5,11 +5,13 @@ Source data: 19 CSV runs (11 `completed`, 8 `diverged`) across `hold`/`step`/`ci
 
 ## Bottom line
 
-Overall: **yes, it makes sense** — every one of the fixes made earlier this session is doing what it was supposed to do on real hardware (the box-QP runs, the armature correction is active, `u_max` no longer clips, timing is compute-bound and controllable via `--use-jit`). The genuinely new information from this data is that the **stability margin is task-dependent and narrower than the sim-derived `|L|=0.45` target for the `circle` task**, and there's one piece of **real code drift** (anisotropic gains) running on hardware that isn't in the committed repo. Neither is a sign anything is broken; both are exactly the kind of thing you can only learn from real hardware.
+Overall: **yes, it makes sense** — every one of the fixes made earlier this session is doing what it was supposed to do on real hardware (the box-QP runs, the armature correction is active, `u_max` no longer clips, per-tick timing is in budget and tracks `--use-jit` -- though `compute_ms` includes read + send, see the note in §1). The genuinely new information from this data is that the **stability margin is task-dependent and narrower than the sim-derived `|L|=0.45` target for the `circle` task**, and there's one piece of **real code drift** (anisotropic gains) running on hardware that isn't in the committed repo. Neither is a sign anything is broken; both are exactly the kind of thing you can only learn from real hardware.
 
 ## 1. Timing: resolved, and it was never a "re vs A gains" effect
 
 Initial pass over `hw_hold_re_1.csv` looked alarming: `compute_ms` mean 15.89ms (loop can't hold 100Hz) vs `hw_hold_A_ry1e-8_1.csv`'s 4.18ms — a ~3.8x gap that gains alone can't explain (same architecture, same per-tick QP size). Pulling every `*re*` run resolved it:
+
+> **Note (2026-10-03):** despite its name, `run_hardware.py`'s `compute_ms` is timed from before `read_state()` to after `send_torque()` (`run_hardware.py:280-343`), i.e. read + compute + send -- not compute alone. The read/compute/send split on real hardware is still unmeasured (`tools/benchmark_io.py --backend dynamixel`); see `docs/implementation_fix_20261001.md`, 2026-10-03 entry.
 
 | run | q_pos | compute_ms mean | compute_ms max | period_ms mean |
 |---|---|---|---|---|

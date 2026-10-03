@@ -8,7 +8,7 @@ Continuation of `docs/implementation_fix.md`, split out specifically for the fix
 
 The student ran the (code-unchanged, params-only) controller on the real 3-DOF OpenManipulator-X across `hold`/`step`/`circle` tasks (19 runs, 11 completed / 8 diverged, multiple gain sweeps). Full analysis in `hardware_results_review.md` and `divergence_analysis.md` (+ Chinese translations); summarized here only as far as it produced actual code/config changes.
 
-**Headline results**: every fix in `docs/implementation_fix.md` so far is confirmed working on real hardware -- box-QP runs, `u_max` no longer clips, the armature correction is active and logged, timing is compute-bound (~4.2ms/tick, comfortable 100Hz headroom) and matches the `--use-jit` speedup measured there. The one thing real hardware could show that sim/analysis couldn't: **the `~8Hz self-excited oscillation` the original report warned about is real** -- all 8 diverged runs show a tightly clustered 7.4-7.9Hz sign-alternating, amplitude-growing oscillation regardless of task or gain, and it is genuinely task-dependent (the same `|L|` that's stable for `hold` is past the boundary for `circle`).
+**Headline results**: every fix in `docs/implementation_fix.md` so far is confirmed working on real hardware -- box-QP runs, `u_max` no longer clips, the armature correction is active and logged, per-tick timing (~4.2ms/tick, comfortable 100Hz headroom) matches the `--use-jit` speedup measured there -- note that `run_hardware.py`'s `compute_ms` includes `read_state()` + `send_torque()`, so this is read + compute + send, not compute alone (see the 2026-10-03 entry at the end of this file). The one thing real hardware could show that sim/analysis couldn't: **the `~8Hz self-excited oscillation` the original report warned about is real** -- all 8 diverged runs show a tightly clustered 7.4-7.9Hz sign-alternating, amplitude-growing oscillation regardless of task or gain, and it is genuinely task-dependent (the same `|L|` that's stable for `hold` is past the boundary for `circle`).
 
 ### What changed
 
@@ -155,3 +155,38 @@ First version of `breakaway` added a `--max-stuck-s` cap that DROPPED windows lo
 Adds: a reusable tool instead of one-off chat analysis, for three different (still rough) friction proxies against data that already exists.
 
 **Does NOT establish**: a trustworthy, joint-space friction MODEL (Coulomb coefficient + viscous coefficient per joint) -- all three modes here are proxies through the closed-loop controller and its observer, exactly as caveated in the script's own docstring. That still needs `tools/chirp_response.py --backend dynamixel` run on real hardware, which doesn't exist yet.
+
+## Analysis, not applied: would rewriting everything in C++ reduce the loop delay? (2026-10-03)
+
+**Status: ANALYSIS ONLY -- no code changed.** In response to the user asking whether porting all code to C++ would improve the time delay. Short answer: **only marginally, and not where the remaining delay most likely is.** A C++ port speeds up compute only; compute is already small after `--use-jit` + `qp_iters=50`, and the other two delay components are untouched by the implementation language.
+
+### The three components of loop delay
+
+| component | set by | does C++ help? |
+|---|---|---|
+| **Compute** (RNEA, Jacobian, FISTA) | the code | yes -- but already ~0.2-0.5 ms/tick (dev machine, `benchmark_compute.py --use-jit`), down from ~2 ms; `_rnea()` alone 395 us -> 5 us with Numba, i.e. already near-C speed. A C++ port might save a further ~0.1-0.3 ms, noise against the 10 ms period |
+| **Communication** (Dynamixel `read_state()` + `send_torque()`) | `Return_Delay_Time`, `Status_Return_Level`, baud rate, USB-serial latency timer, bus arbitration | **no** -- protocol- and OS-level, not language-level (same reason threading doesn't help it, see `docs/implementation_fix.md`) |
+| **Control period** (10 ms at 100 Hz) | the chosen loop rate | **no** -- only shrinks by raising the rate |
+
+### A correction to this file's own "timing is compute-bound" headline
+
+The 2026-09-29 entry above (and `hardware_results_review.md` §1) originally described real-hardware timing as "compute-bound (~4.2ms/tick)". But `run_hardware.py`'s `compute_ms` column is timed from **before `backend.read_state()` to after `backend.send_torque()`** (`run_hardware.py:280-343`), so it measures read + compute + send, not compute alone. If those runs used `--use-jit` (the ~3.8x ratio between `hw_hold_re_1` and the later runs suggests so, but this is inferred, not confirmed from the logs), pure compute was roughly 0.5 ms of that ~4.2 ms -- meaning **communication, not compute, is plausibly the majority of the measured per-tick cost**. Not verified: the control PC's CPU differs from the dev machine where the 0.2-0.5 ms was measured, and `tools/benchmark_io.py --backend dynamixel`, which splits read / compute / send directly, has still never been run on the real arm. That run is the actual answer.
+
+### Where C++ could genuinely matter
+
+Worst-case latency rather than the mean -- e.g. the PID's `max=37.57ms` outlier against a 6.73 ms mean (`docs/implementation_fix.md`), plausibly Python's cyclic GC. Testable without any port: `gc.disable()` around the real-time loop.
+
+### Recommended order instead of a port
+
+1. Run with `--use-jit` and `qp_iters=50` (both already shipped).
+2. On the real arm: `tools/benchmark_io.py --backend dynamixel` (MPC and PID) to get the true read / compute / send split.
+3. If communication dominates: `Return_Delay_Time` -> 0, USB-serial latency timer -> 1 ms (Linux default 16 ms), and consider a baud rate above 1 Mbps -- measure each with `benchmark_io.py` before/after.
+4. Once compute + I/O fit with margin, raise the loop rate (200-500 Hz) -- the only way to cut the 10 ms period component.
+
+Both places now say read + compute + send instead (wording fixed 2026-10-03; numbers unchanged).
+
+### What this does and does not establish
+
+Establishes: a C++ rewrite is not the right next lever for delay; the cheaper, already-built levers above should come first, and the `compute_ms` column must not be read as compute-only.
+
+**Does NOT establish**: whether loop delay causes the 7.4-7.9 Hz divergence at all. That is still open pending `tools/chirp_response.py --backend dynamixel` on the real arm (mechanical resonance / friction vs. loop delay) -- a C++ port would not settle it either.
