@@ -3,13 +3,32 @@
 This file tracks fixes for the problems recorded in `docs/original_implementation.md` 
 -- both applied and merely recommended, clearly labeled as such. Do not add new problem reports here; add them to `docs/original_implementation.md` instead.
 
-**This file covers 2026-09-27 only -- all sim/analysis-only fixes made before any real
-hardware data existed.** Fixes from 2026-09-29 onward (everything that came out of the
-real-hardware validation data in `MPC_s_Hardware_results_2026-09-29/`, and everything
-downstream of it) are tracked separately in `docs/implementation_fix_20261001.md`, to keep
-the pre-hardware and post-hardware stories from blurring together. Add new fixes to
-whichever file matches when they happened -- most likely `docs/implementation_fix_20261001.md`
-now.
+**This file covers 2026-09-27 only -- all sim/analysis-only fixes made before any real hardware data existed.** Fixes from 2026-09-29 onward (everything that came out of the real-hardware validation data in `MPC_s_Hardware_results_2026-09-29/`, and everything downstream of it) are tracked separately in `docs/implementation_fix_20261001.md`, to keep the pre-hardware and post-hardware stories from blurring together. Add new fixes to whichever file matches when they happened -- most likely `docs/implementation_fix_20261001.md` now.
+
+## Background: what RNEA is (read first -- the fixes below refer to it constantly)
+
+**RNEA** is the **Recursive Newton-Euler Algorithm**, the standard efficient way to compute *inverse dynamics*: given joint positions, velocities and accelerations (`q`, `dq`, `ddq`), it returns the joint torques needed to produce that motion,
+
+$$\tau = M(q)\,\ddot q + C(q,\dot q)\,\dot q + g(q)$$
+
+without ever forming `M`, `C` or `g` as separate matrices. It does this in two sweeps along the kinematic chain (hence "recursive"). In `lib/dynamics.py` it is `_rnea()`, with a Numba-compiled twin `_rnea_jit()`.
+
+1. **Forward pass (base -> tip).** For each link `i`, the parent's motion is rotated into the current link frame (`iR = R[i].T`) and the joint's own contribution is added: angular velocity `w[i+1] = iR @ w[i] + dq[i]*axis`, angular acceleration `wd`, and linear acceleration `a` at the joint, then `a_ci` at the link's centre of mass. From these, each link's required force and moment: `F = m * a_ci` (Newton) and `N = I @ wd + w x (I @ w)` (Euler).
+2. **Backward pass (tip -> base).** Forces and moments are accumulated inward: each link must supply its own `F`, `N` plus everything the links beyond it need. Projecting each joint's moment onto its axis gives `tau[i]`.
+
+Gravity is handled by a standard trick: the base is given an upward acceleration, `a[0] = -g_vec * gravity_scale`, which is equivalent to gravity pulling down on every link.
+
+**One routine, every dynamics term.** By zeroing some inputs, the same RNEA call isolates each term:
+
+| call | result |
+|---|---|
+| `_rnea(q, 0, 0, gravity=True)` | gravity torque `g(q)` -- `dyn.gravity()` |
+| `_rnea(q, dq, 0, gravity=False)` | Coriolis/centrifugal `C(q,dq)dq` -- `dyn.coriolis()` |
+| `_rnea(q, 0, e_j, gravity=False)` | column `j` of the mass matrix `M(q)` -- `_mass_matrix_rnea()`, one call per column |
+
+That last row is why the original code paid 3 RNEA calls per tick just for `M(q)` on this 3-DOF arm (`n = 3`, OpenManipulator) -- the target of the first fix below.
+
+**`_rnea_jit()`** is the same algorithm step for step, compiled with Numba (`@njit`) on plain arrays, with the rotation-matrix construction inlined (a njit function can only call other njit'd functions). The pure-Python `_rnea()` is bound by Python/numpy per-call overhead on many tiny 3x3 operations, not by the arithmetic itself, so compiling it removes most of the cost. It is verified against `_rnea()` to ~1e-14 (floating-point noise). See the `--use-jit` section below.
 
 ## Applied: the ~6.8ms per-tick compute cost (2026-09-27)
 
@@ -248,22 +267,10 @@ The whole-tick numbers matter more than the isolated-function ones: they are wha
 ### Verification
 
 - `python3 -m py_compile` on every touched file: clean.
-- `test_local.py`: all checks pass, including the two new JIT regression
-  blocks (max diff 1.11e-16 N·m for dynamics, 1.60e-13 for the MPC solve --
-  floating-point noise).
-- `tools/benchmark_compute.py --use-jit`, both controllers: whole-tick
-  compute drops 1.925ms->0.473ms (MPC) and ~1.0ms->0.257ms (PID) -- see
-  table above.
-- Full `run_hardware.py --backend sim --use-jit` and `run_pid.py --backend
-  sim --use-jit` reruns on `configs/hold.yaml`: warm-up message prints
-  before `move_to_start`, loop holds ~100Hz, converges to the same ~0.00mm
-  as the non-JIT run (identical behavior, not just identical numbers in
-  isolation).
-- `tools/benchmark_io.py --use-jit` (on `--backend sim`, so this only
-  validates wiring, not the actual comm-vs-compute answer): compute share
-  of the tick drops from ~2ms to ~0.49ms as expected, `read` (sim-substep
-  cost, not comm -- see the section above) unaffected, confirming `--use-jit`
-  is fully independent of the backend choice.
+- `test_local.py`: all checks pass, including the two new JIT regression blocks (max diff 1.11e-16 N·m for dynamics, 1.60e-13 for the MPC solve -- floating-point noise).
+- `tools/benchmark_compute.py --use-jit`, both controllers: whole-tick compute drops 1.925ms->0.473ms (MPC) and ~1.0ms->0.257ms (PID) -- see table above.
+- Full `run_hardware.py --backend sim --use-jit` and `run_pid.py --backend sim --use-jit` reruns on `configs/hold.yaml`: warm-up message prints before `move_to_start`, loop holds ~100Hz, converges to the same ~0.00mm as the non-JIT run (identical behavior, not just identical numbers in isolation).
+- `tools/benchmark_io.py --use-jit` (on `--backend sim`, so this only validates wiring, not the actual comm-vs-compute answer): compute share of the tick drops from ~2ms to ~0.49ms as expected, `read` (sim-substep cost, not comm -- see the section above) unaffected, confirming `--use-jit` is fully independent of the backend choice.
 
 ### What this does and does not fix
 
