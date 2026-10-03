@@ -190,3 +190,38 @@ Both places now say read + compute + send instead (wording fixed 2026-10-03; num
 Establishes: a C++ rewrite is not the right next lever for delay; the cheaper, already-built levers above should come first, and the `compute_ms` column must not be read as compute-only.
 
 **Does NOT establish**: whether loop delay causes the 7.4-7.9 Hz divergence at all. That is still open pending `tools/chirp_response.py --backend dynamixel` on the real arm (mechanical resonance / friction vs. loop delay) -- a C++ port would not settle it either.
+
+## Prepared, awaiting real hardware: `--disable-gc`, read/send timing columns, and communication-delay levers in `run_hardware.py` (2026-10-03)
+
+**Status: PREPARED -- sim-verified wiring only. Every new option is off by default; existing invocations behave exactly as before.** Follows directly from the C++ analysis above: the remaining per-tick cost is most plausibly communication, and the worst-case outliers plausibly GC, so these are the cheap, language-independent levers to try first.
+
+### What changed
+
+- **`run_hardware.py --disable-gc`**: `gc.collect()` once right before the control loop, `gc.disable()` for the loop, `gc.enable()` in the `finally` block. The loop creates no reference cycles, so reference counting still frees everything and memory does not grow. Targets worst-case tick latency (max `period_ms`/`compute_ms`), not the mean.
+- **`run_hardware.py` CSV: new `read_ms` and `send_ms` columns.** `compute_ms` keeps its historical meaning (read + compute + send) so old and new logs stay comparable; pure compute is `compute_ms - read_ms - send_ms`. Every real-hardware run now records the communication split directly, without needing a separate `tools/benchmark_io.py` session. On `--backend sim`, `read_ms` is sim-physics integration, not communication (same caveat as `benchmark_io.py`).
+- **`run_hardware.py --return-delay-time N`** (0..254, units of 2 us): `DynamixelCurrentBackend.enable()` writes Return_Delay_Time on every servo while torque is off, reads it back, and refuses to continue if it didn't stick. Same register `tools/check_current_interface.py --set-return-delay-time` already wrote, now applied as part of a normal run. EEPROM -- persists after power-off.
+- **USB latency-timer check** (`lib/dynamixel_backend.py: usb_latency_timer_ms()`): on backend construction, reads the FTDI/U2D2 adapter's latency timer (Linux: sysfs; Windows: the FTDIBUS registry entry whose `PortName` matches `--port`) and prints a WARNING if it is above 1 ms, with the fix. Read-only -- it cannot set it (OS/driver setting, needs admin and usually a replug). Prints "unknown" rather than failing on macOS/non-FTDI adapters. Applies to every script that uses `create_backend`, including `run_pid.py`.
+
+### The communication-delay levers, and what each one is worth (estimates -- not yet measured on this arm)
+
+Per tick, `read_state()` is one GroupSyncRead (3 servos x 10 bytes) and `send_torque()` one GroupSyncWrite:
+
+| lever | how | expected saving per tick | risk |
+|---|---|---|---|
+| **USB latency timer** 16 -> 1 ms | Windows: Device Manager -> Ports -> USB Serial Port (COMx) -> Properties -> Port Settings -> Advanced -> Latency Timer = 1, replug. Linux: `echo 1 \| sudo tee /sys/bus/usb-serial/devices/ttyUSB0/latency_timer` | up to ~15 ms in the worst case, if replies are being held back by the timer; 0 if they already aren't | none, reversible |
+| **Return_Delay_Time** 250 -> 0 | `--return-delay-time 0` | up to 3 x 500 us = **~1.5 ms** if the servos are at the factory default (run `tools/check_current_interface.py` to see the actual stored value) | low; standard setting for control loops; EEPROM |
+| **Baud rate** 1 -> 4 Mbps | servo Baud_Rate register (addr 8; 6 = 4 Mbps) via DYNAMIXEL Wizard, then `--baud 4000000` | wire time ~1.0 ms -> ~0.25 ms, so **~0.75 ms** (sync-read ~80 bytes + sync-write ~23 bytes at 10 bits/byte) | medium: a mismatched baud makes the servos unreachable until rescanned in DYNAMIXEL Wizard, so deliberately NOT automated here; longer cables may need a lower rate |
+| Status_Return_Level | -- | **none**: GroupSyncWrite is a broadcast and never gets a status reply at any level; reads need replies anyway | -- |
+
+For context, the real-hardware busy time is ~4.2 ms/tick (2026-09-29 data); ~1.0 ms wire time + up to ~1.5 ms servo reply delay + ~0.5 ms JIT compute accounts for most of it, which is consistent with -- but does not prove -- communication being the majority.
+
+### Verification
+
+- `python3 -m py_compile` on both touched files: clean.
+- `test_local.py`: all checks pass, unchanged.
+- `run_hardware.py --backend sim --config configs/hold.yaml --duration 3 --use-jit`, with and without `--disable-gc`: 300 samples each, both converge to ~0.00 mm (identical behavior); `read_ms`/`send_ms` columns present; GC message printed and GC re-enabled on exit. Sim cannot show a GC benefit (a 3 s run with sim-physics in `read_ms` is dominated by other noise) -- that needs real hardware.
+- `--return-delay-time 300` is rejected by argparse (valid range 0..254). `usb_latency_timer_ms()` returns None on macOS without raising. The Windows registry and Linux sysfs paths and the RDT write/read-back have NOT been exercised -- no hardware or Windows machine from this session.
+
+### What this does and does not establish
+
+Adds: the means to measure and cut communication delay as part of a normal run. **Does NOT establish** any actual saving. Next step on the real arm: `tools/check_current_interface.py` (see stored Return_Delay_Time), fix the latency timer if the new WARNING appears, then `run_hardware.py ... --use-jit` vs `... --use-jit --disable-gc --return-delay-time 0` on `configs/hold.yaml`, and compare `read_ms` mean and `period_ms`/`compute_ms` max between the two CSVs. `run_pid.py` has the same `--disable-gc`, `--return-delay-time` and `read_ms`/`send_ms` columns (ported the same day) -- worth running there first, since the 37.57 ms outlier was a PID run.

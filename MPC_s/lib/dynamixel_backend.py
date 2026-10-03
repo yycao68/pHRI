@@ -22,6 +22,7 @@ import numpy as np
 
 # XM430-W350 / Protocol 2.0 control-table (address, length) and unit scales.
 ADDR = {
+    "return_delay_time": (9, 1),   # EEPROM, x2us; factory default 250 (=500us) per servo
     "operating_mode": (11, 1),
     "current_limit": (38, 2),
     "torque_enable": (64, 1),
@@ -42,6 +43,46 @@ def _s16(v: int) -> int:
 
 def _s32(v: int) -> int:
     return v - 4294967296 if v >= 2147483648 else v
+
+
+def usb_latency_timer_ms(port: str) -> int | None:
+    """Best-effort read of the USB-serial (FTDI, e.g. U2D2) adapter's latency
+    timer for `port`, in ms; None if it can't be determined (non-FTDI adapter,
+    macOS, permissions). The driver holds back a partially-filled receive
+    buffer for up to this long before handing it to the host, so every
+    GroupSyncRead reply can wait up to this extra time. Factory default is
+    16 ms on both Windows and Linux; 1 ms is the usual setting for control
+    loops. This is an OS/driver setting, not a servo register:
+      Linux:   echo 1 | sudo tee /sys/bus/usb-serial/devices/ttyUSB0/latency_timer
+      Windows: Device Manager -> Ports -> USB Serial Port (COMx) -> Properties ->
+               Port Settings -> Advanced -> Latency Timer (msec) = 1, then replug.
+    """
+    import os
+    import sys
+    try:
+        if sys.platform.startswith("linux"):
+            path = f"/sys/bus/usb-serial/devices/{os.path.basename(port)}/latency_timer"
+            with open(path) as f:
+                return int(f.read().strip())
+        if sys.platform == "win32":
+            import winreg
+            root = r"SYSTEM\CurrentControlSet\Enum\FTDIBUS"
+            with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, root) as k_bus:
+                for a in range(winreg.QueryInfoKey(k_bus)[0]):
+                    dev = winreg.EnumKey(k_bus, a)
+                    with winreg.OpenKey(k_bus, dev) as k_dev:
+                        for b in range(winreg.QueryInfoKey(k_dev)[0]):
+                            inst = winreg.EnumKey(k_dev, b)
+                            try:
+                                with winreg.OpenKey(k_dev, inst + r"\Device Parameters") as k_par:
+                                    name = winreg.QueryValueEx(k_par, "PortName")[0]
+                                    if str(name).upper() == port.upper():
+                                        return int(winreg.QueryValueEx(k_par, "LatencyTimer")[0])
+                            except OSError:
+                                continue
+    except (OSError, ValueError):
+        return None
+    return None
 
 
 def assert_startup_pose_plausible(q: np.ndarray, jmin: np.ndarray, jmax: np.ndarray,
@@ -101,7 +142,7 @@ class RobotIO:
 
 
 class DynamixelCurrentBackend:
-    def __init__(self, config: dict, port: str, baud: int):
+    def __init__(self, config: dict, port: str, baud: int, return_delay_time: int | None = None):
         try:
             from dynamixel_sdk import (
                 PortHandler, PacketHandler, GroupSyncRead, GroupSyncWrite, COMM_SUCCESS,
@@ -127,6 +168,18 @@ class DynamixelCurrentBackend:
             raise RuntimeError(f"failed to open {port}")
         if not self.port.setBaudRate(baud):
             raise RuntimeError(f"failed to set baud {baud}")
+        # None = leave the servos' stored Return_Delay_Time alone (old behavior).
+        self.return_delay_time = return_delay_time
+        lat = usb_latency_timer_ms(port)
+        if lat is None:
+            print(f"[dynamixel] USB latency timer for {port}: unknown (not an FTDI adapter, or "
+                  f"not readable on this OS) -- see usb_latency_timer_ms() for how to check/set it.")
+        elif lat > 1:
+            print(f"[dynamixel] WARNING: USB latency timer for {port} is {lat} ms (1 ms recommended) "
+                  f"-- every read_state() can wait up to that long for the adapter to flush. "
+                  f"See usb_latency_timer_ms() in lib/dynamixel_backend.py for how to lower it.")
+        else:
+            print(f"[dynamixel] USB latency timer for {port}: {lat} ms (ok)")
 
         a, ln = ADDR["present_current"][0], 10  # 126..135
         self.reader = GroupSyncRead(self.port, self.ph, a, ln)
@@ -159,6 +212,15 @@ class DynamixelCurrentBackend:
     def enable(self) -> None:
         for i in self.ids:
             self._w1(i, ADDR["torque_enable"][0], 0)            # off to write EEPROM
+            if self.return_delay_time is not None:
+                # EEPROM: persists across power cycles. Each servo waits this long (x2us)
+                # before replying, and GroupSyncRead visits all servos in series on one
+                # half-duplex bus, so the waits add up every tick.
+                self._w1(i, ADDR["return_delay_time"][0], int(self.return_delay_time))
+                rdt, cr, _ = self.ph.read1ByteTxRx(self.port, i, ADDR["return_delay_time"][0])
+                if cr != self._COMM_SUCCESS or int(rdt) != int(self.return_delay_time):
+                    raise RuntimeError(f"servo {i}: Return_Delay_Time write did not stick "
+                                       f"(read back {rdt}, wanted {self.return_delay_time})")
             self._w1(i, ADDR["operating_mode"][0], CURRENT_MODE)
             self._w2(i, ADDR["current_limit"][0], self.cur_limit_ticks)
             self._w1(i, ADDR["torque_enable"][0], 1)
@@ -358,5 +420,6 @@ def create_backend(kind: str, config: dict, kin, args) -> object:
     if kind == "dynamixel":
         if not getattr(args, "port", None):
             raise ValueError("--port is required for --backend dynamixel")
-        return DynamixelCurrentBackend(config, port=args.port, baud=int(args.baud))
+        return DynamixelCurrentBackend(config, port=args.port, baud=int(args.baud),
+                                       return_delay_time=getattr(args, "return_delay_time", None))
     raise ValueError(f"unknown backend: {kind!r} (expected 'sim' or 'dynamixel')")

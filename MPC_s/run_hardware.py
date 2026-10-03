@@ -31,11 +31,14 @@ Usage:
   python run_hardware.py --backend sim --config configs/push.yaml --duration 20 --output results/hardware/sim_push.csv
   python run_hardware.py --backend sim --config configs/circle.yaml --duration 60 --live-plot
   python run_hardware.py --backend dynamixel --port COM3 --baud 1000000 --config configs/hold.yaml --duration 20 --output results/hardware/hw_hold.csv
+  # lowest-latency real-hardware run: JIT compute, no GC pauses, no servo reply delay
+  python run_hardware.py --backend dynamixel --port COM3 --config configs/hold.yaml --duration 20 --use-jit --disable-gc --return-delay-time 0 --output results/hardware/hw_hold_fast.csv
 """
 from __future__ import annotations
 
 import argparse
 import csv
+import gc
 import sys
 import time
 from pathlib import Path
@@ -263,6 +266,15 @@ def run(args: argparse.Namespace) -> Path | None:
 
         dur_str = f"{args.duration}s" if args.duration is not None else "unlimited (Ctrl+C to stop)"
         print(f"[omx-3dof] backend={args.backend} ee0={np.round(p0, 4)} dt={cfg.dt} duration={dur_str}")
+        if args.disable_gc:
+            # Python's cyclic garbage collector can pause the loop for several ms at an
+            # unpredictable tick (a candidate cause of the PID's max=37.57ms outlier vs its
+            # 6.73ms mean). Collect once now, then switch it off for the real-time loop only;
+            # reference counting still frees everything this loop allocates (it creates no
+            # reference cycles), so memory does not grow. Re-enabled in the finally block.
+            gc.collect()
+            gc.disable()
+            print("[omx-3dof] cyclic GC disabled for the control loop (--disable-gc)")
         start = time.monotonic(); next_tick = start; t = 0.0
         prev_wall = start
         last_print = start
@@ -280,6 +292,7 @@ def run(args: argparse.Namespace) -> Path | None:
             c0 = time.monotonic()
 
             io = backend.read_state()
+            read_ms = 1000.0 * (time.monotonic() - c0)
             ee = kin.fk(io.q)
             J = kin.jacobian(io.q)
             ee_vel = J @ io.dq
@@ -338,9 +351,16 @@ def run(args: argparse.Namespace) -> Path | None:
             over_lo = np.maximum(0.0, (jmin + barrier_margin) - io.q)
             tau = tau - barrier_k * over_hi + barrier_k * over_lo
             tau = np.clip(tau, -tau_max, tau_max)
+            s0 = time.monotonic()
             backend.send_torque(tau)
+            s1 = time.monotonic()
 
-            compute_ms = 1000.0 * (time.monotonic() - c0)
+            # compute_ms keeps its historical meaning (read + compute + send, i.e. the whole
+            # busy part of the tick) so old and new logs stay comparable; read_ms/send_ms
+            # split out the communication, so pure compute = compute_ms - read_ms - send_ms.
+            # On --backend sim, read_ms is sim-physics integration, not communication.
+            send_ms = 1000.0 * (s1 - s0)
+            compute_ms = 1000.0 * (s1 - c0)
             if live is not None and sample % plot_every == 0:
                 _update_live_plot(live, kin, io.q, p_d, t, err_mm, 1000.0 / max(period_ms, 1e-6))
             if fh is not None:
@@ -353,6 +373,7 @@ def run(args: argparse.Namespace) -> Path | None:
                 y_hat3 = np.array([y_hat[0], 0.0, y_hat[1]])
                 row = {"sample": sample, "t": t, "mode": config.get("trajectory", {}).get("type", "?"),
                        "err_mm": err_mm, "nis": nis, "compute_ms": compute_ms, "period_ms": period_ms,
+                       "read_ms": read_ms, "send_ms": send_ms,
                        "q_pos": cfg.q_pos, "q_vel": cfg.q_vel, "r": cfg.r,
                        "observer_q_d": cfg.observer_q_d, "observer_r_y": cfg.observer_r_y,
                        "observer_d_hat_max": cfg.observer_d_hat_max,
@@ -393,6 +414,7 @@ def run(args: argparse.Namespace) -> Path | None:
         pass
     finally:
         backend.disable()
+        gc.enable()
         if fh is not None:
             fh.close()
         print(f"\n[omx-3dof] torque disabled; {sample} samples")
@@ -426,6 +448,15 @@ def main() -> None:
                           "docs/implementation_fix.md's \"would C++ help\" section. Requires `pip install numba` "
                           "(optional dependency, off by default). Pays a one-time JIT compile cost "
                           "(~1-3s) at startup, before the real-time loop -- not on its first tick.")
+    ap.add_argument("--disable-gc", action="store_true",
+                     help="switch off Python's cyclic garbage collector for the duration of the control "
+                          "loop (gc.collect() once beforehand, gc.enable() on exit) to remove GC pauses as a "
+                          "source of worst-case tick latency. Compare period_ms/compute_ms max with and without.")
+    ap.add_argument("--return-delay-time", type=int, default=None, metavar="N",
+                     help="--backend dynamixel only: write Return_Delay_Time=N (units of 2us) to every servo "
+                          "when torque is enabled, and verify it. Factory default is 250 (=500us per servo, "
+                          "added in series by every GroupSyncRead); 0 is the usual choice for control loops. "
+                          "EEPROM write -- persists after power-off. Omit to leave the servos' value unchanged.")
     ap.add_argument("--max-err-mm", type=float, default=25.0,
                      help="auto-stop the run if err_mm stays above this for --max-err-consecutive samples "
                           "in a row (a real divergence, not a normal settling/step-response transient -- "
@@ -440,7 +471,10 @@ def main() -> None:
                           "auto-stopping (default 5 samples = 50ms at dt=0.01s -- roughly a third of one "
                           "cycle of the ~7.6Hz oscillatory instability seen in every diverged hardware run, "
                           "short enough to catch it early but long enough to ignore a single noisy sample).")
-    run(ap.parse_args())
+    args = ap.parse_args()
+    if args.return_delay_time is not None and not 0 <= args.return_delay_time <= 254:
+        ap.error("--return-delay-time must be in 0..254 (units of 2us)")
+    run(args)
 
 
 if __name__ == "__main__":
