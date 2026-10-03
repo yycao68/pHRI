@@ -203,6 +203,41 @@ python run_pid.py --backend dynamixel --port COM3 --baud 1000000 \
     --config configs/hold.yaml --duration 20 --output results/hw_hold_pid.csv
 ```
 
+### Reducing loop latency (optional)
+
+Both runners accept the same latency flags. All are off by default:
+
+| flag | what it does |
+|------|--------------|
+| `--use-jit` | Numba-compiles the RNEA (and, for the MPC, FISTA) hot paths. Cuts compute from ~2 ms to ~0.2-0.5 ms per tick. Needs `pip install numba`. |
+| `--disable-gc` | Switches off Python's garbage collector for the control loop only, so it cannot pause a tick at a random moment. Targets the worst-case (max) tick time, not the average. |
+| `--return-delay-time N` | Writes Return_Delay_Time = N (units of 2 us, 0-254) to every servo at startup and checks it stuck. Each servo waits this long before replying, and the waits add up on the shared bus; the factory default 250 (500 us) costs up to ~1.5 ms per tick, `0` removes it. **Permanent** -- stored on the servo. Dynamixel only. |
+
+```bash
+python run_hardware.py --backend dynamixel --port COM3 --config configs/hold.yaml \
+    --duration 20 --use-jit --disable-gc --return-delay-time 0 --output results/hw_hold_fast.csv
+```
+
+Two more levers live outside the scripts:
+
+- **USB latency timer.** The U2D2's USB driver can hold each reply for up to
+  16 ms by default. Both runners print a WARNING at startup if it is above 1 ms.
+  To lower it -- Windows: Device Manager -> Ports -> USB Serial Port (COMx) ->
+  Properties -> Port Settings -> Advanced -> Latency Timer = 1, then replug.
+  Linux: `echo 1 | sudo tee /sys/bus/usb-serial/devices/ttyUSB0/latency_timer`.
+- **Baud rate.** Raising 1 Mbps to 4 Mbps saves roughly 0.75 ms of wire time
+  per tick. Change it in DYNAMIXEL Wizard first, then pass `--baud 4000000`.
+  The scripts never change it themselves: if the servos and `--baud` disagree,
+  the servos stop answering until you rescan in DYNAMIXEL Wizard.
+
+To see whether any of this helped, compare two CSVs of the same config. Each
+row logs `read_ms` and `send_ms` (servo communication) next to `compute_ms`,
+which is the whole busy part of the tick (read + compute + send), and
+`period_ms`, the actual loop period. Pure compute is
+`compute_ms - read_ms - send_ms`. Under `--backend sim`, `read_ms` is the
+simulator's physics, not communication. Full reasoning and estimates:
+`docs/implementation_fix_20261001.md`.
+
 ## 6. Project layout
 
 ```
