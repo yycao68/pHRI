@@ -12,7 +12,7 @@ Everything in this project runs against `--backend sim` by default and requires 
 | Startup pose plausibility check | (automatic, `robot.startup_pose_max_overshoot_rad`) | Refuses to energize the arm if the measured starting pose is outside the joint limits -- this specifically catches a multi-turn position-register wraparound (see `lib/dynamixel_backend.py`'s `assert_startup_pose_plausible` docstring for the failure mode this catches: forward kinematics alone CANNOT detect a full-turn wrap, because it's periodic in every joint angle). |
 | Starting-pose mismatch check | `robot.start_pose_mismatch_max_m`, `--force-start` | Refuses to start if the arm's actual pose is implausibly far from where the config expects it to be (wrong config loaded, arm in an unexpected configuration). `move_to_start` (below) handles the NORMAL amount of mismatch from placing the arm by hand; this check is for genuinely alarming cases. |
 | Slow homing move (`move_to_start`) | `robot.move_to_start_*` | Moves the arm smoothly from wherever it currently is to the config's `posture_q_rad` BEFORE the real controller starts, using a separate, simple, well-tested joint-space PID -- not the controller under test. Without this, the null-space posture term can yank the arm through an uncontrolled motion the instant torque is enabled. |
-| Torque-disable on exit | (automatic) | `run_hardware.py` disables torque in a `finally` block, covering normal completion, `--duration` expiry, Ctrl+C, AND any exception -- there is no code path that leaves torque silently enabled after the script stops running. |
+| Torque-disable on exit | (automatic) | `run_hardware.py` (and `run_pid.py`) disables torque in a `finally` block, covering normal completion, `--duration` expiry, Ctrl+C, AND any exception -- there is no code path that leaves torque silently enabled after the script stops running. |
 | Divergence auto-stop | `--max-err-mm` / `--max-err-consecutive` (on by default: 25mm / 5 samples) | Stops the loop itself if `err_mm` stays above the threshold for that many consecutive ticks, instead of relying on `--duration` expiring or a human operator noticing and hitting Ctrl+C. Added after real hardware showed a genuine ~7.4-7.9Hz self-excited oscillation above certain gains (see `divergence_analysis.md`) -- every one of those runs was otherwise stopped by an operator 1-2s after visible onset. `--max-err-mm 0` disables it. |
 | Chirp diagnostic deviation abort | `tools/chirp_response.py`'s `--max-dev-rad` (default 0.3) and `--amplitude-nm` refusal | `tools/chirp_response.py` commands pure open-loop torque (gravity compensation + a swept-sine chirp, NO position feedback at all) to one joint -- same no-feedback risk category as the gravity-compensation check below, just with a known torque added on top. Aborts if the excited joint strays past `--max-dev-rad` from its start angle, and refuses to even start at an `--amplitude-nm` that isn't comfortably under that joint's `tau_max_Nm`. See `docs/friction_chirp_analysis.md` §2.0. |
 
@@ -26,23 +26,50 @@ Do these once, in order, before your first real trajectory-tracking run:
    `python tools/check_current_interface.py --port COM3 --baud 1000000 --ids 12 13 14`.
    It pings each servo, sets `Operating_Mode=0`, reads it back and reads `Present_Current`. `Goal_Current` is never written and torque is left disabled on every exit path, including the failure paths. Both controllers command torque through `Goal_Current`, so if this fails neither of them can work, and this is the cheapest place to find out.
 
-1. **Calibrate joint sign/offset**: `python tools/calibrate_joints.py --port COM3 --baud 1000000`.
+1. **Calibrate joint sign/offset**: 
+   `python tools/calibrate_joints.py --port COM3 --baud 1000000`.
    Torque stays OFF the whole time. Move the arm by hand, record checkpoints, and work out `joint_sign`/`joint_offset_rad` for your config (the script's own docstring walks through exactly how). This has to match YOUR arm's physical mounting -- the values in the shipped configs are specific to the arm this project was developed on and are very unlikely to be correct for a different physical unit without re-calibration.
 
-2. **Verify gravity compensation ONLY**, with no closed-loop feedback at all: `python tools/test_gravity_compensation.py --port COM3 --config configs/hold.yaml --duration 15`. This commands ONLY `tau = gravity_scale * dyn.gravity(q) - damping * dq` -- no position error feedback, no Jacobian, no MPC -- so there is no possibility of the closed-loop instability a wrong `joint_sign` can cause in the full controller. The arm should feel roughly weightless (easy to move by hand, not sagging, not fighting you) if `joint_sign`/`joint_offset_rad` are correct. Fix calibration before proceeding if it doesn't. (`tools/chirp_response.py --backend dynamixel` is in this same no-feedback-at-all category, just with a known swept-sine torque added on top of the same gravity compensation -- treat a first real run of it with the same care as this check, see the table above.)
+2. **Verify gravity compensation ONLY**, with no closed-loop feedback at all: 
+`python tools/test_gravity_compensation.py --port COM3 --config configs/hold.yaml --duration 15`. 
+This commands ONLY `tau = gravity_scale * dyn.gravity(q) - damping * dq` -- no position error feedback, no Jacobian, no MPC 
+-- so there is no possibility of the closed-loop instability a wrong `joint_sign` can cause in the full controller. 
+The arm should feel roughly weightless (easy to move by hand, not sagging, not fighting you) if `joint_sign`/`joint_offset_rad` are correct. 
+Fix calibration before proceeding if it doesn't. (`tools/chirp_response.py --backend dynamixel` is in this same no-feedback-at-all category, just with a known swept-sine torque added on top of the same gravity compensation -- treat a first real run of it with the same care as this check, see the table above.)
 
-3. **Check the planned trajectory fits the workspace**, offline, before ever touching hardware: `python tools/check_circle_workspace.py --config configs/circle.yaml`. This reports whether the trajectory stays reachable, inside joint limits (with margin), and away from kinematic singularities.
-
+3. **Check the planned trajectory fits the workspace**, offline, before ever touching hardware: 
+`python tools/check_circle_workspace.py --config configs/circle.yaml`. 
+This reports whether the trajectory stays reachable, inside joint limits (with margin), and away from kinematic singularities.
 3b. **Check this machine can compute a tick inside `dt`**:
    `python tools/benchmark_compute.py --config configs/hold.yaml --controller mpc`,
-   and again with `--controller pid` if you intend to run that one. It times the control law alone, without the simulator's physics integration, so the number transfers to hardware. Add your serial round-trip time on top. Judge on the p99 rather than the mean, and note what happens if you get this wrong: asking for a `dt` the machine or the bus cannot serve does not fail loudly, the loop just runs slower than the config says -- and then every gain in that file is wrong for the rate it is really running at.
+   and again with `--controller pid` if you intend to run that one. 
+   It times the control law alone, without the simulator's physics integration, so the number transfers to hardware. 
+   Add your serial round-trip time on top. Judge on the p99 rather than the mean, and note what happens if you get this wrong: asking for a `dt` the machine or the bus cannot serve does not fail loudly, the loop just runs slower than the config says -- and then every gain in that file is wrong for the rate it is really running at. If the numbers are tight, see [Latency flags](#latency-flags-and-what-to-watch-for) below.
 
-4. **Validate the config in `--backend sim` first, always.** Every config should run cleanly in sim (see the README's Quickstart) before you ever pass `--backend dynamixel`. Sim cannot catch everything (it has no friction model, no sensor noise, no communication delay), but it does catch sign errors, gross instabilities, and configuration mistakes cheaply and safely.
+4. **Validate the config in `--backend sim` first, always.** 
+Every config should run cleanly in sim (see the README's Quickstart) before you ever pass `--backend dynamixel`. 
+Sim cannot catch everything (it has no friction model, no sensor noise, no communication delay), but it does catch sign errors, gross instabilities, and configuration mistakes cheaply and safely.
 
 5. **First real-hardware run**: arm physically supported (not hanging freely) and a low `current_limit_ticks` (the shipped configs' 200-300 is a reasonable starting point). Keep a hand near the power switch. Run a SHORT duration first (`--duration 10`).
+
+## Latency flags and what to watch for
+
+Both `run_hardware.py` and `run_pid.py` accept these. All are off by default, and none changes the control law or its gains -- they only change how long each tick takes. Still, introduce them **one at a time** on hardware, so that if behavior changes you know which one did it.
+
+| flag / setting | what it does | safety notes |
+|---|---|---|
+| `--use-jit` | Numba-compiles the dynamics (and MPC solver) hot paths: ~2 ms -> ~0.2-0.5 ms compute per tick. | Numerically identical to plain numpy (checked by `test_local.py`). Compiles once at startup, before torque is enabled -- never on the first control tick. |
+| `--disable-gc` | Switches off Python's garbage collector for the control loop only; re-enabled on every exit path. | Removes random GC pauses from the worst-case tick. Safe: the loop creates no reference cycles, so memory does not grow even on long runs. |
+| `--return-delay-time N` | Writes Return_Delay_Time = N (x2 us, 0-254) to every servo when torque is enabled, reads it back, and **refuses to start** if it didn't stick. `0` removes the factory 500 us per-servo reply delay (up to ~1.5 ms per tick). | **Permanent EEPROM write** -- the value stays on the servo after power-off and applies to every later program, including ones not in this project. Run `tools/check_current_interface.py` first to record the current value if you may want to restore it. |
+| USB latency timer (OS setting) | Each run prints a WARNING at startup if the U2D2 adapter's latency timer is above 1 ms (default 16 ms). Fix: Windows Device Manager -> Ports -> USB Serial Port (COMx) -> Properties -> Port Settings -> Advanced -> Latency Timer = 1, replug; Linux `echo 1 \| sudo tee /sys/bus/usb-serial/devices/ttyUSB0/latency_timer`. | Harmless; read-only check, never changed by the scripts. |
+| Baud rate (servo setting) | 1 -> 4 Mbps saves ~0.75 ms of wire time per tick. Set it in DYNAMIXEL Wizard, then pass `--baud 4000000`. | **Not automated, on purpose**: if the servos and `--baud` disagree, the servos stop answering until rescanned in DYNAMIXEL Wizard. Communication failures are caught (the stale-read guard stops the run with torque disabled), but change it with the arm supported and powered down between steps. |
+
+**Lower delay is not a free stability win.** Less latency usually adds stability margin, but the shipped gains were tuned on hardware at the old timing. Treat the first run after any of these changes like a first hardware run (step 5 above: supported arm, short `--duration`, hand near the power switch). Do NOT raise the loop rate (`controller.dt`) at the same time -- that changes the effective gains (see step 3b) and is a separate tuning exercise.
+
+To check whether a change helped, compare two `--output` CSVs of the same config: `read_ms` + `send_ms` are the servo communication, `compute_ms` is the whole busy part of the tick (read + compute + send), and `period_ms` is the real loop period. Watch the **max** of `period_ms`, not only the mean -- a single long tick matters more for stability than a slightly slower average. Full reasoning: `docs/implementation_fix_20261001.md`.
 
 ## Moving from sim to hardware
 
 - Change gains in small increments once on hardware -- a gain that's perfectly stable in sim can oscillate on real hardware (see `docs/02_tuning_guide.md`'s note on why).
 - Watch the console's live `err_mm`/`tau` printout. A `tau` pinned at `tau_max_Nm` for an extended time, or `err_mm` growing rather than settling, means stop (Ctrl+C) and investigate rather than waiting to see if it recovers.
-- If using `--output`, `tools/plot_traj.py` after the run gives you the full picture (including the achieved control-loop rate, which can be lower on real hardware due to communication latency).
+- If using `--output`, `tools/plot_traj.py` after the run gives you the full picture (including the achieved control-loop rate, which can be lower on real hardware due to communication latency -- the `read_ms`/`send_ms` columns show how much of each tick that is; see [Latency flags](#latency-flags-and-what-to-watch-for)).
